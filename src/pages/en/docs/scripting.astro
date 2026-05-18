@@ -1,0 +1,133 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Scripting" description="Deno/V8 scripting for dynamic traffic modification">
+  <h1>Scripting</h1>
+
+  <p>RelayCore includes a Deno/V8 runtime for dynamic request and response modification using JavaScript or TypeScript.</p>
+
+  <h2>Overview</h2>
+  <p>Scripts can intercept and modify flows at various stages:</p>
+  <ul>
+    <li><code>onRequest</code> — Before the request is forwarded</li>
+    <li><code>onResponse</code> — After the response is received</li>
+    <li><code>onWebSocket</code> — For WebSocket messages</li>
+  </ul>
+
+  <h2>Basic Script</h2>
+  <pre><code>import &#123; Flow, FlowAction &#125; from "relay:script";
+
+async function onRequest(flow: Flow): Promise&lt;FlowAction&gt; &#123;
+  console.log(`Request: $&#123;flow.method&#125; $&#123;flow.url&#125;`);
+
+  // Add custom header
+  flow.request.headers["X-Script-Ran"] = "true";
+
+  // Log and continue
+  return FlowAction.Continue;
+&#125;
+
+async function onResponse(flow: Flow): Promise&lt;FlowAction&gt; &#123;
+  console.log(`Response: $&#123;flow.status&#125; for $&#123;flow.url&#125;`);
+
+  // Return mock response for specific URLs
+  if (flow.path === "/api/mocked") &#123;
+    return FlowAction.Mock(&#123;
+      status: 200,
+      headers: &#123; "content-type": "application/json" &#125;,
+      body: JSON.stringify(&#123; mocked: true &#125;),
+    &#125;);
+  &#125;
+
+  return FlowAction.Continue;
+&#125;</code></pre>
+
+  <h2>Flow Object</h2>
+  <pre><code>interface Flow &#123;
+  id: string;
+  timestamp: Date;
+  method: string;
+  url: string;
+  host: string;
+  path: string;
+  protocol: string;
+  status?: number;
+
+  request: &#123;
+    headers: Record&lt;string, string&gt;;
+    body?: Uint8Array;
+    bodyText?: string;
+    bodyJson?: unknown;
+  &#125;;
+
+  response?: &#123;
+    headers: Record&lt;string, string&gt;;
+    body?: Uint8Array;
+    bodyText?: string;
+    bodyJson?: unknown;
+  &#125;;
+
+  duration_ms: number;
+  size: number;
+&#125;</code></pre>
+
+  <h2>FlowAction</h2>
+  <pre><code>enum FlowAction &#123;
+  Continue = "continue",      // Proceed normally
+  Drop = "drop",              // Drop the flow
+  Mock = "mock",              // Return mock response
+  Intercept = "intercept",    // Pause for inspection
+  Redirect = "redirect",      // Redirect to URL
+&#125;</code></pre>
+
+  <h2>Advanced Example</h2>
+  <pre><code>import &#123; Flow, FlowAction &#125; from "relay:script";
+
+// Mock API responses for testing
+const mocks = new Map([
+  ["/api/users", &#123; users: [&#123; id: 1, name: "Alice" &#125;] &#125;],
+  ["/api/products", &#123; products: [&#123; id: 1, name: "Widget" &#125;] &#125;],
+]);
+
+async function onRequest(flow: Flow): Promise&lt;FlowAction&gt; &#123;
+  // Inject auth token if missing
+  if (flow.path.startsWith("/api/") &amp;&amp; !flow.request.headers["authorization"]) &#123;
+    flow.request.headers["authorization"] = "Bearer test-token-123";
+  &#125;
+  return FlowAction.Continue;
+&#125;
+
+async function onResponse(flow: Flow): Promise&lt;FlowAction&gt; &#123;
+  if (flow.response &amp;&amp; flow.response.bodyJson) &#123;
+    // Log all API responses
+    console.log(`API Response for $&#123;flow.path&#125;:`, flow.response.bodyJson);
+
+    // Inject metadata into responses
+    if (Array.isArray(flow.response.bodyJson)) &#123;
+      flow.response.bodyJson._meta = &#123;
+        mocked: true,
+        timestamp: new Date().toISOString(),
+      &#125;;
+    &#125;
+  &#125;
+  return FlowAction.Continue;
+&#125;</code></pre>
+
+  <h2>Loading Scripts</h2>
+  <pre><code># Load a script
+relay-core-cli scripts load ./path/to/script.ts
+
+# List loaded scripts
+relay-core-cli scripts list
+
+# Unload a script
+relay-core-cli scripts unload my-script</code></pre>
+
+  <h2>Script Configuration</h2>
+  <pre><code># In config.toml
+[scripting]
+enabled = true
+deno_dir = "~/.relay-core/deno"
+auto_reload = true</code></pre>
+</DocsLayout>

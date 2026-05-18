@@ -1,0 +1,70 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Quick Start" description="Get started with RelayCore in minutes">
+  <h1>Quick Start</h1>
+
+  <p>RelayCore is a high-performance Rust traffic interception engine. This guide will help you get up and running in under 5 minutes.</p>
+
+  <h2>Installation</h2>
+
+  <p>Choose your preferred installation method:</p>
+
+  <h3>Cargo (Recommended)</h3>
+  <pre><code>cargo install relay-core-cli</code></pre>
+
+  <h3>npm</h3>
+  <pre><code>npm install -g @relay-core/cli</code></pre>
+
+  <h3>Pre-built Binaries</h3>
+  <p>Download the latest release from <a href="https://github.com/relaycraft/relay-core/releases">GitHub Releases</a>.</p>
+
+  <h2>Generate CA Certificate</h2>
+
+  <p>For HTTPS interception, you need a CA certificate:</p>
+  <pre><code>relay-core-cli ca init</code></pre>
+
+  <p>Then install it system-wide:</p>
+  <pre><code># macOS
+sudo security add-trusted-cert ~/.relay-core/ca.crt
+
+# Linux
+sudo cp ~/.relay-core/ca.crt /usr/local/share/ca-certificates/
+sudo update-ca-certificates
+
+# Windows
+# Import via certmgr.msc</code></pre>
+
+  <h2>Start the Proxy</h2>
+
+  <pre><code># Basic usage
+relay-core-cli run
+
+# With TUI interface
+relay-core-cli run --ui
+
+# On specific port
+relay-core-cli run --port 8080</code></pre>
+
+  <p>The proxy will start on port 8080 by default. Open <code>http://localhost:8080/ui</code> for the web interface.</p>
+
+  <h2>Configure Your Client</h2>
+
+  <p>Point your HTTP client to RelayCore:</p>
+  <pre><code># curl
+curl --proxy http://localhost:8080 https://example.com
+
+# Environment variables
+export HTTP_PROXY=http://localhost:8080
+export HTTPS_PROXY=http://localhost:8080</code></pre>
+
+  <h2>Next Steps</h2>
+
+  <ul>
+    <li><a href="/docs/architecture">Understand the Architecture</a></li>
+    <li><a href="/docs/api">Explore the HTTP API</a></li>
+    <li><a href="/docs/cli">CLI Reference</a></li>
+    <li><a href="/docs/rule-engine">Rule Engine</a></li>
+  </ul>
+</DocsLayout>

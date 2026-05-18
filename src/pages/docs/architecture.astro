@@ -1,0 +1,83 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="架构" description="RelayCore 内部架构">
+  <h1>架构</h1>
+
+  <p>RelayCore 作为一个 Rust workspace 组织，包含多个 crate，每个都有特定的职责。</p>
+
+  <h2>高层概述</h2>
+
+  <pre><code>┌─────────────────────────────────────────────────────────────┐
+│                    ADAPTER LAYER                             │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────┐   │
+│  │ HTTP API│  │   MCP   │  │  Tauri  │  │  Embedded   │   │
+│  └────┬────┘  └────┬────┘  └────┬────┘  └──────┬──────┘   │
+│       └────────────┴─────────────┴─────────────┘           │
+│                          │                                   │
+│                          ▼                                   │
+│               ┌─────────────────┐                           │
+│               │relay-core-runtime│                          │
+│               │(State, Events)   │                          │
+│               └────────┬─────────┘                           │
+│                        │                                      │
+└────────────────────────┼────────────────────────────────────┘
+                         │
+     ┌───────────────────┼───────────────────┐
+     ▼                   ▼                   ▼
+┌──────────┐  ┌──────────────┐  ┌──────────────┐
+│   lib    │  │   storage    │  │   script     │
+│ (engine) │  │  (SQLite)    │  │  (Deno/V8)   │
+└──────────┘  └──────────────┘  └──────────────┘</code></pre>
+
+  <h2>核心 Crate</h2>
+
+  <h3>relay-core-runtime (公开)</h3>
+  <p>主要 API crate。提供 <code>CoreState</code> 用于状态编排、代理生命周期管理、规则评估和事件分发。</p>
+
+  <h3>relay-core-http (公开)</h3>
+  <p>REST + SSE 适配器。通过 HTTP 和 JSON API 以及 Server-Sent Events 实时更新暴露 CoreState。</p>
+
+  <h3>relay-core-probe (Beta)</h3>
+  <p>MCP 适配器。为 AI 代理暴露工具，以编程方式观察和控制代理。</p>
+
+  <h3>relay-core-cli (Beta)</h3>
+  <p>带 TUI 的独立 CLI 二进制文件。提供用于运行代理和管理规则/流量的终端界面。</p>
+
+  <h3>relay-core-lib (内部)</h3>
+  <p>核心拦截引擎。处理 HTTP/HTTPS 代理、WebSocket、MITM 和 TLS 以及规则引擎。</p>
+
+  <h3>relay-core-storage (内部)</h3>
+  <p>SQLite 持久化。处理带有 LRU 缓存的流存储和审计日志。</p>
+
+  <h3>relay-core-script (内部)</h3>
+  <p>用于动态请求/响应修改的 Deno/V8 JavaScript 运行时。</p>
+
+  <h2>数据流</h2>
+
+  <ol>
+    <li>客户端连接到代理（例如 <code>curl --proxy http://localhost:8080 https://example.com</code>）</li>
+    <li><code>relay-core-lib</code> 捕获请求</li>
+    <li>根据流评估规则</li>
+    <li>对于 HTTPS：MITM 拦截和解密</li>
+    <li>流存储在 <code>relay-core-storage</code></li>
+    <li>通过 CoreState 事件总线发布事件</li>
+    <li>适配器（HTTP API、MCP、CLI）可以通过 CoreState 查询/控制</li>
+  </ol>
+
+  <h2>配置</h2>
+
+  <p>RelayCore 从 <code>~/.relay-core/config.toml</code> 读取配置：</p>
+  <pre><code>[proxy]
+port = 8080
+bind_address = "0.0.0.0"
+
+[storage]
+sqlite_path = "~/.relay-core/flows.db"
+max_flows = 10000
+
+[mcp]
+enabled = true
+port = 25519</code></pre>
+</DocsLayout>

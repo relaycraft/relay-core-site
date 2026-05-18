@@ -1,0 +1,130 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="配置" description="RelayCore 配置参考">
+  <h1>配置</h1>
+
+  <p>RelayCore 从 <code>~/.relay-core/config.toml</code>（或通过 <code>--config</code> 标志）读取配置。</p>
+
+  <h2>完整配置参考</h2>
+
+  <pre><code>[proxy]
+# 监听地址和端口
+port = 8080
+bind_address = "0.0.0.0"
+
+# 可选的上游代理
+upstream_proxy = "http://parent-proxy:8080"
+
+# 透明代理（需要 root）
+transparent = false
+
+# MITM
+mitm_enabled = true
+mitm_ca_path = "~/.relay-core/ca.crt"
+mitm_ca_key_path = "~/.relay-core/ca.key"
+
+[storage]
+# SQLite 数据库路径
+sqlite_path = "~/.relay-core/flows.db"
+
+# 保持在内存中的最大流量数
+max_flows = 10000
+
+# 流量 TTL（小时）
+flow_ttl_hours = 24
+
+# 启用审计日志
+audit_enabled = true
+audit_path = "~/.relay-core/audit.db"
+
+[logging]
+# 日志级别：debug, info, warn, error
+level = "info"
+
+# 日志输出到文件
+log_file = "~/.relay-core/relay-core.log"
+
+# 启用访问日志
+access_log = true
+
+[mcp]
+# 启用 MCP 服务器
+enabled = true
+
+# MCP 监听端口
+port = 25519
+
+# 允许的工具（空 = 全部）
+allowed_tools = []
+
+[scripting]
+# 启用 Deno 脚本
+enabled = true
+
+# Deno 缓存目录
+deno_dir = "~/.relay-core/deno"
+
+# 更改时自动重新加载脚本
+auto_reload = true
+
+[tls]
+# 跳过 TLS 验证（用于调试）
+insecure_skip_verify = false
+
+# 证书缓存大小
+cert_cache_size = 100
+
+# TLS 版本
+min_tls_version = "1.2"
+max_tls_version = "1.3"
+
+[limits]
+# 最大请求体大小（字节）
+max_request_body = 10485760  # 10MB
+
+# 最大响应体大小（字节）
+max_response_body = 10485760  # 10MB
+
+# 连接超时（毫秒）
+connect_timeout = 30000
+
+# 读取超时（毫秒）
+read_timeout = 60000
+
+[ui]
+# 启用内置 Web UI
+enabled = true
+
+# UI 绑定地址
+ui_host = "127.0.0.1"
+
+# UI 端口
+ui_port = 8080</code></pre>
+
+  <h2>环境变量</h2>
+
+  <p>环境变量优先于配置文件：</p>
+
+  <pre><code>RELAY_CORE_CONFIG      # 配置文件路径
+RELAY_CORE_PORT         # proxy.port
+RELAY_CORE_BIND        # proxy.bind_address
+RELAY_CORE_LOG_LEVEL   # logging.level
+RELAY_CORE_DATA_DIR    # 数据目录（~/.relay-core）
+RELAY_CORE_MCP_PORT    # mcp.port</code></pre>
+
+  <h2>CLI 覆盖</h2>
+
+  <p>CLI 标志覆盖环境变量和配置：</p>
+  <pre><code>relay-core-cli run --port 9090 --log-level debug</code></pre>
+
+  <h2>生产环境注意事项</h2>
+
+  <ul>
+    <li>设置 <code>bind_address = "127.0.0.1"</code> 仅限本地访问</li>
+    <li>使用反向代理（nginx）进行 TLS 终止</li>
+    <li>为 <code>log_file</code> 启用日志轮转</li>
+    <li>根据可用内存监控 <code>max_flows</code></li>
+  </ul>
+</DocsLayout>

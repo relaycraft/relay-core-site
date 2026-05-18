@@ -1,0 +1,83 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Architecture" description="RelayCore internal architecture">
+  <h1>Architecture</h1>
+
+  <p>RelayCore is organized as a Rust workspace with multiple crates, each with a specific responsibility.</p>
+
+  <h2>High-Level Overview</h2>
+
+  <pre><code>┌─────────────────────────────────────────────────────────────┐
+│                    ADAPTER LAYER                             │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────┐   │
+│  │ HTTP API│  │   MCP   │  │  Tauri  │  │  Embedded   │   │
+│  └────┬────┘  └────┬────┘  └────┬────┘  └──────┬──────┘   │
+│       └────────────┴─────────────┴─────────────┘           │
+│                          │                                   │
+│                          ▼                                   │
+│               ┌─────────────────┐                           │
+│               │relay-core-runtime│                          │
+│               │(State, Events)   │                          │
+│               └────────┬─────────┘                           │
+│                        │                                      │
+└────────────────────────┼────────────────────────────────────┘
+                         │
+     ┌───────────────────┼───────────────────┐
+     ▼                   ▼                   ▼
+┌──────────┐  ┌──────────────┐  ┌──────────────┐
+│   lib    │  │   storage    │  │   script     │
+│ (engine) │  │  (SQLite)    │  │  (Deno/V8)   │
+└──────────┘  └──────────────┘  └──────────────┘</code></pre>
+
+  <h2>Core Crates</h2>
+
+  <h3>relay-core-runtime (Public)</h3>
+  <p>The main API crate. Provides <code>CoreState</code> for state orchestration, proxy lifecycle management, rule evaluation, and event distribution.</p>
+
+  <h3>relay-core-http (Public)</h3>
+  <p>REST + SSE adapter. Exposes CoreState via HTTP with JSON API and Server-Sent Events for real-time updates.</p>
+
+  <h3>relay-core-probe (Beta)</h3>
+  <p>MCP adapter. Exposes tools for AI agents to observe and control the proxy programmatically.</p>
+
+  <h3>relay-core-cli (Beta)</h3>
+  <p>Standalone CLI binary with TUI. Provides terminal interface for running the proxy and managing rules/flows.</p>
+
+  <h3>relay-core-lib (Internal)</h3>
+  <p>Core interception engine. Handles HTTP/HTTPS proxy, WebSocket, MITM with TLS, and the rule engine.</p>
+
+  <h3>relay-core-storage (Internal)</h3>
+  <p>SQLite persistence. Handles flow storage with LRU cache and audit logging.</p>
+
+  <h3>relay-core-script (Internal)</h3>
+  <p>Deno/V8 JavaScript runtime for dynamic request/response modification.</p>
+
+  <h2>Data Flow</h2>
+
+  <ol>
+    <li>Client connects to proxy (e.g., <code>curl --proxy http://localhost:8080 https://example.com</code>)</li>
+    <li><code>relay-core-lib</code> captures the request</li>
+    <li>Rules are evaluated against the flow</li>
+    <li>For HTTPS: MITM intercepts and decrypts</li>
+    <li>Flow is stored in <code>relay-core-storage</code></li>
+    <li>Events are published via CoreState event bus</li>
+    <li>Adapters (HTTP API, MCP, CLI) can query/control via CoreState</li>
+  </ol>
+
+  <h2>Configuration</h2>
+
+  <p>RelayCore reads configuration from <code>~/.relay-core/config.toml</code>:</p>
+  <pre><code>[proxy]
+port = 8080
+bind_address = "0.0.0.0"
+
+[storage]
+sqlite_path = "~/.relay-core/flows.db"
+max_flows = 10000
+
+[mcp]
+enabled = true
+port = 25519</code></pre>
+</DocsLayout>

@@ -1,0 +1,164 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="HTTP API" description="RelayCore REST API reference">
+  <h1>HTTP API</h1>
+
+  <p>The REST API is available at <code>http://127.0.0.1:3000/api/v1/</code> when the proxy is running.</p>
+
+  <h2>Flows</h2>
+
+  <h3>GET /api/v1/flows</h3>
+  <p>Search and paginate captured flows.</p>
+
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span>/api/v1/flows?limit=10&amp;offset=0&amp;filter=method:GET</span>
+  </div>
+
+  <p><strong>Query Parameters:</strong></p>
+  <ul>
+    <li><code>limit</code> — Number of flows to return (default: 50)</li>
+    <li><code>offset</code> — Pagination offset</li>
+    <li><code>filter</code> — Filter expression (e.g., <code>method:GET host:*.example.com</code>)</li>
+  </ul>
+
+  <pre><code>&#123;
+  "flows": [
+    &#123;
+      "id": "fld_01HX5K9P3Q8Y2Z7",
+      "timestamp": "2024-01-15T10:23:45.123Z",
+      "method": "GET",
+      "url": "https://api.example.com/users",
+      "host": "api.example.com",
+      "path": "/users",
+      "status": 200,
+      "duration_ms": 42,
+      "size": 1847
+    &#125;
+  ],
+  "pagination": &#123;
+    "total": 12847,
+    "returned": 10,
+    "offset": 0
+  &#125;
+&#125;</code></pre>
+
+  <h3>GET /api/v1/flows/:id</h3>
+  <p>Get detailed flow information including headers and body.</p>
+
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span>/api/v1/flows/fld_01HX5K9P3Q8Y2Z7</span>
+  </div>
+
+  <h2>Rules</h2>
+
+  <h3>GET /api/v1/rules</h3>
+  <p>List all interception rules.</p>
+
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span>/api/v1/rules</span>
+  </div>
+
+  <h3>PUT /api/v1/rules</h3>
+  <p>Create or update a rule.</p>
+
+  <div class="endpoint">
+    <span class="method method-put">PUT</span>
+    <span>/api/v1/rules</span>
+  </div>
+
+  <pre><code>&#123;
+  "id": "rul_01HX5K9P3Q8Y2Z7",
+  "name": "Log API requests",
+  "priority": 100,
+  "filter": &#123;
+    "method": "GET",
+    "host": "*.example.com",
+    "path": "/api/*"
+  &#125;,
+  "action": &#123;
+    "type": "log"
+  &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <h3>DELETE /api/v1/rules/:id</h3>
+  <p>Delete a rule.</p>
+
+  <div class="endpoint">
+    <span class="method method-delete">DELETE</span>
+    <span>/api/v1/rules/rul_01HX5K9P3Q8Y2Z7</span>
+  </div>
+
+  <h2>Intercepts</h2>
+
+  <h3>POST /api/v1/intercepts</h3>
+  <p>Create an interception breakpoint.</p>
+
+  <div class="endpoint">
+    <span class="method method-post">POST</span>
+    <span>/api/v1/intercepts</span>
+  </div>
+
+  <pre><code>&#123;
+  "filter": &#123;
+    "method": "POST",
+    "host": "api.example.com"
+  &#125;,
+  "pause_at": "request"
+&#125;</code></pre>
+
+  <h3>POST /api/v1/intercepts/resolve</h3>
+  <p>Resolve a pending intercept (resume, modify, or drop).</p>
+
+  <pre><code>&#123;
+  "flow_id": "fld_01HX5K9P3Q8Y2Z7",
+  "action": "resume",
+  "modifications": &#123;&#125;
+&#125;</code></pre>
+
+  <h2>Events</h2>
+
+  <h3>GET /api/v1/events</h3>
+  <p>Server-Sent Events stream for real-time updates.</p>
+
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span>/api/v1/events</span>
+  </div>
+
+  <p>Event types: <code>flow::new</code>, <code>flow::update</code>, <code>intercept::pending</code>, <code>rule::matched</code></p>
+
+  <h2>Metrics</h2>
+
+  <h3>GET /api/v1/metrics</h3>
+  <p>JSON metrics snapshot.</p>
+
+  <h3>GET /api/v1/metrics/prometheus</h3>
+  <p>Prometheus text format metrics.</p>
+
+  <pre><code># HELP relay_core_flows_total Total number of flows captured
+# TYPE relay_core_flows_total counter
+relay_core_flows_total 12847
+
+# HELP relay_core_request_duration_ms Request duration in milliseconds
+# TYPE relay_core_request_duration_ms histogram
+relay_core_request_duration_ms_bucket&#123;le="1"&#125; 10023
+relay_core_request_duration_ms_bucket&#123;le="5"&#125; 12500
+relay_core_request_duration_ms_bucket&#123;le="10"&#125; 12800
+relay_core_request_duration_ms_bucket&#123;le="+Inf"&#125; 12847</code></pre>
+
+  <h2>Audit</h2>
+
+  <h3>GET /api/v1/audit</h3>
+  <p>Query control-plane mutation audit log.</p>
+
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span>/api/v1/audit?since=2024-01-15T00:00:00Z</span>
+  </div>
+</DocsLayout>

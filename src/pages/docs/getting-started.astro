@@ -1,0 +1,70 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="快速开始" description="几分钟内开始使用 RelayCore">
+  <h1>快速开始</h1>
+
+  <p>RelayCore 是一个高性能 Rust 流量拦截引擎。本指南将帮助你在几分钟内启动和运行。</p>
+
+  <h2>安装</h2>
+
+  <p>选择你喜欢的安装方式：</p>
+
+  <h3>Cargo（推荐）</h3>
+  <pre><code>cargo install relay-core-cli</code></pre>
+
+  <h3>npm</h3>
+  <pre><code>npm install -g @relay-core/cli</code></pre>
+
+  <h3>预构建二进制</h3>
+  <p>从 <a href="https://github.com/relaycraft/relay-core/releases">GitHub Releases</a> 下载最新版本。</p>
+
+  <h2>生成 CA 证书</h2>
+
+  <p>要拦截 HTTPS 流量，你需要 CA 证书：</p>
+  <pre><code>relay-core-cli ca init</code></pre>
+
+  <p>然后将其安装到系统：</p>
+  <pre><code># macOS
+sudo security add-trusted-cert ~/.relay-core/ca.crt
+
+# Linux
+sudo cp ~/.relay-core/ca.crt /usr/local/share/ca-certificates/
+sudo update-ca-certificates
+
+# Windows
+# 通过 certmgr.msc 导入</code></pre>
+
+  <h2>启动代理</h2>
+
+  <pre><code># 基本用法
+relay-core-cli run
+
+# 带 TUI 界面
+relay-core-cli run --ui
+
+# 指定端口
+relay-core-cli run --port 8080</code></pre>
+
+  <p>代理默认在 8080 端口启动。打开 <code>http://localhost:8080/ui</code> 访问 Web 界面。</p>
+
+  <h2>配置客户端</h2>
+
+  <p>将你的 HTTP 客户端指向 RelayCore：</p>
+  <pre><code># curl
+curl --proxy http://localhost:8080 https://example.com
+
+# 环境变量
+export HTTP_PROXY=http://localhost:8080
+export HTTPS_PROXY=http://localhost:8080</code></pre>
+
+  <h2>后续步骤</h2>
+
+  <ul>
+    <li><a href="/docs/architecture">了解架构</a></li>
+    <li><a href="/docs/api">探索 HTTP API</a></li>
+    <li><a href="/docs/cli">CLI 参考</a></li>
+    <li><a href="/docs/rule-engine">规则引擎</a></li>
+  </ul>
+</DocsLayout>

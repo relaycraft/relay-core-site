@@ -1,0 +1,164 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="HTTP API" description="RelayCore REST API 参考">
+  <h1>HTTP API</h1>
+
+  <p>REST API 在代理运行时位于 <code>http://127.0.0.1:3000/api/v1/</code>。</p>
+
+  <h2>流量</h2>
+
+  <h3>GET /api/v1/flows</h3>
+  <p>搜索和分页捕获的流量。</p>
+
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span>/api/v1/flows?limit=10&amp;offset=0&amp;filter=method:GET</span>
+  </div>
+
+  <p><strong>查询参数：</strong></p>
+  <ul>
+    <li><code>limit</code> — 返回的流量数量（默认：50）</li>
+    <li><code>offset</code> — 分页偏移</li>
+    <li><code>filter</code> — 过滤表达式（例如 <code>method:GET host:*.example.com</code>）</li>
+  </ul>
+
+  <pre><code>&#123;
+  "flows": [
+    &#123;
+      "id": "fld_01HX5K9P3Q8Y2Z7",
+      "timestamp": "2024-01-15T10:23:45.123Z",
+      "method": "GET",
+      "url": "https://api.example.com/users",
+      "host": "api.example.com",
+      "path": "/users",
+      "status": 200,
+      "duration_ms": 42,
+      "size": 1847
+    &#125;
+  ],
+  "pagination": &#123;
+    "total": 12847,
+    "returned": 10,
+    "offset": 0
+  &#125;
+&#125;</code></pre>
+
+  <h3>GET /api/v1/flows/:id</h3>
+  <p>获取详细的流量信息，包括请求头和请求体。</p>
+
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span>/api/v1/flows/fld_01HX5K9P3Q8Y2Z7</span>
+  </div>
+
+  <h2>规则</h2>
+
+  <h3>GET /api/v1/rules</h3>
+  <p>列出所有拦截规则。</p>
+
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span>/api/v1/rules</span>
+  </div>
+
+  <h3>PUT /api/v1/rules</h3>
+  <p>创建或更新规则。</p>
+
+  <div class="endpoint">
+    <span class="method method-put">PUT</span>
+    <span>/api/v1/rules</span>
+  </div>
+
+  <pre><code>&#123;
+  "id": "rul_01HX5K9P3Q8Y2Z7",
+  "name": "Log API requests",
+  "priority": 100,
+  "filter": &#123;
+    "method": "GET",
+    "host": "*.example.com",
+    "path": "/api/*"
+  &#125;,
+  "action": &#123;
+    "type": "log"
+  &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <h3>DELETE /api/v1/rules/:id</h3>
+  <p>删除规则。</p>
+
+  <div class="endpoint">
+    <span class="method method-delete">DELETE</span>
+    <span>/api/v1/rules/rul_01HX5K9P3Q8Y2Z7</span>
+  </div>
+
+  <h2>拦截</h2>
+
+  <h3>POST /api/v1/intercepts</h3>
+  <p>创建拦截断点。</p>
+
+  <div class="endpoint">
+    <span class="method method-post">POST</span>
+    <span>/api/v1/intercepts</span>
+  </div>
+
+  <pre><code>&#123;
+  "filter": &#123;
+    "method": "POST",
+    "host": "api.example.com"
+  &#125;,
+  "pause_at": "request"
+&#125;</code></pre>
+
+  <h3>POST /api/v1/intercepts/resolve</h3>
+  <p>解决待处理的拦截（继续、修改或丢弃）。</p>
+
+  <pre><code>&#123;
+  "flow_id": "fld_01HX5K9P3Q8Y2Z7",
+  "action": "resume",
+  "modifications": &#123;&#125;
+&#125;</code></pre>
+
+  <h2>事件</h2>
+
+  <h3>GET /api/v1/events</h3>
+  <p>用于实时更新的 Server-Sent Events 流。</p>
+
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span>/api/v1/events</span>
+  </div>
+
+  <p>事件类型：<code>flow::new</code>、<code>flow::update</code>、<code>intercept::pending</code>、<code>rule::matched</code></p>
+
+  <h2>指标</h2>
+
+  <h3>GET /api/v1/metrics</h3>
+  <p>JSON 指标快照。</p>
+
+  <h3>GET /api/v1/metrics/prometheus</h3>
+  <p>Prometheus 文本格式指标。</p>
+
+  <pre><code># HELP relay_core_flows_total Total number of flows captured
+# TYPE relay_core_flows_total counter
+relay_core_flows_total 12847
+
+# HELP relay_core_request_duration_ms Request duration in milliseconds
+# TYPE relay_core_request_duration_ms histogram
+relay_core_request_duration_ms_bucket&#123;le="1"&#125; 10023
+relay_core_request_duration_ms_bucket&#123;le="5"&#125; 12500
+relay_core_request_duration_ms_bucket&#123;le="10"&#125; 12800
+relay_core_request_duration_ms_bucket&#123;le="+Inf"&#125; 12847</code></pre>
+
+  <h2>审计</h2>
+
+  <h3>GET /api/v1/audit</h3>
+  <p>查询控制平面变更审计日志。</p>
+
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span>/api/v1/audit?since=2024-01-15T00:00:00Z</span>
+  </div>
+</DocsLayout>

@@ -1,0 +1,29 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Rule Engine" description="RelayCore interception rule engine">
+  <h1>Rule Engine</h1>
+
+  <p>The rule engine evaluates flows against a pipeline of match + action rules.</p>
+
+  <h2>Filter Examples</h2>
+
+  <pre><code>method: GET
+host: api.example.com
+status: 200</code></pre>
+
+  <h2>Action Types</h2>
+
+  <ul>
+    <li>log - Log the flow</li>
+    <li>intercept - Pause for inspection</li>
+    <li>mock - Return mock response</li>
+    <li>redirect - Redirect to URL</li>
+    <li>block - Block the request</li>
+  </ul>
+
+  <h2>Managing Rules</h2>
+  <pre><code>relay-core-cli rules import rules.yaml
+relay-core-cli rules export</code></pre>
+</DocsLayout>

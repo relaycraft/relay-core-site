@@ -1,0 +1,133 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="脚本" description="用于动态流量修改的 Deno/V8 脚本">
+  <h1>脚本</h1>
+
+  <p>RelayCore 包含一个 Deno/V8 运行时，用于使用 JavaScript 或 TypeScript 动态修改请求和响应。</p>
+
+  <h2>概述</h2>
+  <p>脚本可以在各个阶段拦截和修改流量：</p>
+  <ul>
+    <li><code>onRequest</code> — 在请求被转发之前</li>
+    <li><code>onResponse</code> — 在响应被接收之后</li>
+    <li><code>onWebSocket</code> — 用于 WebSocket 消息</li>
+  </ul>
+
+  <h2>基本脚本</h2>
+  <pre><code>import &#123; Flow, FlowAction &#125; from "relay:script";
+
+async function onRequest(flow: Flow): Promise&lt;FlowAction&gt; &#123;
+  console.log(`Request: $&#123;flow.method&#125; $&#123;flow.url&#125;`);
+
+  // 添加自定义 header
+  flow.request.headers["X-Script-Ran"] = "true";
+
+  // 记录并继续
+  return FlowAction.Continue;
+&#125;
+
+async function onResponse(flow: Flow): Promise&lt;FlowAction&gt; &#123;
+  console.log(`Response: $&#123;flow.status&#125; for $&#123;flow.url&#125;`);
+
+  // 为特定 URL 返回模拟响应
+  if (flow.path === "/api/mocked") &#123;
+    return FlowAction.Mock(&#123;
+      status: 200,
+      headers: &#123; "content-type": "application/json" &#125;,
+      body: JSON.stringify(&#123; mocked: true &#125;),
+    &#125;);
+  &#125;
+
+  return FlowAction.Continue;
+&#125;</code></pre>
+
+  <h2>Flow 对象</h2>
+  <pre><code>interface Flow &#123;
+  id: string;
+  timestamp: Date;
+  method: string;
+  url: string;
+  host: string;
+  path: string;
+  protocol: string;
+  status?: number;
+
+  request: &#123;
+    headers: Record&lt;string, string&gt;;
+    body?: Uint8Array;
+    bodyText?: string;
+    bodyJson?: unknown;
+  &#125;;
+
+  response?: &#123;
+    headers: Record&lt;string, string&gt;;
+    body?: Uint8Array;
+    bodyText?: string;
+    bodyJson?: unknown;
+  &#125;;
+
+  duration_ms: number;
+  size: number;
+&#125;</code></pre>
+
+  <h2>FlowAction</h2>
+  <pre><code>enum FlowAction &#123;
+  Continue = "continue",      // 正常继续
+  Drop = "drop",              // 丢弃流量
+  Mock = "mock",              // 返回模拟响应
+  Intercept = "intercept",    // 暂停以供检查
+  Redirect = "redirect",      // 重定向到 URL
+&#125;</code></pre>
+
+  <h2>高级示例</h2>
+  <pre><code>import &#123; Flow, FlowAction &#125; from "relay:script";
+
+// 用于测试的模拟 API 响应
+const mocks = new Map([
+  ["/api/users", &#123; users: [&#123; id: 1, name: "Alice" &#125;] &#125;],
+  ["/api/products", &#123; products: [&#123; id: 1, name: "Widget" &#125;] &#125;],
+]);
+
+async function onRequest(flow: Flow): Promise&lt;FlowAction&gt; &#123;
+  // 如果缺少则注入 auth token
+  if (flow.path.startsWith("/api/") &amp;&amp; !flow.request.headers["authorization"]) &#123;
+    flow.request.headers["authorization"] = "Bearer test-token-123";
+  &#125;
+  return FlowAction.Continue;
+&#125;
+
+async function onResponse(flow: Flow): Promise&lt;FlowAction&gt; &#123;
+  if (flow.response &amp;&amp; flow.response.bodyJson) &#123;
+    // 记录所有 API 响应
+    console.log(`API Response for $&#123;flow.path&#125;:`, flow.response.bodyJson);
+
+    // 向响应注入元数据
+    if (Array.isArray(flow.response.bodyJson)) &#123;
+      flow.response.bodyJson._meta = &#123;
+        mocked: true,
+        timestamp: new Date().toISOString(),
+      &#125;;
+    &#125;
+  &#125;
+  return FlowAction.Continue;
+&#125;</code></pre>
+
+  <h2>加载脚本</h2>
+  <pre><code># 加载脚本
+relay-core-cli scripts load ./path/to/script.ts
+
+# 列出已加载的脚本
+relay-core-cli scripts list
+
+# 卸载脚本
+relay-core-cli scripts unload my-script</code></pre>
+
+  <h2>脚本配置</h2>
+  <pre><code># 在 config.toml 中
+[scripting]
+enabled = true
+deno_dir = "~/.relay-core/deno"
+auto_reload = true</code></pre>
+</DocsLayout>

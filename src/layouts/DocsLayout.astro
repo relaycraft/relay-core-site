@@ -1,0 +1,365 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { getLocaleFromUrl } from '../i18n/translations';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const locale = getLocaleFromUrl(Astro.url);
+const currentPath = Astro.url.pathname;
+
+const sidebar = locale === 'zh' ? [
+  {
+    heading: '快速开始',
+    items: [
+      { label: '快速开始', href: '/docs/getting-started' },
+      { label: '安装', href: '/docs/installation' },
+    ]
+  },
+  {
+    heading: '核心概念',
+    items: [
+      { label: '架构', href: '/docs/architecture' },
+      { label: '规则引擎', href: '/docs/rule-engine' },
+      { label: '脚本', href: '/docs/scripting' },
+    ]
+  },
+  {
+    heading: '参考',
+    items: [
+      { label: 'HTTP API', href: '/docs/api' },
+      { label: 'CLI 参考', href: '/docs/cli' },
+      { label: '配置', href: '/docs/configuration' },
+    ]
+  },
+  {
+    heading: '集成',
+    items: [
+      { label: 'MCP 服务器', href: '/docs/mcp' },
+      { label: 'Tauri 插件', href: '/docs/tauri-plugin' },
+    ]
+  }
+] : [
+  {
+    heading: 'Getting Started',
+    items: [
+      { label: 'Quick Start', href: '/en/docs/getting-started' },
+      { label: 'Installation', href: '/en/docs/installation' },
+    ]
+  },
+  {
+    heading: 'Core Concepts',
+    items: [
+      { label: 'Architecture', href: '/en/docs/architecture' },
+      { label: 'Rule Engine', href: '/en/docs/rule-engine' },
+      { label: 'Scripting', href: '/en/docs/scripting' },
+    ]
+  },
+  {
+    heading: 'Reference',
+    items: [
+      { label: 'HTTP API', href: '/en/docs/api' },
+      { label: 'CLI Reference', href: '/en/docs/cli' },
+      { label: 'Configuration', href: '/en/docs/configuration' },
+    ]
+  },
+  {
+    heading: 'Integrations',
+    items: [
+      { label: 'MCP Server', href: '/en/docs/mcp' },
+      { label: 'Tauri Plugin', href: '/en/docs/tauri-plugin' },
+    ]
+  }
+];
+
+function isActive(href: string) {
+  return currentPath.endsWith(href);
+}
+---
+
+<BaseLayout title={`${title} — RelayCore`} description={description}>
+  <div class="docs-wrapper">
+    <aside class="docs-sidebar">
+      <div class="sidebar-inner">
+        {sidebar.map(section => (
+          <div class="sidebar-section">
+            <p class="sidebar-heading">{section.heading}</p>
+            <ul class="sidebar-list">
+              {section.items.map(item => (
+                <li>
+                  <a
+                    href={item.href}
+                    class:list={[{ active: isActive(item.href) }]}
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </aside>
+
+    <article class="docs-content">
+      <slot />
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .docs-wrapper {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-lg);
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: var(--space-xl);
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .docs-wrapper {
+      grid-template-columns: 1fr;
+      gap: var(--space-lg);
+    }
+    .docs-sidebar {
+      display: none;
+    }
+  }
+
+  .docs-sidebar {
+    position: sticky;
+    top: 80px;
+  }
+
+  .sidebar-inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .sidebar-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .sidebar-heading {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    padding-bottom: var(--space-sm);
+  }
+
+  .sidebar-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sidebar-list a {
+    display: block;
+    padding: var(--space-sm) var(--space-sm);
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    transition: var(--transition);
+    border-left: 2px solid transparent;
+  }
+
+  .sidebar-list a:hover {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+  }
+
+  .sidebar-list a.active {
+    color: var(--accent-primary);
+    background: rgba(0, 212, 255, 0.08);
+    border-left-color: var(--accent-primary);
+    text-shadow: 0 0 8px var(--accent-glow);
+  }
+
+  .docs-content {
+    min-width: 0;
+    max-width: 900px;
+  }
+
+  .docs-content :global(h1) {
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: var(--space-lg);
+    color: var(--text-primary);
+    line-height: 1.2;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-primary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .docs-content :global(h2) {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-top: var(--space-xl);
+    margin-bottom: var(--space-md);
+    color: var(--text-primary);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .docs-content :global(h3) {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-top: var(--space-lg);
+    margin-bottom: var(--space-md);
+    color: var(--text-primary);
+  }
+
+  .docs-content :global(p) {
+    margin-bottom: var(--space-md);
+    color: var(--text-secondary);
+    line-height: 1.8;
+    font-size: 0.9375rem;
+  }
+
+  .docs-content :global(ul),
+  .docs-content :global(ol) {
+    margin-bottom: var(--space-md);
+    padding-left: var(--space-lg);
+    color: var(--text-secondary);
+  }
+
+  .docs-content :global(li) {
+    margin-bottom: var(--space-sm);
+    line-height: 1.7;
+    font-size: 0.9375rem;
+  }
+
+  .docs-content :global(a) {
+    color: var(--accent-primary);
+  }
+
+  .docs-content :global(a:hover) {
+    text-decoration: underline;
+  }
+
+  .docs-content :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--bg-tertiary);
+    color: var(--accent-primary);
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+  }
+
+  .docs-content :global(pre) {
+    font-family: var(--font-mono);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: var(--space-md);
+    margin: var(--space-md) 0;
+    overflow-x: auto;
+    font-size: 0.8125rem;
+    line-height: 1.8;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .docs-content :global(pre code) {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    color: var(--text-secondary);
+  }
+
+  .docs-content :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--space-lg) 0;
+    font-size: 0.875rem;
+  }
+
+  .docs-content :global(th),
+  .docs-content :global(td) {
+    text-align: left;
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .docs-content :global(th) {
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+  }
+
+  .docs-content :global(td) {
+    color: var(--text-secondary);
+  }
+
+  .docs-content :global(tr:hover td) {
+    background: var(--bg-secondary);
+  }
+
+  .docs-content :global(.code-block) {
+    margin: var(--space-lg) 0;
+  }
+
+  .docs-content :global(.endpoint) {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .docs-content :global(.method) {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 2px;
+    width: fit-content;
+  }
+
+  .docs-content :global(.method-get) { color: var(--success); }
+  .docs-content :global(.method-post) { color: var(--warning); }
+  .docs-content :global(.method-put) { color: var(--accent-primary); }
+  .docs-content :global(.method-delete) { color: var(--error); }
+
+  .docs-content :global(.metric-grid) {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-md);
+    margin: var(--space-lg) 0;
+  }
+
+  .docs-content :global(.metric-card) {
+    padding: var(--space-lg);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    text-align: center;
+  }
+
+  .docs-content :global(.metric-value) {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+    line-height: 1;
+  }
+
+  .docs-content :global(.metric-label) {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: var(--space-sm);
+  }
+</style>

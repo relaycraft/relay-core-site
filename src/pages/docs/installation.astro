@@ -1,0 +1,53 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="安装" description="在你的系统上安装 RelayCore">
+  <h1>安装</h1>
+
+  <h2>系统要求</h2>
+  <ul>
+    <li>Rust 1.70+（如果从源码构建）</li>
+    <li>OpenSSL（Linux）或 SecureTransport（macOS）</li>
+    <li>CA 证书安装需要管理员权限</li>
+  </ul>
+
+  <h2>Cargo（推荐）</h2>
+  <pre><code>cargo install relay-core-cli</code></pre>
+
+  <h2>npm</h2>
+  <pre><code>npm install -g @relay-core/cli</code></pre>
+
+  <h2>预构建二进制</h2>
+  <p>从 <a href="https://github.com/relaycraft/relay-core/releases">GitHub Releases</a> 下载：</p>
+  <ul>
+    <li>macOS (Apple Silicon)</li>
+    <li>macOS (Intel)</li>
+    <li>Linux (x86_64)</li>
+    <li>Linux (ARM64)</li>
+    <li>Windows (x86_64)</li>
+  </ul>
+
+  <h3>Linux 安装</h3>
+  <pre><code>tar -xzf relay-core-cli-x86_64-unknown-linux-musl.tar.gz
+sudo mv relay-core-cli /usr/local/bin/
+relay-core-cli --version</code></pre>
+
+  <h3>macOS 安装</h3>
+  <pre><code>tar -xzf relay-core-cli-x86_64-apple-darwin.tar.gz
+sudo mv relay-core-cli /usr/local/bin/
+relay-core-cli --version</code></pre>
+
+  <h3>Windows 安装</h3>
+  <p>解压 ZIP 文件并将目录添加到 PATH。</p>
+
+  <h2>从源码构建</h2>
+  <pre><code>git clone https://github.com/relaycraft/relay-core
+cd relay-core
+cargo build --release
+./target/release/relay-core-cli --version</code></pre>
+
+  <h2>验证安装</h2>
+  <pre><code>relay-core-cli --version
+# RelayCore CLI v0.3.5</code></pre>
+</DocsLayout>

@@ -1,0 +1,152 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="MCP 服务器" description="AI 代理的 MCP 集成">
+  <h1>MCP 服务器</h1>
+
+  <p>RelayCore 包含一个 MCP（Model Context Protocol）服务器，为 AI 代理暴露工具以编程方式观察和控制流量拦截。</p>
+
+  <h2>启用 MCP</h2>
+
+  <pre><code># 通过 CLI
+relay-core-cli run --mcp
+
+# 通过 config.toml
+[mcp]
+enabled = true
+port = 25519</code></pre>
+
+  <h2>连接到 MCP</h2>
+
+  <p>使用任何 MCP 兼容的客户端（Claude Desktop、Cursor 等）：</p>
+  <pre><code># 在你的 MCP 客户端配置中
+&#123;
+  "mcpServers": &#123;
+    "relay-core": &#123;
+      "command": "npx",
+      "args": ["@relay-core/mcp"]
+    &#125;
+  &#125;
+&#125;</code></pre>
+
+  <h2>工具</h2>
+
+  <h3>观察</h3>
+
+  <div class="endpoint">
+    <span class="method method-post">search_flows</span>
+  </div>
+  <p>搜索和过滤捕获的流量。</p>
+  <pre><code>&#123;
+  "filter": "method:GET host:*.example.com",
+  "limit": 10
+&#125;</code></pre>
+
+  <div class="endpoint">
+    <span class="method method-post">get_flow</span>
+  </div>
+  <p>获取详细的流量信息。</p>
+  <pre><code>&#123;
+  "flow_id": "fld_01HX5K9P3Q8Y2Z7"
+&#125;</code></pre>
+
+  <div class="endpoint">
+    <span class="method method-post">get_metrics</span>
+  </div>
+  <p>获取当前代理指标。</p>
+
+  <h3>控制</h3>
+
+  <div class="endpoint">
+    <span class="method method-post">set_intercept</span>
+  </div>
+  <p>创建拦截断点。</p>
+  <pre><code>&#123;
+  "filter": &#123;
+    "method": "POST",
+    "host": "api.example.com"
+  &#125;,
+  "pause_at": "request"
+&#125;</code></pre>
+
+  <div class="endpoint">
+    <span class="method method-post">resume_flow</span>
+  </div>
+  <p>恢复暂停的流量。</p>
+  <pre><code>&#123;
+  "flow_id": "fld_01HX5K9P3Q8Y2Z7",
+  "action": "resume"  # 或 "drop"
+&#125;</code></pre>
+
+  <div class="endpoint">
+    <span class="method method-post">set_rule</span>
+  </div>
+  <p>创建或更新规则。</p>
+  <pre><code>&#123;
+  "name": "Log API requests",
+  "filter": &#123; "path": "/api/*" &#125;,
+  "action": &#123; "type": "log" &#125;
+&#125;</code></pre>
+
+  <div class="endpoint">
+    <span class="method method-post">delete_rule</span>
+  </div>
+  <p>删除规则。</p>
+  <pre><code>&#123;
+  "rule_id": "rul_01HX5K9P3Q8Y2Z7"
+&#125;</code></pre>
+
+  <h3>分析</h3>
+
+  <div class="endpoint">
+    <span class="method method-post">export_har</span>
+  </div>
+  <p>以 HAR 格式导出流量。</p>
+  <pre><code>&#123;
+  "filter": "host:example.com",
+  "format": "har"
+&#125;</code></pre>
+
+  <div class="endpoint">
+    <span class="method method-post">replay_flow</span>
+  </div>
+  <p>重放捕获的流量。</p>
+  <pre><code>&#123;
+  "flow_id": "fld_01HX5K9P3Q8Y2Z7",
+  "modifications": &#123;
+    "headers": &#123; "x-test": "value" &#125;
+  &#125;
+&#125;</code></pre>
+
+  <h3>策略</h3>
+
+  <div class="endpoint">
+    <span class="method method-post">get_policy</span>
+  </div>
+  <p>获取当前拦截策略。</p>
+
+  <div class="endpoint">
+    <span class="method method-post">update_policy</span>
+  </div>
+  <p>更新拦截策略。</p>
+
+  <h2>资源</h2>
+
+  <p>MCP 还暴露只读访问的资源：</p>
+  <ul>
+    <li><code>relay://flows</code> — 列出最近的流量</li>
+    <li><code>relay://rules</code> — 当前规则</li>
+    <li><code>relay://metrics</code> — 运行时指标</li>
+    <li><code>relay://config</code> — 当前配置</li>
+  </ul>
+
+  <h2>使用场景</h2>
+
+  <ul>
+    <li>AI 驱动的 API 测试和调试</li>
+    <li>自动化流量分析</li>
+    <li>基于流量模式的动态规则生成</li>
+    <li>与 CI/CD 管道集成</li>
+  </ul>
+</DocsLayout>

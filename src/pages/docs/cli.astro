@@ -1,0 +1,129 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="CLI 参考" description="RelayCore 命令行接口">
+  <h1>CLI 参考</h1>
+
+  <p><code>relay-core-cli</code> 二进制文件提供了功能完整的命令行界面，用于运行代理和管理流量、规则和证书。</p>
+
+  <h2>命令</h2>
+
+  <h3>run</h3>
+  <p>启动代理服务器。</p>
+  <pre><code>relay-core-cli run [options]
+
+Options:
+  --port &lt;PORT&gt;          代理端口（默认：8080）
+  --ui                   启用 TUI 界面
+  --config &lt;PATH&gt;        配置文件路径
+  --verbose              启用详细日志</code></pre>
+
+  <h3>ca</h3>
+  <p>管理用于 HTTPS 拦截的 CA 证书。</p>
+  <pre><code>relay-core-cli ca &lt;subcommand&gt;
+
+Subcommands:
+  init                   生成新的 CA 证书
+  install                将 CA 安装到系统
+  status                 显示 CA 证书状态
+  export &lt;path&gt;          导出 CA 证书到文件
+  uninstall              移除已安装的 CA</code></pre>
+
+  <h3>rules</h3>
+  <p>管理拦截规则。</p>
+  <pre><code>relay-core-cli rules &lt;subcommand&gt;
+
+Subcommands:
+  list                   列出所有规则
+  validate &lt;file&gt;        验证规则文件
+  export                 导出规则为 YAML
+  import &lt;file&gt;         从 YAML 导入规则</code></pre>
+
+  <h3>flows</h3>
+  <p>查询捕获的流量。</p>
+  <pre><code>relay-core-cli flows [options]
+
+Options:
+  --filter &lt;EXPR&gt;       过滤表达式
+  --limit &lt;N&gt;            最大结果数（默认：50）
+  --offset &lt;N&gt;           分页偏移
+  --format &lt;json|table&gt;  输出格式</code></pre>
+
+  <h3>metrics</h3>
+  <p>显示运行时指标。</p>
+  <pre><code>relay-core-cli metrics [options]
+
+Options:
+  --format &lt;json|prometheus&gt;  输出格式（默认：table）
+  --reset                     显示后重置计数器</code></pre>
+
+  <h3>scripts</h3>
+  <p>管理用于请求/响应修改的 Deno 脚本。</p>
+  <pre><code>relay-core-cli scripts &lt;subcommand&gt;
+
+Subcommands:
+  list                     列出已加载的脚本
+  load &lt;path&gt;              加载脚本
+  unload &lt;name&gt;            卸载脚本</code></pre>
+
+  <h2>过滤表达式</h2>
+
+  <p>使用表达式语法过滤流量：</p>
+
+  <pre><code># 按方法
+method:GET
+method:POST
+
+# 按主机（支持通配符）
+host:example.com
+host:*.example.com
+
+# 按路径
+path:/api/users
+path:/api/v2/*
+
+# 按状态码
+status:200
+status:[200 TO 299]
+status:[400 TO 499]
+
+# 使用 AND/OR 组合
+method:GET AND host:*.example.com
+method:POST OR method:PUT
+
+# 取反
+NOT method:OPTIONS</code></pre>
+
+  <h2>配置文件</h2>
+
+  <p>创建 <code>~/.relay-core/config.toml</code>：</p>
+  <pre><code>[proxy]
+port = 8080
+bind_address = "0.0.0.0"
+upstream_proxy = "http://parent-proxy:8080"  # 可选
+
+[storage]
+sqlite_path = "~/.relay-core/flows.db"
+max_flows = 10000
+flow_ttl_hours = 24
+
+[logging]
+level = "info"  # debug, info, warn, error
+access_log = true
+
+[mcp]
+enabled = true
+port = 25519
+
+[tls]
+insecure_skip_verify = false
+cert_cache_size = 100</code></pre>
+
+  <h2>环境变量</h2>
+
+  <pre><code>RELAY_CORE_CONFIG      # 配置文件路径
+RELAY_CORE_PORT         # 代理端口
+RELAY_CORE_LOG_LEVEL    # 日志级别
+RELAY_CORE_DATA_DIR     # 数据目录（默认：~/.relay-core）</code></pre>
+</DocsLayout>

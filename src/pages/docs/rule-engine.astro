@@ -1,0 +1,29 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="规则引擎" description="RelayCore 拦截规则引擎">
+  <h1>规则引擎</h1>
+
+  <p>规则引擎根据 match + action 规则管道评估流量。</p>
+
+  <h2>过滤示例</h2>
+
+  <pre><code>method: GET
+host: api.example.com
+status: 200</code></pre>
+
+  <h2>操作类型</h2>
+
+  <ul>
+    <li>log - 记录流量</li>
+    <li>intercept - 暂停以供检查</li>
+    <li>mock - 返回模拟响应</li>
+    <li>redirect - 重定向到 URL</li>
+    <li>block - 阻止请求</li>
+  </ul>
+
+  <h2>管理规则</h2>
+  <pre><code>relay-core-cli rules import rules.yaml
+relay-core-cli rules export</code></pre>
+</DocsLayout>
