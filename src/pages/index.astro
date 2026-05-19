@@ -896,16 +896,17 @@ const t = translations[locale];
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: 2px;
+    min-width: 0;
   }
 
-  .cmd-item code { font-size: 0.8125rem; color: var(--accent-primary); }
+  .cmd-item code { font-size: 0.8125rem; color: var(--accent-primary); min-width: 0; overflow-x: auto; }
   .cmd-item span { font-size: 0.75rem; color: var(--text-muted); }
 
   .get-started { background: var(--bg-primary); }
 
   .install-options {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-lg);
     margin-bottom: var(--space-xl);
   }
@@ -916,6 +917,7 @@ const t = translations[locale];
     border: 1px solid var(--border-color);
     border-radius: 2px;
     text-align: center;
+    min-width: 0;
   }
 
   .install-card h3 {
@@ -932,6 +934,9 @@ const t = translations[locale];
     font-size: 0.75rem;
     color: var(--text-secondary);
     text-align: left;
+    min-width: 0;
+    overflow-x: auto;
+    white-space: nowrap;
   }
 
   .next-steps {
