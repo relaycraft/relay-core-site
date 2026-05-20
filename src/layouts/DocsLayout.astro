@@ -282,6 +282,21 @@ function isActive(href: string) {
     color: var(--text-secondary);
   }
 
+  .docs-content :global(.diagram-wrapper) {
+    margin: var(--space-lg) 0;
+    display: flex;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--space-lg);
+  }
+
+  .docs-content :global(.diagram-wrapper img) {
+    max-width: 100%;
+    height: auto;
+  }
+
   .docs-content :global(table) {
     width: 100%;
     border-collapse: collapse;
