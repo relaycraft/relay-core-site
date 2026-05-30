@@ -1,0 +1,98 @@
+---
+interface Props {
+  name: 'mitm' | 'websocket' | 'rule' | 'script' | 'breakpoint' | 'metrics';
+}
+
+const { name } = Astro.props;
+---
+
+<div class="feature-icon" data-icon={name}>
+  {name === 'mitm' && (
+    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="36" height="36" rx="7" class="icon-plate" />
+      <path
+        d="M20 10 28 13v7c0 4.5-3.5 8-8 10-4.5-2-8-5.5-8-10v-7L20 10Z"
+        class="icon-stroke"
+      />
+      <rect x="17" y="18" width="6" height="5" rx="1" class="icon-stroke" />
+    </svg>
+  )}
+
+  {name === 'websocket' && (
+    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="36" height="36" rx="7" class="icon-plate" />
+      <circle cx="12" cy="20" r="3" class="icon-stroke" />
+      <circle cx="28" cy="20" r="3" class="icon-stroke" />
+      <path d="M15 20h10" class="icon-stroke" />
+    </svg>
+  )}
+
+  {name === 'rule' && (
+    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="36" height="36" rx="7" class="icon-plate" />
+      <rect x="16" y="16" width="8" height="8" rx="1.5" class="icon-stroke" />
+      <path d="M20 10v4M20 26v4M10 20h4M26 20h4" class="icon-stroke" />
+    </svg>
+  )}
+
+  {name === 'script' && (
+    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="36" height="36" rx="7" class="icon-plate" />
+      <path d="M16 26 12 20l4-6M24 26l4-6-4-6" class="icon-stroke" />
+    </svg>
+  )}
+
+  {name === 'breakpoint' && (
+    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="36" height="36" rx="7" class="icon-plate" />
+      <path d="M8 20h9M23 20h9" class="icon-stroke" />
+      <path d="M17 14v12M21 14v12" class="icon-stroke" />
+    </svg>
+  )}
+
+  {name === 'metrics' && (
+    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="36" height="36" rx="7" class="icon-plate" />
+      <path d="M12 26V21M20 26V17M28 26V13" class="icon-stroke icon-stroke-bold" />
+    </svg>
+  )}
+</div>
+
+<style>
+  .feature-icon {
+    width: 44px;
+    height: 44px;
+    margin-bottom: var(--space-md);
+    flex-shrink: 0;
+    color: var(--accent-primary);
+    transition: transform var(--transition), filter var(--transition);
+  }
+
+  .feature-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  :global(.feature:hover) .feature-icon {
+    transform: translateY(-1px);
+    filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.25));
+  }
+
+  .icon-plate {
+    fill: rgba(0, 212, 255, 0.03);
+    stroke: rgba(0, 212, 255, 0.1);
+    stroke-width: 1;
+  }
+
+  .icon-stroke {
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .icon-stroke-bold {
+    stroke-width: 2;
+  }
+</style>

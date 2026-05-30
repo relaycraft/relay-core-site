@@ -1,0 +1,68 @@
+---
+interface Props {
+  name: 'cargo' | 'npm' | 'source';
+}
+
+const { name } = Astro.props;
+---
+
+<div class="install-icon" data-icon={name}>
+  {name === 'cargo' && (
+    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="36" height="36" rx="7" class="icon-plate" />
+      <path d="M20 12v10M16 19l4 4 4-4" class="icon-stroke" />
+      <path d="M14 28h12" class="icon-stroke" />
+    </svg>
+  )}
+
+  {name === 'npm' && (
+    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="36" height="36" rx="7" class="icon-plate" />
+      <path d="M14 16h16v14H22v-6h-8V16Z" class="icon-stroke" />
+    </svg>
+  )}
+
+  {name === 'source' && (
+    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="36" height="36" rx="7" class="icon-plate" />
+      <circle cx="16" cy="26" r="2.5" class="icon-stroke" />
+      <circle cx="26" cy="18" r="2.5" class="icon-stroke" />
+      <circle cx="26" cy="28" r="2.5" class="icon-stroke" />
+      <path d="M18.5 24.5 23.5 19.5M18.5 27.5 23.5 26.5" class="icon-stroke" />
+    </svg>
+  )}
+</div>
+
+<style>
+  .install-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto var(--space-md);
+    color: var(--accent-primary);
+    transition: transform var(--transition), filter var(--transition);
+  }
+
+  .install-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  :global(.install-card:hover) .install-icon {
+    transform: translateY(-2px);
+    filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.25));
+  }
+
+  .icon-plate {
+    fill: rgba(0, 212, 255, 0.03);
+    stroke: rgba(0, 212, 255, 0.1);
+    stroke-width: 1;
+  }
+
+  .icon-stroke {
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+</style>

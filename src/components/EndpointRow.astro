@@ -1,0 +1,21 @@
+---
+import CopyButton from './CopyButton.astro';
+
+interface Props {
+  method: 'get' | 'post' | 'put' | 'delete';
+  path: string;
+  desc: string;
+}
+
+const { method, path, desc } = Astro.props;
+const methodLabel = method.toUpperCase();
+---
+
+<div class="endpoint-row">
+  <span class={`method method-${method}`}>{methodLabel}</span>
+  <div class="path-cell">
+    <span class="path">{path}</span>
+    <CopyButton inline text={path} />
+  </div>
+  <span class="desc">{desc}</span>
+</div>

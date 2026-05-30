@@ -1,0 +1,18 @@
+---
+interface Props {
+  text: string;
+  label?: string;
+  inline?: boolean;
+}
+
+const { text, label = 'copy', inline = false } = Astro.props;
+---
+
+<button
+  type="button"
+  class:list={['copy-btn', { 'copy-btn-inline': inline }]}
+  data-copy={text}
+  aria-label="复制到剪贴板"
+>
+  {label}
+</button>

@@ -1,4 +1,5 @@
 ---
+import '../styles/shared.css';
 import { translations, getLocaleFromUrl, getAlternateUrl } from '../i18n/translations';
 
 interface Props {
@@ -104,6 +105,60 @@ const alternateLocale = locale === 'en' ? 'zh' : 'en';
           menuBtn.setAttribute('aria-expanded', String(isOpen));
         });
       }
+
+      function getCopyText(btn) {
+        const explicit = btn.getAttribute('data-copy');
+        if (explicit) return explicit;
+        const wrap = btn.closest('.copy-wrap');
+        const source = wrap?.querySelector('pre, code');
+        return source?.textContent?.trim() ?? '';
+      }
+
+      document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.copy-btn');
+        if (!btn) return;
+        const text = getCopyText(btn);
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+          const original = btn.textContent;
+          btn.textContent = 'ok';
+          btn.classList.add('copied');
+          setTimeout(() => {
+            btn.textContent = original;
+            btn.classList.remove('copied');
+          }, 1200);
+        } catch {
+          /* clipboard unavailable */
+        }
+      });
+
+      document.querySelectorAll('.docs-content pre').forEach((pre) => {
+        if (pre.closest('.copy-wrap')) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'copy-wrap';
+        pre.parentNode?.insertBefore(wrap, pre);
+        wrap.appendChild(pre);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'copy-btn';
+        btn.setAttribute('aria-label', '复制到剪贴板');
+        btn.textContent = 'copy';
+        wrap.insertBefore(btn, pre);
+      });
+
+      document.querySelectorAll('.docs-content .endpoint').forEach((row) => {
+        if (row.querySelector('.copy-btn')) return;
+        const pathSpan = row.querySelector('span:not(.method)');
+        if (!pathSpan) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'copy-btn copy-btn-inline';
+        btn.setAttribute('aria-label', '复制到剪贴板');
+        btn.setAttribute('data-copy', pathSpan.textContent?.trim() ?? '');
+        btn.textContent = 'copy';
+        row.appendChild(btn);
+      });
     </script>
   </body>
 </html>
@@ -124,7 +179,7 @@ const alternateLocale = locale === 'en' ? 'zh' : 'en';
 
     --text-primary: #e0e0e0;
     --text-secondary: #808080;
-    --text-muted: #404040;
+    --text-muted: #666666;
 
     --success: #00ff41;
     --warning: #ff9500;
@@ -224,21 +279,8 @@ const alternateLocale = locale === 'en' ? 'zh' : 'en';
     margin: 0 auto;
   }
 
-  .section-header {
-    margin-bottom: var(--space-xl);
-  }
-
-  .section-label {
-    display: block;
-    color: var(--accent-primary);
-    font-size: 0.75rem;
-    letter-spacing: 0.1em;
-    margin-bottom: var(--space-sm);
-  }
-
-  .section-title {
-    font-size: 2rem;
-    color: var(--text-primary);
+  main {
+    min-height: calc(100vh - 160px);
   }
 
   .container {
@@ -257,6 +299,7 @@ const alternateLocale = locale === 'en' ? 'zh' : 'en';
     backdrop-filter: blur(12px) saturate(180%);
     -webkit-backdrop-filter: blur(12px) saturate(180%);
     border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 1px 0 rgba(0, 212, 255, 0.04);
   }
 
   .nav-container {
@@ -444,10 +487,11 @@ const alternateLocale = locale === 'en' ? 'zh' : 'en';
   .footer-col a {
     font-size: 0.875rem;
     color: var(--text-secondary);
+    transition: color var(--transition);
   }
 
   .footer-col a:hover {
-    color: var(--text-primary);
+    color: var(--accent-primary);
   }
 
   .footer-bottom {

@@ -1,0 +1,21 @@
+---
+interface Props {
+  /** 显式指定复制内容；省略时从内部 pre/code 读取 */
+  text?: string;
+  class?: string;
+}
+
+const { text, class: className } = Astro.props;
+---
+
+<div class:list={['copy-wrap', className]}>
+  <button
+    type="button"
+    class="copy-btn"
+    data-copy={text}
+    aria-label="复制到剪贴板"
+  >
+    copy
+  </button>
+  <slot />
+</div>
