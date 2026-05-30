@@ -1,0 +1,143 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="Troubleshooting" description="Common RelayCore issues and solutions">
+  <h1>Troubleshooting</h1>
+
+  <p>This guide covers common issues with RelayCore, grouped by category with diagnostic steps and solutions.</p>
+
+  <h2>Certificate & TLS</h2>
+
+  <h3>Browser shows untrusted certificate</h3>
+  <ul>
+    <li><b>Cause</b>: RelayCore generates a self-signed CA, not trusted by the system</li>
+    <li><b>Fix</b>: Import the CA certificate into the system trust store
+      <pre><code># macOS
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.relay-core/ca.crt
+
+# Linux (Debian/Ubuntu)
+sudo cp ~/.relay-core/ca.crt /usr/local/share/ca-certificates/relaycore.crt
+sudo update-ca-certificates
+
+# Windows
+certutil -addstore Root %USERPROFILE%\.relay-core\ca.crt</code></pre>
+    </li>
+  </ul>
+
+  <h3>curl reports SSL errors</h3>
+  <ul>
+    <li>Temporarily skip: <code>curl --cacert ~/.relay-core/ca.crt https://example.com</code></li>
+    <li>Environment variable: <code>export CURL_CA_BUNDLE=~/.relay-core/ca.crt</code></li>
+  </ul>
+
+  <h2>Connection Issues</h2>
+
+  <h3>Proxy fails to start (port in use)</h3>
+  <ul>
+    <li>Check port: <code>lsof -i :8080</code> or <code>netstat -an | grep 8080</code></li>
+    <li>Change port: <code>relay-core run --listen 127.0.0.1:9090</code></li>
+  </ul>
+
+  <h3>Client connects but gets no response</h3>
+  <ul>
+    <li>Verify proxy address and port are correct</li>
+    <li>Check system proxy settings</li>
+    <li>Check for security software blocking the connection</li>
+    <li>Enable verbose logging: <code>RUST_LOG=info relay-core run</code></li>
+  </ul>
+
+  <h3>Upstream request timeout</h3>
+  <ul>
+    <li>Increase timeout: <code>--request-timeout-ms 30000</code></li>
+    <li>Check upstream: <code>curl -v http://upstream-host/path</code></li>
+    <li>Check the error field in Flow details</li>
+  </ul>
+
+  <h2>Rule Engine</h2>
+
+  <h3>Rule not firing</h3>
+  <ul>
+    <li>Check <code>"active": true</code></li>
+    <li>Verify <code>stage</code> matches the traffic stage</li>
+    <li>Verify filter mode — <code>Contains</code> is case-sensitive</li>
+    <li>Check if a higher-priority rule with <code>Stop</code> terminated processing</li>
+    <li>Check matched rules via script: <code>console.log(flow.matched_rules)</code></li>
+  </ul>
+
+  <h3>RateLimit not working as expected</h3>
+  <ul>
+    <li>Ensure <code>window_ms</code> is large enough (minimum 1000ms)</li>
+    <li>Verify Mustache variables in key are correct (<code>&#123;&#123;ip&#125;&#125;</code> not <code>&#123;&#123;clientip&#125;&#125;</code>)</li>
+    <li>RateLimit does not auto-reject — combine with a script or follow-up rule</li>
+  </ul>
+
+  <h2>WebSocket</h2>
+
+  <h3>WebSocket disconnects immediately</h3>
+  <ul>
+    <li>Check if <code>onConnect</code> hook returns <code>&#123;drop: true&#125;</code></li>
+    <li>Check for Drop action in Connect stage rules</li>
+  </ul>
+
+  <h3>WebSocket messages not appearing</h3>
+  <ul>
+    <li>Ensure TUI or frontend is on the correct WS tab</li>
+    <li>Check if <code>DropWebSocketMessage</code> action is discarding messages</li>
+  </ul>
+
+  <h2>Transparent Proxy</h2>
+
+  <h3>Transparent proxy not intercepting (macOS)</h3>
+  <ul>
+    <li>Verify PF rules are loaded: <code>sudo pfctl -s nat</code></li>
+    <li>Ensure RelayCore runs as root</li>
+    <li>macOS PF UDP transparent proxy is currently experimental</li>
+  </ul>
+
+  <h3>Transparent proxy not intercepting (Linux)</h3>
+  <ul>
+    <li>Verify iptables TPROXY rules are correct</li>
+    <li>Ensure <code>SO_ORIGINAL_DST</code> is available</li>
+    <li>Check <code>/proc/sys/net/ipv4/conf/*/route_localnet</code></li>
+  </ul>
+
+  <h2>Performance</h2>
+
+  <h3>Requests are slow through the proxy</h3>
+  <ul>
+    <li>Audit rule count — every rule evaluates on every matching flow</li>
+    <li>Check ResponseBody filters — they cache the full body</li>
+    <li>Check script execution time via <code>script_hook_duration_us</code> metric</li>
+    <li>Reduce log level: <code>RUST_LOG=warn relay-core run</code></li>
+  </ul>
+
+  <h3>Memory grows continuously</h3>
+  <ul>
+    <li>Check Flow memory limit (default 10000)</li>
+    <li>Check that sharedState entries are cleaned up (warning at 10k keys)</li>
+    <li>Check WebSocket message buffer limit (default 2000)</li>
+  </ul>
+
+  <h2>Logging & Debugging</h2>
+  <pre><code># Full debug logging
+RUST_LOG=debug relay-core run
+
+# Script-only logging
+RUST_LOG=relay_core_script=debug relay-core run
+
+# View live flow events
+curl -N http://127.0.0.1:18082/api/v1/events
+
+# View metrics
+curl http://127.0.0.1:18082/api/v1/metrics
+curl http://127.0.0.1:18082/api/v1/metrics/prometheus</code></pre>
+
+  <h2>Getting Help</h2>
+  <ul>
+    <li>Run <code>relay-core --help</code> for all commands</li>
+    <li>Run <code>relay-core run --help</code> for startup options</li>
+    <li>Check version: <code>relay-core --version</code></li>
+    <li>GitHub Issues: <a href="https://github.com/relaycraft/relay-core/issues">github.com/relaycraft/relay-core/issues</a></li>
+  </ul>
+</DocsLayout>

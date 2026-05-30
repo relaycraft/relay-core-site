@@ -1,0 +1,152 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="故障排除" description="RelayCore 常见问题诊断与解决">
+  <h1>故障排除</h1>
+
+  <p>本指南覆盖 RelayCore 使用中的常见问题，按场景分组提供诊断步骤和解决方案。</p>
+
+  <h2>证书与 TLS</h2>
+
+  <h3>浏览器显示证书不安全</h3>
+  <ul>
+    <li><b>原因</b>：RelayCore 生成自签名 CA，未被系统信任</li>
+    <li><b>解决</b>：将 CA 证书导入系统信任存储
+      <pre><code># macOS
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.relay-core/ca.crt
+
+# Linux (Debian/Ubuntu)
+sudo cp ~/.relay-core/ca.crt /usr/local/share/ca-certificates/relaycore.crt
+sudo update-ca-certificates
+
+# Windows
+certutil -addstore Root %USERPROFILE%.relay-coreca.crt</code></pre>
+    </li>
+  </ul>
+
+  <h3>curl 报 SSL 错误</h3>
+  <ul>
+    <li>临时跳过：<code>curl --cacert ~/.relay-core/ca.crt https://example.com</code></li>
+    <li>环境变量：<code>export CURL_CA_BUNDLE=~/.relay-core/ca.crt</code></li>
+  </ul>
+
+  <h3>"Failed to initialize ScriptInterceptor"</h3>
+  <ul>
+    <li><b>原因</b>：Deno/V8 运行时初始化失败（通常是内存不足）</li>
+    <li><b>解决</b>：释放系统内存后重试；若持续失败可不启用脚本功能</li>
+  </ul>
+
+  <h2>连接问题</h2>
+
+  <h3>代理无法启动（端口被占用）</h3>
+  <ul>
+    <li>检查端口占用：<code>lsof -i :8080</code> 或 <code>netstat -an | grep 8080</code></li>
+    <li>更换监听端口：<code>relay-core run --listen 127.0.0.1:9090</code></li>
+  </ul>
+
+  <h3>客户端连接后无响应</h3>
+  <ul>
+    <li>确认代理地址和端口正确</li>
+    <li>检查系统代理设置（macOS: 系统偏好设置 → 网络 → 高级 → 代理）</li>
+    <li>检查是否有安全软件阻止连接</li>
+    <li>查看代理日志：<code>RUST_LOG=info relay-core run</code></li>
+  </ul>
+
+  <h3>上游请求超时</h3>
+  <ul>
+    <li>增大超时：<code>--request-timeout-ms 30000</code></li>
+    <li>检查上游可达性：<code>curl -v http://upstream-host/path</code></li>
+    <li>查看 Flow 详情中的错误字段</li>
+  </ul>
+
+  <h2>规则引擎</h2>
+
+  <h3>规则不生效</h3>
+  <ul>
+    <li>检查 <code>"active": true</code></li>
+    <li>确认 <code>stage</code> 匹配流量阶段（例如 ResponseBody filter 不能用于 RequestHeaders 阶段）</li>
+    <li>确认 filter 模式正确——<code>Contains</code> 区分大小写</li>
+    <li>确认没有被更高 priority 的规则以 <code>Stop</code> 终止</li>
+    <li>通过脚本查看命中的规则：<code>console.log(flow.matched_rules)</code></li>
+  </ul>
+
+  <h3>RateLimit 未按预期工作</h3>
+  <ul>
+    <li>确认 <code>window_ms</code> 足够大（最小 1000ms）</li>
+    <li>确认 key 中的 Mustache 变量正确（<code>&#123;&#123;ip&#125;&#125;</code> 而非 <code>&#123;&#123;clientip&#125;&#125;</code>）</li>
+    <li>RateLimit 不自动拒绝请求——需配合脚本或后续规则处理</li>
+  </ul>
+
+  <h2>WebSocket</h2>
+
+  <h3>WebSocket 连接立即断开</h3>
+  <ul>
+    <li>检查 <code>onConnect</code> hook 是否返回了 <code>&#123;drop: true&#125;</code></li>
+    <li>检查是否有规则在 Connect 阶段执行了 Drop</li>
+  </ul>
+
+  <h3>WebSocket 消息未显示</h3>
+  <ul>
+    <li>确认 TUI 或前端处于正确的 WS 标签页</li>
+    <li>检查 <code>DropWebSocketMessage</code> 动作是否误删了消息</li>
+  </ul>
+
+  <h2>透明代理</h2>
+
+  <h3>透明代理不拦截流量（macOS）</h3>
+  <ul>
+    <li>确认 PF 规则已加载：<code>sudo pfctl -s nat</code></li>
+    <li>确认 RelayCore 以 root 权限运行</li>
+    <li>macOS PF UDP 透明代理目前标记为实验性</li>
+  </ul>
+
+  <h3>透明代理不拦截流量（Linux）</h3>
+  <ul>
+    <li>确认 iptables TPROXY 规则正确</li>
+    <li>确认 <code>SO_ORIGINAL_DST</code> 可用（内核 > 2.6）</li>
+    <li>检查 <code>/proc/sys/net/ipv4/conf/*/route_localnet</code> 设置</li>
+  </ul>
+
+  <h2>性能</h2>
+
+  <h3>代理后请求变慢</h3>
+  <ul>
+    <li>检查规则数量——每条规则在每个匹配的 flow 上都会执行</li>
+    <li>检查 ResponseBody filter——会缓存完整响应体</li>
+    <li>检查脚本执行时间——<code>script_hook_duration_us</code> 指标</li>
+    <li>关闭不必要的日志：<code>RUST_LOG=warn relay-core run</code></li>
+  </ul>
+
+  <h3>内存持续增长</h3>
+  <ul>
+    <li>检查 Flow 内存上限配置（默认 10000 条）</li>
+    <li>检查脚本 sharedState 是否及时清理（> 10k key 触发 warning）</li>
+    <li>检查 WebSocket 消息缓冲上限（默认 2000 条）</li>
+  </ul>
+
+  <h2>日志与调试</h2>
+  <pre><code># 完整日志
+RUST_LOG=debug relay-core run
+
+# 只看脚本
+RUST_LOG=relay_core_script=debug relay-core run
+
+# 只看代理
+RUST_LOG=relay_core_lib=debug relay-core run
+
+# 查看实时流事件
+curl -N http://127.0.0.1:18082/api/v1/events
+
+# 查看指标
+curl http://127.0.0.1:18082/api/v1/metrics
+curl http://127.0.0.1:18082/api/v1/metrics/prometheus</code></pre>
+
+  <h2>获取帮助</h2>
+  <ul>
+    <li>运行 <code>relay-core --help</code> 查看所有命令</li>
+    <li>运行 <code>relay-core run --help</code> 查看启动参数</li>
+    <li>查看版本：<code>relay-core --version</code></li>
+    <li>GitHub Issues：<a href="https://github.com/relaycraft/relay-core/issues">github.com/relaycraft/relay-core/issues</a></li>
+  </ul>
+</DocsLayout>

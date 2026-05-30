@@ -1,0 +1,116 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="Monitoring & Observability" description="RelayCore metrics, audit, event streams and health checks">
+  <h1>Monitoring & Observability</h1>
+
+  <p>RelayCore provides Prometheus-native metrics, structured audit logs, SSE real-time event streams, and health status snapshots — ready for integration with existing monitoring stacks.</p>
+
+  <h2>Metrics Endpoints</h2>
+  <table>
+    <tr><th>Endpoint</th><th>Format</th><th>Description</th></tr>
+    <tr><td><code>GET /api/v1/metrics</code></td><td>JSON</td><td>Structured metrics snapshot</td></tr>
+    <tr><td><code>GET /api/v1/metrics/prometheus</code></td><td>Prometheus text</td><td>Standard Prometheus scrape format</td></tr>
+    <tr><td><code>/_relay/metrics</code></td><td>JSON</td><td>In-proxy embedded metrics</td></tr>
+    <tr><td><code>/_relay/metrics/prometheus</code></td><td>Prometheus text</td><td>Embedded Prometheus format</td></tr>
+  </table>
+
+  <h2>Core Metrics</h2>
+
+  <h3>Flow Metrics</h3>
+  <table>
+    <tr><th>Metric</th><th>Type</th><th>Description</th></tr>
+    <tr><td><code>relaycore_flows_total</code></td><td>Counter</td><td>Total flows processed</td></tr>
+    <tr><td><code>relaycore_flows_in_memory</code></td><td>Gauge</td><td>Current flows in memory</td></tr>
+    <tr><td><code>relaycore_flows_dropped</code></td><td>Counter</td><td>Flows dropped due to backpressure</td></tr>
+    <tr><td><code>relaycore_flow_events_lagged_total</code></td><td>Counter</td><td>Event broadcast lag events</td></tr>
+  </table>
+
+  <h3>Intercept Metrics</h3>
+  <table>
+    <tr><td><code>relaycore_intercepts_pending</code></td><td>Gauge</td><td>Pending intercepts awaiting UI</td></tr>
+    <tr><td><code>relaycore_oldest_intercept_age_ms</code></td><td>Gauge</td><td>Oldest unhandled intercept age</td></tr>
+    <tr><td><code>relaycore_ws_pending_messages</code></td><td>Gauge</td><td>Pending WebSocket messages</td></tr>
+  </table>
+
+  <h3>Rule & Script Metrics</h3>
+  <table>
+    <tr><td><code>relaycore_rule_exec_errors</code></td><td>Counter</td><td>Rule execution errors</td></tr>
+    <tr><td><code>script_hook_duration_us&#123;hook&#125;</code></td><td>Histogram</td><td>Per-hook execution duration (µs)</td></tr>
+    <tr><td><code>script_hook_invocations_total&#123;hook&#125;</code></td><td>Counter</td><td>Cumulative hook invocations</td></tr>
+    <tr><td><code>script_hook_errors_total&#123;hook&#125;</code></td><td>Counter</td><td>Cumulative hook errors</td></tr>
+    <tr><td><code>script_fetch_total&#123;target,status&#125;</code></td><td>Counter</td><td>relay.fetch call count</td></tr>
+  </table>
+
+  <h3>Audit Metrics</h3>
+  <table>
+    <tr><td><code>relaycore_audit_events_total</code></td><td>Counter</td><td>Total audit events</td></tr>
+    <tr><td><code>relaycore_audit_events_failed</code></td><td>Counter</td><td>Failed audit recordings</td></tr>
+    <tr><td><code>relaycore_audit_events_lagged_total</code></td><td>Counter</td><td>Audit broadcast lag events</td></tr>
+  </table>
+
+  <h2>Prometheus Configuration</h2>
+  <pre><code># prometheus.yml
+scrape_configs:
+  - job_name: "relaycore"
+    static_configs:
+      - targets: ["127.0.0.1:18082"]
+    metrics_path: "/api/v1/metrics/prometheus"
+    scrape_interval: 15s</code></pre>
+
+  <h2>Health Check</h2>
+  <pre><code># Status snapshot
+curl http://127.0.0.1:18082/api/v1/status
+
+# Response
+&#123;
+  "phase": "Running",
+  "is_running": true,
+  "port": 8080,
+  "uptime_seconds": 3600,
+  "last_error": null
+&#125;</code></pre>
+
+  <p>Lifecycle phases: <code>Created</code> → <code>Starting</code> → <code>Running</code> → <code>Stopping</code> → <code>Stopped</code> (<code>Failed</code> for crashes)</p>
+
+  <h2>SSE Event Stream</h2>
+  <p><code>GET /api/v1/events</code> pushes real-time updates via Server-Sent Events:</p>
+  <table>
+    <tr><th>Event Type</th><th>Description</th></tr>
+    <tr><td><code>flow</code></td><td>New or updated flow</td></tr>
+    <tr><td><code>ws-message</code></td><td>WebSocket message update</td></tr>
+    <tr><td><code>http-body</code></td><td>HTTP request/response body update</td></tr>
+    <tr><td><code>audit</code></td><td>Audit event (rule change, intercept, etc.)</td></tr>
+    <tr><td><code>lifecycle</code></td><td>Proxy lifecycle change</td></tr>
+    <tr><td><code>lagged</code></td><td>Event channel lag warning</td></tr>
+  </table>
+
+  <pre><code># Subscribe via curl
+curl -N http://127.0.0.1:18082/api/v1/events
+
+# JavaScript EventSource
+const es = new EventSource("http://127.0.0.1:18082/api/v1/events");
+es.addEventListener("flow", (e) => console.log(JSON.parse(e.data)));</code></pre>
+
+  <h2>Audit System</h2>
+  <p>Audit logs track all control-plane operations and cannot be disabled:</p>
+  <table>
+    <tr><th>Event Type</th><th>Trigger</th></tr>
+    <tr><td><code>rule_changed</code></td><td>Rule add/delete/modify</td></tr>
+    <tr><td><code>intercept_resolved</code></td><td>Intercept resolved (continue/drop/modify)</td></tr>
+    <tr><td><code>script_reloaded</code></td><td>Script loaded or reloaded</td></tr>
+    <tr><td><code>policy_updated</code></td><td>Policy changed (redaction etc.)</td></tr>
+  </table>
+
+  <p>Audit actors: <code>runtime</code> / <code>http</code> / <code>tauri</code> / <code>probe</code> / <code>cli</code></p>
+
+  <pre><code># Query recent 50 audit events
+curl "http://127.0.0.1:18082/api/v1/audit?limit=50"
+
+# Filter by type
+curl "http://127.0.0.1:18082/api/v1/audit?kind=rule_changed&limit=20"</code></pre>
+
+  <h2>Grafana Integration</h2>
+  <p>The <code>benchmarks/grafana/</code> directory contains a ready-to-use Grafana Dashboard JSON. Pair with Prometheus for a complete monitoring panel.</p>
+</DocsLayout>
