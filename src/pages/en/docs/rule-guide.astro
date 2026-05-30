@@ -1,0 +1,228 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Rule Writing Guide" description="Common patterns and best practices for RelayCore rule engine">
+  <h1>Rule Writing Guide</h1>
+
+  <p>This guide covers common patterns, priority strategies, and debugging techniques for the rule engine.</p>
+
+  <h2>Basic Format</h2>
+  <p>Rules are created as JSON via the HTTP API or MCP tools. Every rule requires an id, filter, and at least one action:</p>
+  <pre><code>// Minimal rule: add a logging header to all /api/ requests
+&#123;
+  "id": "log-api",
+  "name": "Log API requests",
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 0,
+  "termination": "Continue",
+  "filter": &#123;
+    "type": "Url",
+    "config": &#123; "mode": "Contains", "value": "/api/" &#125;
+  &#125;,
+  "actions": [
+    &#123;
+      "type": "AddRequestHeader",
+      "config": &#123; "name": "X-Logged", "value": "true" &#125;
+    &#125;
+  ]
+&#125;</code></pre>
+
+  <h2>Common Patterns</h2>
+
+  <h3>1. Block Trackers</h3>
+  <pre><code>&#123;
+  "id": "block-tracking",
+  "name": "Block analytics trackers",
+  "active": true, "stage": "RequestHeaders",
+  "priority": 100, "termination": "Stop",
+  "filter": &#123;
+    "type": "Or",
+    "config": [
+      &#123; "type": "Url", "config": &#123; "mode": "Contains", "value": "google-analytics.com" &#125;&#125;,
+      &#123; "type": "Url", "config": &#123; "mode": "Contains", "value": "doubleclick.net" &#125;&#125;,
+      &#123; "type": "Url", "config": &#123; "mode": "Contains", "value": "facebook.com/tr" &#125;&#125;
+    ]
+  &#125;,
+  "actions": [&#123; "type": "Drop" &#125;]
+&#125;</code></pre>
+
+  <h3>2. Mock API Responses</h3>
+  <pre><code>&#123;
+  "id": "mock-api",
+  "name": "Mock /api/users",
+  "active": true, "stage": "RequestHeaders",
+  "priority": 50, "termination": "Stop",
+  "filter": &#123;
+    "type": "And",
+    "config": [
+      &#123; "type": "Path", "config": &#123; "mode": "Exact", "value": "/api/users" &#125;&#125;,
+      &#123; "type": "Method", "config": &#123; "mode": "Exact", "value": "GET" &#125;&#125;
+    ]
+  &#125;,
+  "actions": [&#123;
+    "type": "MockResponse",
+    "config": &#123;
+      "status": 200,
+      "headers": &#123; "Content-Type": "application/json" &#125;,
+      "body": &#123; "type": "Text", "value": "[&#123;\"id\":1,\"name\":\"Alice\"&#125;]" &#125;
+    &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h3>3. Environment Switching (Map Remote)</h3>
+  <pre><code>&#123;
+  "id": "map-staging",
+  "name": "Route to staging backend",
+  "active": true, "stage": "RequestHeaders",
+  "priority": 50, "termination": "Stop",
+  "filter": &#123;
+    "type": "Host",
+    "config": &#123; "mode": "Exact", "value": "api.example.com" &#125;
+  &#125;,
+  "actions": [&#123;
+    "type": "MapRemote",
+    "config": &#123;
+      "url": "https://staging-api.example.com&#123;&#123;request.path&#125;&#125;",
+      "preserve_host": false
+    &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h3>4. Inject Auth Headers</h3>
+  <pre><code>&#123;
+  "id": "inject-auth",
+  "active": true, "stage": "RequestHeaders",
+  "priority": 10, "termination": "Continue",
+  "filter": &#123;
+    "type": "Host",
+    "config": &#123; "mode": "Contains", "value": "internal" &#125;
+  &#125;,
+  "actions": [&#123;
+    "type": "UpdateRequestHeader",
+    "config": &#123; "name": "Authorization", "value": "Bearer internal-token", "add_if_missing": true &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h3>5. CORS Headers</h3>
+  <pre><code>&#123;
+  "id": "cors-headers",
+  "active": true, "stage": "ResponseHeaders",
+  "priority": 100, "termination": "Continue",
+  "filter": &#123; "type": "All" &#125;,
+  "actions": [
+    &#123; "type": "AddResponseHeader", "config": &#123; "name": "Access-Control-Allow-Origin", "value": "*" &#125;&#125;,
+    &#123; "type": "AddResponseHeader", "config": &#123; "name": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE" &#125;&#125;
+  ]
+&#125;</code></pre>
+
+  <h3>6. Response Body Replace</h3>
+  <pre><code>&#123;
+  "id": "redact-secrets",
+  "active": true, "stage": "ResponseBody",
+  "priority": 100, "termination": "Continue",
+  "filter": &#123;
+    "type": "ResponseHeader",
+    "config": &#123; "name": "Content-Type", "value": &#123; "mode": "Contains", "value": "json" &#125;&#125;
+  &#125;,
+  "actions": [&#123;
+    "type": "TransformResponseBody",
+    "config": &#123;
+      "type": "RegexReplace",
+      "config": &#123; "pattern": "\"token\":\\s*\"[^\"]+\"", "replacement": "\"token\":\"***\"" &#125;
+    &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h3>7. IP Blacklist (Connect Stage)</h3>
+  <pre><code>&#123;
+  "id": "block-ips",
+  "active": true, "stage": "Connect",
+  "priority": 100, "termination": "Stop",
+  "filter": &#123; "type": "SrcIp", "config": "10.0.0.0/8" &#125;,
+  "actions": [&#123; "type": "Drop" &#125;]
+&#125;</code></pre>
+
+  <h3>8. Rate Limiting</h3>
+  <pre><code>&#123;
+  "id": "rate-limit",
+  "active": true, "stage": "RequestHeaders",
+  "priority": 90, "termination": "Continue",
+  "filter": &#123; "type": "All" &#125;,
+  "actions": [&#123;
+    "type": "RateLimit",
+    "config": &#123; "key": "&#123;&#123;ip&#125;&#125;", "limit": 60, "window_ms": 60000 &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h3>9. Cross-Rule Variables</h3>
+  <pre><code>// Rule 1: extract API version into variable
+&#123;
+  "id": "extract-version", "priority": 100,
+  "stage": "RequestHeaders",
+  "filter": &#123; "type": "Path", "config": &#123; "mode": "Regex", "value": "/api/v(\\d+)/" &#125;&#125;,
+  "actions": [&#123; "type": "SetVariable", "config": &#123; "name": "api_version", "value": "v1" &#125;&#125;]
+&#125;
+// Rule 2: read variable in response header
+&#123;
+  "id": "add-version-header", "priority": 50,
+  "stage": "ResponseHeaders",
+  "filter": &#123; "type": "All" &#125;,
+  "actions": [&#123; "type": "AddResponseHeader", "config": &#123; "name": "X-Api-Version", "value": "&#123;&#123;variable.api_version&#125;&#125;" &#125;&#125;]
+&#125;</code></pre>
+
+  <h3>10. WebSocket Message Filtering</h3>
+  <pre><code>&#123;
+  "id": "ws-mock",
+  "active": true, "stage": "WebSocketMessage",
+  "priority": 50, "termination": "Stop",
+  "filter": &#123;
+    "type": "WebSocketMessage",
+    "config": &#123; "mode": "Contains", "value": "heartbeat" &#125;
+  &#125;,
+  "actions": [&#123;
+    "type": "MockWebSocketMessage",
+    "config": &#123; "direction": "Incoming", "message": "&#123;\"type\":\"heartbeat\",\"ts\":\"mocked\"&#125;" &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h2>Priority Strategy</h2>
+  <p>Priority determines rule evaluation order. Recommended ranges:</p>
+  <table>
+    <tr><th>Range</th><th>Purpose</th><th>Typical termination</th></tr>
+    <tr><td>100-90</td><td>Block/security rules</td><td>Stop</td></tr>
+    <tr><td>89-50</td><td>Routing rules (Mock/MapRemote/Redirect)</td><td>Stop</td></tr>
+    <tr><td>49-10</td><td>Modification rules (Headers/Body)</td><td>Continue</td></tr>
+    <tr><td>9-0</td><td>Observation rules (Tag/Log/Inspect)</td><td>Continue</td></tr>
+  </table>
+
+  <h2>Termination Guide</h2>
+  <ul>
+    <li><b>Stop</b>: Use when subsequent rules are meaningless after this one. Block, MockResponse, MapRemote should typically Stop</li>
+    <li><b>Continue</b>: Modification rules and observation rules should Continue to allow stacking multiple rule effects</li>
+  </ul>
+
+  <h2>Debugging</h2>
+  <h3>View Matched Rules</h3>
+  <pre><code>// In a script
+globalThis.onResponse = (ctx, flow) => &#123;
+  console.log("Matched rules:", flow.matched_rules);
+  console.log("Rule variables:", flow.rule_variables);
+&#125;;</code></pre>
+
+  <h3>Validate Rules</h3>
+  <pre><code>relay-core-cli rules validate rules.json</code></pre>
+
+  <h3>List Rules via API</h3>
+  <pre><code>curl http://127.0.0.1:18082/api/v1/rules | python3 -m json.tool</code></pre>
+
+  <h2>Common Issues</h2>
+  <ul>
+    <li><b>Rule not firing</b>: Check <code>"active": true</code> and that stage matches the traffic stage</li>
+    <li><b>Action order</b>: Actions execute in array order; terminal actions (MockResponse etc.) prevent subsequent actions from running</li>
+    <li><b>MapLocal file access</b>: Requires sandbox_root config; emits deprecation warning without it, will be enforced in 1.1</li>
+    <li><b>Large body performance</b>: ResponseBody filter caches the full response; prefer Path filter for large files</li>
+    <li><b>MapRemote loops</b>: Avoid forwarding traffic back to RelayCore's own proxy port</li>
+  </ul>
+</DocsLayout>

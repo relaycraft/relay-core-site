@@ -2,28 +2,197 @@
 import DocsLayout from '../../../layouts/DocsLayout.astro';
 ---
 
-<DocsLayout title="Rule Engine" description="RelayCore interception rule engine">
-  <h1>Rule Engine</h1>
+<DocsLayout title="Rule API Reference" description="Complete API reference for RelayCore rule engine">
+  <h1>Rule API Reference</h1>
 
-  <p>The rule engine evaluates flows against a pipeline of match + action rules.</p>
+  <p>The rule engine is the core traffic control mechanism in RelayCore. Each rule consists of a <strong>Filter</strong> (what to match), <strong>Action</strong> (what to do), and <strong>Stage</strong> (when to execute), executed by priority in the proxy pipeline.</p>
 
-  <h2>Filter Examples</h2>
+  <h2>Rule Structure</h2>
+  <pre><code>&#123;
+  "id": "rule-001",           // Unique identifier
+  "name": "Block Tracking",   // Human-readable name
+  "active": true,             // Whether enabled
+  "stage": "RequestHeaders",  // Execution stage
+  "priority": 100,            // Priority (higher = earlier, default 0)
+  "termination": "Continue",  // How to handle subsequent rules
+  "filter": &#123; ... &#125;,          // Match condition
+  "actions": [ ... ],         // Action list (ordered)
+  "constraints": &#123;            // Performance limits (optional)
+    "timeout_ms": 5000
+  &#125;
+&#125;</code></pre>
 
-  <pre><code>method: GET
-host: api.example.com
-status: 200</code></pre>
+  <h2>Execution Stages</h2>
+  <p>The stage determines <b>when</b> a rule is evaluated. Rules within the same stage execute by <code>priority</code> descending:</p>
 
-  <h2>Action Types</h2>
+  <table>
+    <tr><th>Stage</th><th>Layer</th><th>Trigger</th><th>Available Filters</th></tr>
+    <tr><td><code>Connect</code></td><td>L3/L4</td><td>TCP connection established</td><td>IP/Port/Protocol/TransparentMode</td></tr>
+    <tr><td><code>RequestHeaders</code></td><td>L7</td><td>After request headers parsed</td><td>Url/Host/Path/Method/RequestHeader</td></tr>
+    <tr><td><code>RequestBody</code></td><td>L7</td><td>Request body ready</td><td>Above + body content</td></tr>
+    <tr><td><code>ResponseHeaders</code></td><td>L7</td><td>Response headers received</td><td>StatusCode/ResponseHeader</td></tr>
+    <tr><td><code>ResponseBody</code></td><td>L7</td><td>Response body ready</td><td>Above + ResponseBody</td></tr>
+    <tr><td><code>WebSocketMessage</code></td><td>L7</td><td>Each WS frame received</td><td>WebSocketMessage</td></tr>
+  </table>
 
-  <ul>
-    <li>log - Log the flow</li>
-    <li>intercept - Pause for inspection</li>
-    <li>mock - Return mock response</li>
-    <li>redirect - Redirect to URL</li>
-    <li>block - Block the request</li>
-  </ul>
+  <h2>Filters</h2>
+  <p>Filters determine <b>whether</b> a rule applies. Available by stage:</p>
+
+  <h3>Global</h3>
+  <table>
+    <tr><th>Filter</th><th>Description</th><th>Example</th></tr>
+    <tr><td><code>All</code></td><td>Matches all traffic</td><td><code>&#123;"type": "All"&#125;</code></td></tr>
+  </table>
+
+  <h3>L3/L4 (Connect stage)</h3>
+  <table>
+    <tr><td><code>SrcIp</code></td><td>Source IP (CIDR)</td><td><code>"192.168.1.0/24"</code></td></tr>
+    <tr><td><code>DstPort</code></td><td>Destination port</td><td><code>443</code></td></tr>
+    <tr><td><code>Protocol</code></td><td>Transport protocol</td><td><code>"TCP"</code></td></tr>
+    <tr><td><code>TransparentMode</code></td><td>Whether transparent proxy</td><td><code>true</code></td></tr>
+  </table>
+
+  <h3>L7 (HTTP/WS stages)</h3>
+  <table>
+    <tr><td><code>Url</code></td><td>Full URL match</td></tr>
+    <tr><td><code>Host</code></td><td>Domain match</td></tr>
+    <tr><td><code>Path</code></td><td>URL path match</td></tr>
+    <tr><td><code>Method</code></td><td>HTTP method</td></tr>
+    <tr><td><code>RequestHeader</code></td><td>Request header (name + optional value)</td></tr>
+    <tr><td><code>ResponseHeader</code></td><td>Response header (name + optional value)</td></tr>
+    <tr><td><code>StatusCode</code></td><td>Response status code</td></tr>
+    <tr><td><code>ResponseBody</code></td><td>Response body content</td></tr>
+    <tr><td><code>WebSocketMessage</code></td><td>WebSocket message content</td></tr>
+  </table>
+
+  <h3>Logical Compositors</h3>
+  <table>
+    <tr><td><code>And</code></td><td>All child filters must match</td></tr>
+    <tr><td><code>Or</code></td><td>Any child filter matches (1.0 uses any() semantics)</td></tr>
+    <tr><td><code>Not</code></td><td>Negate the child filter</td></tr>
+  </table>
+
+  <h2>StringMatcher</h2>
+  <p>Most L7 filters accept a StringMatcher mode:</p>
+  <table>
+    <tr><th>Mode</th><th>Description</th><th>Example</th></tr>
+    <tr><td><code>Exact</code></td><td>Exact match</td></tr>
+    <tr><td><code>Contains</code></td><td>Substring match</td></tr>
+    <tr><td><code>Prefix</code></td><td>Starts with</td></tr>
+    <tr><td><code>Suffix</code></td><td>Ends with</td></tr>
+    <tr><td><code>Regex</code></td><td>Regular expression</td></tr>
+    <tr><td><code>Glob</code></td><td>Glob/wildcard pattern</td></tr>
+  </table>
+
+  <h2>Actions</h2>
+  <p>Actions define <b>what to do</b> when a rule matches. A rule can have multiple actions, executed in order.</p>
+
+  <h3>Universal Control</h3>
+  <table>
+    <tr><td><code>Drop</code></td><td>Drop connection immediately</td></tr>
+    <tr><td><code>Abort</code></td><td>RST reset connection</td></tr>
+    <tr><td><code>Delay</code> &#123;"ms":100&#125;</td><td>Latency simulation</td></tr>
+    <tr><td><code>Throttle</code> &#123;"kbps":1024&#125;</td><td>Bandwidth throttle</td></tr>
+    <tr><td><code>Inspect</code></td><td>Pause flow for manual inspection</td></tr>
+    <tr><td><code>Tag</code></td><td>Tag the flow (visible to scripts)</td></tr>
+    <tr><td><code>SetVariable</code></td><td>Set a cross-rule variable</td></tr>
+    <tr><td><code>RateLimit</code></td><td>Rate limit by key</td></tr>
+  </table>
+
+  <h3>L3/L4 Network</h3>
+  <table>
+    <tr><td><code>RedirectIp</code></td><td>Redirect target IP</td></tr>
+    <tr><td><code>ForwardPort</code></td><td>Change target port</td></tr>
+    <tr><td><code>SetTtl</code></td><td>Set IP TTL</td></tr>
+  </table>
+
+  <h3>L7 HTTP — Terminal (stops proxying)</h3>
+  <table>
+    <tr><td><code>MockResponse</code></td><td>Return mock HTTP response</td></tr>
+    <tr><td><code>MapLocal</code></td><td>Serve local file as response</td></tr>
+    <tr><td><code>MapRemote</code></td><td>Forward to different backend</td></tr>
+    <tr><td><code>Redirect</code></td><td>HTTP redirect</td></tr>
+  </table>
+
+  <h3>L7 HTTP — Modifications</h3>
+  <table>
+    <tr><td><code>AddRequestHeader</code> / <code>UpdateRequestHeader</code> / <code>DeleteRequestHeader</code></td></tr>
+    <tr><td><code>AddResponseHeader</code> / <code>UpdateResponseHeader</code> / <code>DeleteResponseHeader</code></td></tr>
+    <tr><td><code>SetRequestMethod</code> / <code>SetRequestUrl</code></td></tr>
+    <tr><td><code>SetRequestBody</code> / <code>SetResponseBody</code></td></tr>
+    <tr><td><code>SetResponseStatus</code></td></tr>
+  </table>
+
+  <h3>L7 HTTP — Transformations</h3>
+  <table>
+    <tr><td><code>TransformRequestBody</code> / <code>TransformResponseBody</code></td></tr>
+  </table>
+
+  <h3>WebSocket</h3>
+  <table>
+    <tr><td><code>MockWebSocketMessage</code></td><td>Replace WS message</td></tr>
+    <tr><td><code>DropWebSocketMessage</code></td><td>Drop WS message</td></tr>
+  </table>
+
+  <h2>BodySource</h2>
+  <p>For actions that need body content (SetRequestBody, SetResponseBody, MockResponse, MapLocal):</p>
+  <pre><code>&#123;"type": "Text",   "value": "&#123;\"status\":\"ok\"&#125;"&#125;
+&#123;"type": "File",   "value": "/path/to/mock.json"&#125;
+&#123;"type": "Base64", "value": "eyJzdGF0dXMiOiJvayJ9"&#125;</code></pre>
+
+  <h2>BodyTransform</h2>
+  <pre><code>// Regex replace
+&#123;"type": "RegexReplace", "config": &#123;"pattern": "http://", "replacement": "https://"&#125;&#125;
+// JsonPath set
+&#123;"type": "JsonPathSet", "config": &#123;"path": "$.data.secret", "value": "***"&#125;&#125;
+// JsonPath delete
+&#123;"type": "JsonPathDelete", "config": &#123;"path": "$.debug"&#125;&#125;</code></pre>
+
+  <h2>Mustache Variable Substitution</h2>
+  <p>String fields in actions support Mustache template syntax, resolved at runtime:</p>
+  <table>
+    <tr><th>Variable</th><th>Resolves to</th></tr>
+    <tr><td><code>&#123;&#123;host&#125;&#125;</code></td><td>Request target hostname</td></tr>
+    <tr><td><code>&#123;&#123;request.path&#125;&#125;</code></td><td>Request URL path</td></tr>
+    <tr><td><code>&#123;&#123;request.url&#125;&#125;</code></td><td>Full request URL</td></tr>
+    <tr><td><code>&#123;&#123;request.method&#125;&#125;</code></td><td>HTTP method</td></tr>
+    <tr><td><code>&#123;&#123;ip&#125;&#125;</code> / <code>&#123;&#123;client_ip&#125;&#125;</code></td><td>Client IP address</td></tr>
+    <tr><td><code>&#123;&#123;previous&#125;&#125;</code></td><td>The field's original value before this action</td></tr>
+    <tr><td><code>&#123;&#123;variable.xxx&#125;&#125;</code></td><td>Value set by SetVariable action</td></tr>
+    <tr><td><code>&#123;&#123;timestamp&#125;&#125;</code></td><td>Unix millisecond timestamp</td></tr>
+  </table>
+
+  <h2>Termination</h2>
+  <table>
+    <tr><td><code>Continue</code></td><td>Keep processing subsequent rules (default)</td></tr>
+    <tr><td><code>Stop</code></td><td>Skip remaining rules in this stage</td></tr>
+  </table>
+
+  <h2>RateLimit</h2>
+  <pre><code>&#123;
+  "type": "RateLimit",
+  "config": &#123;
+    "key": "&#123;&#123;ip&#125;&#125;:&#123;&#123;request.path&#125;&#125;",
+    "limit": 100,
+    "window_ms": 60000
+  &#125;
+&#125;</code></pre>
+
+  <h2>WebSocket Direction</h2>
+  <pre><code>&#123;"type": "MockWebSocketMessage", "config": &#123;
+  "direction": "Incoming",     // or "Outgoing"
+  "message": "replaced message"
+&#125;&#125;</code></pre>
 
   <h2>Managing Rules</h2>
-  <pre><code>relay-core-cli rules import rules.yaml
-relay-core-cli rules export</code></pre>
+  <pre><code># HTTP API
+curl -X POST http://127.0.0.1:18082/api/v1/rules \
+  -H "Content-Type: application/json" \
+  -d '&#123;"id":"r1","name":"log-api","active":true,"stage":"RequestHeaders",
+       "priority":10,"termination":"Continue",
+       "filter":&#123;"type":"Url","config":&#123;"mode":"Contains","value":"/api/"&#125;&#125;,
+       "actions":[&#123;"type":"AddRequestHeader","config":&#123;"name":"X-Logged","value":"true"&#125;&#125;]&#125;'
+
+# MCP tool
+mcp: relay-core set_rule --rule rule.json</code></pre>
 </DocsLayout>

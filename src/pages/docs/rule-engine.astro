@@ -2,28 +2,228 @@
 import DocsLayout from '../../layouts/DocsLayout.astro';
 ---
 
-<DocsLayout title="规则引擎" description="RelayCore 拦截规则引擎">
-  <h1>规则引擎</h1>
+<DocsLayout title="规则 API 参考" description="RelayCore 规则引擎完整 API 参考">
+  <h1>规则 API 参考</h1>
 
-  <p>规则引擎根据 match + action 规则管道评估流量。</p>
+  <p>规则引擎是 RelayCore 的核心流量控制机制。每条规则由 <strong>筛选条件 (Filter)</strong> + <strong>执行动作 (Action)</strong> + <strong>执行阶段 (Stage)</strong> 三要素组成，按优先级顺序在代理流水线中执行。</p>
 
-  <h2>过滤示例</h2>
+  <h2>规则结构</h2>
+  <pre><code>&#123;
+  "id": "rule-001",           // 唯一标识
+  "name": "Block Tracking",   // 可读名称
+  "active": true,             // 是否启用
+  "stage": "RequestHeaders",  // 执行阶段
+  "priority": 100,            // 优先级（越高越先执行，默认 0）
+  "termination": "Continue",  // 后续规则处理方式
+  "filter": &#123; ... &#125;,          // 匹配条件
+  "actions": [ ... ],         // 动作列表（有顺序）
+  "constraints": &#123;            // 性能限制（可选）
+    "timeout_ms": 5000
+  &#125;
+&#125;</code></pre>
 
-  <pre><code>method: GET
-host: api.example.com
-status: 200</code></pre>
+  <h2>执行阶段 (Stage)</h2>
+  <p>阶段决定规则<b>何时</b>被评估。同一阶段内按 <code>priority</code> 降序执行：</p>
 
-  <h2>操作类型</h2>
+  <table>
+    <tr><th>阶段</th><th>层级</th><th>触发时机</th><th>可用 Filter</th></tr>
+    <tr><td><code>Connect</code></td><td>L3/L4</td><td>TCP 连接建立时</td><td>IP/Port/Protocol/TransparentMode</td></tr>
+    <tr><td><code>RequestHeaders</code></td><td>L7</td><td>HTTP 请求头解析后</td><td>Url/Host/Path/Method/RequestHeader</td></tr>
+    <tr><td><code>RequestBody</code></td><td>L7</td><td>请求体就绪后</td><td>同上 + 请求体内容</td></tr>
+    <tr><td><code>ResponseHeaders</code></td><td>L7</td><td>HTTP 响应头接收后</td><td>StatusCode/ResponseHeader</td></tr>
+    <tr><td><code>ResponseBody</code></td><td>L7</td><td>响应体就绪后</td><td>同上 + ResponseBody</td></tr>
+    <tr><td><code>WebSocketMessage</code></td><td>L7</td><td>每条 WS 帧到达</td><td>WebSocketMessage</td></tr>
+  </table>
 
-  <ul>
-    <li>log - 记录流量</li>
-    <li>intercept - 暂停以供检查</li>
-    <li>mock - 返回模拟响应</li>
-    <li>redirect - 重定向到 URL</li>
-    <li>block - 阻止请求</li>
-  </ul>
+  <h2>筛选条件 (Filter)</h2>
+  <p>Filter 决定规则<b>是否</b>生效。支持逐字段匹配和逻辑组合：</p>
+
+  <h3>全局</h3>
+  <table>
+    <tr><th>Filter</th><th>说明</th><th>示例</th></tr>
+    <tr><td><code>All</code></td><td>匹配所有流量</td><td><code>&#123;"type": "All"&#125;</code></td></tr>
+  </table>
+
+  <h3>L3/L4（Connect 阶段）</h3>
+  <table>
+    <tr><td><code>SrcIp</code></td><td>源 IP（支持 CIDR）</td><td><code>"192.168.1.0/24"</code></td></tr>
+    <tr><td><code>DstPort</code></td><td>目标端口</td><td><code>443</code></td></tr>
+    <tr><td><code>Protocol</code></td><td>传输协议</td><td><code>"TCP"</code></td></tr>
+    <tr><td><code>TransparentMode</code></td><td>是否透明代理模式</td><td><code>true</code></td></tr>
+  </table>
+
+  <h3>L7（HTTP/WS 阶段）</h3>
+  <table>
+    <tr><td><code>Url</code></td><td>完整 URL 匹配</td><td><code>&#123;"type": "Url", "config": &#123;"mode": "Contains", "value": "/api/"&#125;&#125;</code></td></tr>
+    <tr><td><code>Host</code></td><td>域名匹配</td><td><code>&#123;"type": "Host", "config": &#123;"mode": "Exact", "value": "api.example.com"&#125;&#125;</code></td></tr>
+    <tr><td><code>Path</code></td><td>路径匹配</td><td><code>&#123;"type": "Path", "config": &#123;"mode": "Prefix", "value": "/v2/"&#125;&#125;</code></td></tr>
+    <tr><td><code>Method</code></td><td>HTTP 方法</td><td><code>&#123;"type": "Method", "config": &#123;"mode": "Exact", "value": "POST"&#125;&#125;</code></td></tr>
+    <tr><td><code>RequestHeader</code></td><td>请求头（名称+值）</td><td><code>&#123;"type": "RequestHeader", "config": &#123;"name": "Authorization", "value": &#123;"mode": "Contains", "value": "Bearer"&#125;&#125;&#125;</code></td></tr>
+    <tr><td><code>ResponseHeader</code></td><td>响应头（名称+值）</td><td><code>&#123;"type": "ResponseHeader", "config": &#123;"name": "Content-Type", "value": &#123;"mode": "Contains", "value": "json"&#125;&#125;&#125;</code></td></tr>
+    <tr><td><code>StatusCode</code></td><td>响应状态码</td><td><code>&#123;"type": "StatusCode", "config": 404&#125;</code></td></tr>
+    <tr><td><code>ResponseBody</code></td><td>响应体内容</td><td><code>&#123;"type": "ResponseBody", "config": &#123;"mode": "Contains", "value": "error"&#125;&#125;</code></td></tr>
+    <tr><td><code>WebSocketMessage</code></td><td>WS 消息内容</td><td><code>&#123;"type": "WebSocketMessage", "config": &#123;"mode": "Contains", "value": "ping"&#125;&#125;</code></td></tr>
+  </table>
+
+  <h3>逻辑组合</h3>
+  <table>
+    <tr><td><code>And</code></td><td>所有子 filter 同时满足</td><td><code>&#123;"type": "And", "config": [urlFilter, hostFilter]&#125;</code></td></tr>
+    <tr><td><code>Or</code></td><td>任意子 filter 满足（1.0 起与匹配语义一致）</td><td><code>&#123;"type": "Or", "config": [filter404, filter500]&#125;</code></td></tr>
+    <tr><td><code>Not</code></td><td>取反</td><td><code>&#123;"type": "Not", "config": filter&#125;</code></td></tr>
+  </table>
+
+  <h2>字符串匹配器 (StringMatcher)</h2>
+  <p>大部分 L7 filter 接受 StringMatcher 作为匹配模式：</p>
+  <table>
+    <tr><th>模式</th><th>说明</th><th>示例</th></tr>
+    <tr><td><code>Exact</code></td><td>精确匹配</td><td><code>&#123;"mode": "Exact", "value": "/api/users"&#125;</code></td></tr>
+    <tr><td><code>Contains</code></td><td>包含匹配</td><td><code>&#123;"mode": "Contains", "value": "tracking"&#125;</code></td></tr>
+    <tr><td><code>Prefix</code></td><td>前缀匹配</td><td><code>&#123;"mode": "Prefix", "value": "/api/"&#125;</code></td></tr>
+    <tr><td><code>Suffix</code></td><td>后缀匹配</td><td><code>&#123;"mode": "Suffix", "value": ".js"&#125;</code></td></tr>
+    <tr><td><code>Regex</code></td><td>正则表达式</td><td><code>&#123;"mode": "Regex", "value": "/api/[a-z]+/\d+"&#125;</code></td></tr>
+    <tr><td><code>Glob</code></td><td>通配符匹配</td><td><code>&#123;"mode": "Glob", "value": "*.example.com/*"&#125;</code></td></tr>
+  </table>
+
+  <h2>执行动作 (Action)</h2>
+  <p>Action 定义匹配后<b>做什么</b>。一条规则可包含多个 Action，按顺序执行。</p>
+
+  <h3>通用控制</h3>
+  <table>
+    <tr><th>Action</th><th>说明</th><th>阶段</th></tr>
+    <tr><td><code>Drop</code></td><td>立即丢弃连接</td><td>所有</td></tr>
+    <tr><td><code>Abort</code></td><td>RST 重置连接</td><td>所有</td></tr>
+    <tr><td><code>Delay</code></td><td>延迟模拟 (ms)</td><td>所有</td></tr>
+    <tr><td><code>Throttle</code></td><td>带宽限速 (kbps)</td><td>所有</td></tr>
+    <tr><td><code>Inspect</code></td><td>暂停流等待人工检查</td><td>所有</td></tr>
+    <tr><td><code>Tag</code></td><td>打标签（后续规则/脚本可用）</td><td>所有</td></tr>
+    <tr><td><code>SetVariable</code></td><td>设置变量（跨规则传递）</td><td>所有</td></tr>
+    <tr><td><code>RateLimit</code></td><td>基于 key 的限速</td><td>所有</td></tr>
+  </table>
+
+  <h3>L3/L4 网络层</h3>
+  <table>
+    <tr><td><code>RedirectIp</code></td><td>重定向目标 IP</td><td>Connect</td></tr>
+    <tr><td><code>ForwardPort</code></td><td>修改目标端口</td><td>Connect</td></tr>
+    <tr><td><code>SetTtl</code></td><td>设置 IP TTL</td><td>Connect</td></tr>
+  </table>
+
+  <h3>L7 HTTP — 终端动作（终止代理）</h3>
+  <table>
+    <tr><td><code>MockResponse</code></td><td>返回模拟 HTTP 响应</td><td>Request/Response</td></tr>
+    <tr><td><code>MapLocal</code></td><td>返回本地文件内容</td><td>Request/Response</td></tr>
+    <tr><td><code>MapRemote</code></td><td>转发到不同后端</td><td>RequestHeaders</td></tr>
+    <tr><td><code>Redirect</code></td><td>HTTP 重定向</td><td>Request/Response</td></tr>
+  </table>
+
+  <h3>L7 HTTP — 修改动作</h3>
+  <table>
+    <tr><td><code>AddRequestHeader</code></td><td>添加请求头（允许重复）</td></tr>
+    <tr><td><code>UpdateRequestHeader</code></td><td>更新请求头（支持 add_if_missing）</td></tr>
+    <tr><td><code>DeleteRequestHeader</code></td><td>删除请求头</td></tr>
+    <tr><td><code>AddResponseHeader</code></td><td>添加响应头</td></tr>
+    <tr><td><code>UpdateResponseHeader</code></td><td>更新响应头</td></tr>
+    <tr><td><code>DeleteResponseHeader</code></td><td>删除响应头</td></tr>
+    <tr><td><code>SetRequestMethod</code></td><td>修改 HTTP 方法</td></tr>
+    <tr><td><code>SetRequestUrl</code></td><td>修改请求 URL</td></tr>
+    <tr><td><code>SetRequestBody</code></td><td>替换请求体</td></tr>
+    <tr><td><code>SetResponseStatus</code></td><td>修改响应状态码</td></tr>
+    <tr><td><code>SetResponseBody</code></td><td>替换响应体</td></tr>
+  </table>
+
+  <h3>L7 HTTP — 转换动作</h3>
+  <table>
+    <tr><td><code>TransformRequestBody</code></td><td>正则/JsonPath 变形请求体</td></tr>
+    <tr><td><code>TransformResponseBody</code></td><td>正则/JsonPath 变形响应体</td></tr>
+  </table>
+
+  <h3>WebSocket</h3>
+  <table>
+    <tr><td><code>MockWebSocketMessage</code></td><td>替换 WS 消息</td></tr>
+    <tr><td><code>DropWebSocketMessage</code></td><td>丢弃 WS 消息</td></tr>
+  </table>
+
+  <h2>Body 数据源 (BodySource)</h2>
+  <p>用于 SetRequestBody、SetResponseBody、MockResponse 等需要内容体的动作：</p>
+  <pre><code>&#123;"type": "Text",   "value": "&#123;\"status\":\"ok\"&#125;"&#125;
+&#123;"type": "File",   "value": "/path/to/mock.json"&#125;
+&#123;"type": "Base64", "value": "eyJzdGF0dXMiOiJvayJ9"&#125;</code></pre>
+
+  <h2>Body 转换 (BodyTransform)</h2>
+  <pre><code>// 正则替换
+&#123;"type": "RegexReplace", "config": &#123;"pattern": "http://", "replacement": "https://"&#125;&#125;
+
+// JsonPath 设置
+&#123;"type": "JsonPathSet", "config": &#123;"path": "$.data.secret", "value": "***"&#125;&#125;
+
+// JsonPath 删除
+&#123;"type": "JsonPathDelete", "config": &#123;"path": "$.debug"&#125;&#125;</code></pre>
+
+  <h2>Mustache 变量替换</h2>
+  <p>Action 的字符串字段支持 Mustache 模板语法，在运行时替换为实际值：</p>
+  <table>
+    <tr><th>变量</th><th>替换为</th></tr>
+    <tr><td><code>&#123;&#123;host&#125;&#125;</code></td><td>请求目标主机名</td></tr>
+    <tr><td><code>&#123;&#123;request.path&#125;&#125;</code></td><td>请求 URL 路径</td></tr>
+    <tr><td><code>&#123;&#123;request.url&#125;&#125;</code></td><td>完整请求 URL</td></tr>
+    <tr><td><code>&#123;&#123;request.method&#125;&#125;</code></td><td>HTTP 方法</td></tr>
+    <tr><td><code>&#123;&#123;ip&#125;&#125;</code> / <code>&#123;&#123;client_ip&#125;&#125;</code></td><td>客户端 IP</td></tr>
+    <tr><td><code>&#123;&#123;previous&#125;&#125;</code></td><td>该字段在动作执行前的原值</td></tr>
+    <tr><td><code>&#123;&#123;variable.xxx&#125;&#125;</code></td><td>SetVariable 设置的变量值</td></tr>
+    <tr><td><code>&#123;&#123;timestamp&#125;&#125;</code></td><td>Unix 毫秒时间戳</td></tr>
+  </table>
+  <pre><code>// 示例：MapRemote 使用 Mustache
+&#123;
+  "type": "MapRemote",
+  "config": &#123;
+    "url": "https://backend-&#123;&#123;host&#125;&#125;/v2&#123;&#123;request.path&#125;&#125;",
+    "preserve_host": false
+  &#125;
+&#125;
+
+// 示例：UpdateRequestHeader 使用 &#123;&#123;previous&#125;&#125;
+&#123;
+  "type": "UpdateRequestHeader",
+  "config": &#123;
+    "name": "X-Custom",
+    "value": "&#123;&#123;previous&#125;&#125;; extra-value",
+    "add_if_missing": true
+  &#125;
+&#125;</code></pre>
+
+  <h2>规则终止 (Termination)</h2>
+  <table>
+    <tr><th>值</th><th>行为</th></tr>
+    <tr><td><code>Continue</code></td><td>继续执行同阶段后续规则（默认）</td></tr>
+    <tr><td><code>Stop</code></td><td>停止同阶段后续规则，类似 mitmproxy 的 <code>stop=True</code></td></tr>
+  </table>
+  <p><code>Stop</code> 只影响同一阶段。例如 RequestHeaders 阶段的 Stop 不会阻止 ResponseHeaders 阶段的规则。</p>
+
+  <h2>RateLimit 详解</h2>
+  <pre><code>&#123;
+  "type": "RateLimit",
+  "config": &#123;
+    "key": "&#123;&#123;ip&#125;&#125;:&#123;&#123;request.path&#125;&#125;",   // 按 IP+路径 组合限速
+    "limit": 100,                         // 窗口内最多 100 请求
+    "window_ms": 60000                    // 60 秒窗口
+  &#125;
+&#125;</code></pre>
+  <p>支持 Mustache 模板作为 key。key 为 <code>"ip"</code> 时等同于 <code>"&#123;&#123;client_ip&#125;&#125;"</code>。</p>
+
+  <h2>WebSocket 方向</h2>
+  <pre><code>&#123;"type": "MockWebSocketMessage", "config": &#123;
+  "direction": "Incoming",     // 或 "Outgoing"
+  "message": "replaced message"
+&#125;&#125;</code></pre>
 
   <h2>管理规则</h2>
-  <pre><code>relay-core-cli rules import rules.yaml
-relay-core-cli rules export</code></pre>
+  <pre><code># HTTP API
+curl -X POST http://127.0.0.1:18082/api/v1/rules \
+  -H "Content-Type: application/json" \
+  -d '&#123;"id":"r1","name":"log-api","active":true,"stage":"RequestHeaders",
+       "priority":10,"termination":"Continue",
+       "filter":&#123;"type":"Url","config":&#123;"mode":"Contains","value":"/api/"&#125;&#125;,
+       "actions":[&#123;"type":"AddRequestHeader","config":&#123;"name":"X-Logged","value":"true"&#125;&#125;]&#125;'
+
+# MCP tool
+mcp: relay-core set_rule --rule rule.json</code></pre>
 </DocsLayout>

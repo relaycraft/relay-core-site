@@ -1,0 +1,262 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="规则编写指南" description="RelayCore 规则编写常用模式和最佳实践">
+  <h1>规则编写指南</h1>
+
+  <p>本指南涵盖规则引擎的常用模式、优先级策略和调试技巧。</p>
+
+  <h2>基础格式</h2>
+  <p>规则通过 HTTP API 或 MCP 工具以 JSON 格式创建。每条规则至少需要指定 id、filter 和至少一个 action：</p>
+  <pre><code>// 最简规则：为所有 /api/ 请求添加日志头
+&#123;
+  "id": "log-api",
+  "name": "Log API requests",
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 0,
+  "termination": "Continue",
+  "filter": &#123;
+    "type": "Url",
+    "config": &#123; "mode": "Contains", "value": "/api/" &#125;
+  &#125;,
+  "actions": [
+    &#123;
+      "type": "AddRequestHeader",
+      "config": &#123; "name": "X-Logged", "value": "true" &#125;
+    &#125;
+  ]
+&#125;</code></pre>
+
+  <h2>常用模式</h2>
+
+  <h3>1. 阻止追踪脚本</h3>
+  <pre><code>&#123;
+  "id": "block-tracking",
+  "name": "Block analytics trackers",
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 100,
+  "termination": "Stop",
+  "filter": &#123;
+    "type": "Or",
+    "config": [
+      &#123; "type": "Url", "config": &#123; "mode": "Contains", "value": "google-analytics.com" &#125;&#125;,
+      &#123; "type": "Url", "config": &#123; "mode": "Contains", "value": "doubleclick.net" &#125;&#125;,
+      &#123; "type": "Url", "config": &#123; "mode": "Contains", "value": "facebook.com/tr" &#125;&#125;
+    ]
+  &#125;,
+  "actions": [&#123; "type": "Drop" &#125;]
+&#125;</code></pre>
+
+  <h3>2. API Mock 响应</h3>
+  <pre><code>&#123;
+  "id": "mock-api",
+  "name": "Mock /api/users",
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 50,
+  "termination": "Stop",
+  "filter": &#123;
+    "type": "And",
+    "config": [
+      &#123; "type": "Path", "config": &#123; "mode": "Exact", "value": "/api/users" &#125;&#125;,
+      &#123; "type": "Method", "config": &#123; "mode": "Exact", "value": "GET" &#125;&#125;
+    ]
+  &#125;,
+  "actions": [&#123;
+    "type": "MockResponse",
+    "config": &#123;
+      "status": 200,
+      "headers": &#123; "Content-Type": "application/json" &#125;,
+      "body": &#123; "type": "Text", "value": "[&#123;\"id\":1,\"name\":\"Alice\"&#125;]" &#125;
+    &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h3>3. 环境切换（Map Remote）</h3>
+  <pre><code>&#123;
+  "id": "map-staging",
+  "name": "Route to staging backend",
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 50,
+  "termination": "Stop",
+  "filter": &#123;
+    "type": "Host",
+    "config": &#123; "mode": "Exact", "value": "api.example.com" &#125;
+  &#125;,
+  "actions": [&#123;
+    "type": "MapRemote",
+    "config": &#123;
+      "url": "https://staging-api.example.com&#123;&#123;request.path&#125;&#125;",
+      "preserve_host": false
+    &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h3>4. 注入认证头</h3>
+  <pre><code>&#123;
+  "id": "inject-auth",
+  "name": "Inject authorization header",
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 10,
+  "termination": "Continue",
+  "filter": &#123;
+    "type": "Host",
+    "config": &#123; "mode": "Contains", "value": "internal" &#125;
+  &#125;,
+  "actions": [&#123;
+    "type": "UpdateRequestHeader",
+    "config": &#123; "name": "Authorization", "value": "Bearer internal-token", "add_if_missing": true &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h3>5. CORS 头注入</h3>
+  <pre><code>&#123;
+  "id": "cors-headers",
+  "name": "Add CORS headers",
+  "active": true,
+  "stage": "ResponseHeaders",
+  "priority": 100,
+  "termination": "Continue",
+  "filter": &#123; "type": "All" &#125;,
+  "actions": [
+    &#123; "type": "AddResponseHeader", "config": &#123; "name": "Access-Control-Allow-Origin", "value": "*" &#125;&#125;,
+    &#123; "type": "AddResponseHeader", "config": &#123; "name": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE" &#125;&#125;,
+    &#123; "type": "AddResponseHeader", "config": &#123; "name": "Access-Control-Allow-Headers", "value": "Content-Type,Authorization" &#125;&#125;
+  ]
+&#125;</code></pre>
+
+  <h3>6. 响应体内容替换</h3>
+  <pre><code>&#123;
+  "id": "redact-secrets",
+  "name": "Redact sensitive data in responses",
+  "active": true,
+  "stage": "ResponseBody",
+  "priority": 100,
+  "termination": "Continue",
+  "filter": &#123;
+    "type": "ResponseHeader",
+    "config": &#123; "name": "Content-Type", "value": &#123; "mode": "Contains", "value": "json" &#125;&#125;
+  &#125;,
+  "actions": [&#123;
+    "type": "TransformResponseBody",
+    "config": &#123;
+      "type": "RegexReplace",
+      "config": &#123; "pattern": "\"token\":\\s*\"[^\"]+\"", "replacement": "\"token\":\"***\"" &#125;
+    &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h3>7. IP 黑名单（Connect 阶段）</h3>
+  <pre><code>&#123;
+  "id": "block-ips",
+  "name": "Block internal IPs",
+  "active": true,
+  "stage": "Connect",
+  "priority": 100,
+  "termination": "Stop",
+  "filter": &#123; "type": "SrcIp", "config": "10.0.0.0/8" &#125;,
+  "actions": [&#123; "type": "Drop" &#125;]
+&#125;</code></pre>
+
+  <h3>8. 限速保护</h3>
+  <pre><code>&#123;
+  "id": "rate-limit",
+  "name": "Per-client rate limiting",
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 90,
+  "termination": "Continue",
+  "filter": &#123; "type": "All" &#125;,
+  "actions": [&#123;
+    "type": "RateLimit",
+    "config": &#123; "key": "&#123;&#123;ip&#125;&#125;", "limit": 60, "window_ms": 60000 &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h3>9. 跨规则变量传递</h3>
+  <pre><code>// 规则 1：提取 API 版本并存入变量
+&#123;
+  "id": "extract-version",
+  "priority": 100,
+  "stage": "RequestHeaders",
+  "filter": &#123; "type": "Path", "config": &#123; "mode": "Regex", "value": "/api/v(\\d+)/" &#125;&#125;,
+  "actions": [&#123;
+    "type": "SetVariable",
+    "config": &#123; "name": "api_version", "value": "v1" &#125;
+  &#125;]
+&#125;
+// 规则 2：读取变量写入响应头
+&#123;
+  "id": "add-version-header",
+  "priority": 50,
+  "stage": "ResponseHeaders",
+  "filter": &#123; "type": "All" &#125;,
+  "actions": [&#123;
+    "type": "AddResponseHeader",
+    "config": &#123; "name": "X-Api-Version", "value": "&#123;&#123;variable.api_version&#125;&#125;" &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h3>10. WebSocket 消息过滤</h3>
+  <pre><code>&#123;
+  "id": "ws-mock",
+  "name": "Mock incoming heartbeat messages",
+  "active": true,
+  "stage": "WebSocketMessage",
+  "priority": 50,
+  "termination": "Stop",
+  "filter": &#123;
+    "type": "WebSocketMessage",
+    "config": &#123; "mode": "Contains", "value": "heartbeat" &#125;
+  &#125;,
+  "actions": [&#123;
+    "type": "MockWebSocketMessage",
+    "config": &#123; "direction": "Incoming", "message": "&#123;\"type\":\"heartbeat\",\"ts\":\"mocked\"&#125;" &#125;
+  &#125;]
+&#125;</code></pre>
+
+  <h2>优先级策略</h2>
+  <p>优先级（priority）是规则排序的核心机制。推荐策略：</p>
+  <table>
+    <tr><th>优先级范围</th><th>用途</th><th>典型 termination</th></tr>
+    <tr><td>100-90</td><td>阻断/安全规则（Block/Drop）</td><td>Stop</td></tr>
+    <tr><td>89-50</td><td>路由规则（Mock/MapRemote/Redirect）</td><td>Stop</td></tr>
+    <tr><td>49-10</td><td>修改规则（Headers/Body）</td><td>Continue</td></tr>
+    <tr><td>9-0</td><td>观测规则（Tag/Log/Inspect）</td><td>Continue</td></tr>
+  </table>
+
+  <h2>Termination 选择指南</h2>
+  <ul>
+    <li><b>Stop</b>：当规则执行后后续规则没有意义时使用。例如 Block、MockResponse、MapRemote 后不需要其他规则再处理</li>
+    <li><b>Continue</b>：修改型规则（修改 header/body）、观测型规则（打 tag/设变量）通常应 Continue，允许多条规则叠加效果</li>
+  </ul>
+
+  <h2>调试技巧</h2>
+  <h3>查看命中规则</h3>
+  <pre><code># 在脚本中查看
+globalThis.onResponse = (ctx, flow) => &#123;
+  console.log("Matched rules:", flow.matched_rules);
+  console.log("Rule variables:", flow.rule_variables);
+&#125;;</code></pre>
+
+  <h3>规则验证</h3>
+  <pre><code># CLI 验证规则文件
+relay-core-cli rules validate rules.json</code></pre>
+
+  <h3>API 查询规则列表</h3>
+  <pre><code>curl http://127.0.0.1:18082/api/v1/rules | python3 -m json.tool</code></pre>
+
+  <h2>常见问题</h2>
+  <ul>
+    <li><b>规则不生效</b>：检查 <code>"active": true</code> 和 stage 是否匹配流量阶段</li>
+    <li><b>多个动作执行顺序</b>：actions 数组按顺序执行；若前一个动作是终端动作（MockResponse 等），后续动作不执行</li>
+    <li><b>MapLocal 文件访问</b>：需配置 sandbox_root；未配置时发出 deprecation warning，1.1 起将拒绝执行</li>
+    <li><b>body 较大时性能</b>：ResponseBody filter 需要缓存完整响应体；大文件建议用 Path filter 替代</li>
+    <li><b>MapRemote 循环</b>：注意不要将流量转发回 RelayCore 自身代理端口</li>
+  </ul>
+</DocsLayout>
