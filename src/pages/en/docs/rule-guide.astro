@@ -203,6 +203,102 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     <li><b>Continue</b>: Modification rules and observation rules should Continue to allow stacking multiple rule effects</li>
   </ul>
 
+  <h2>Rule-Script Integration</h2>
+  <p>RelayCore exclusive — rules and scripts observe each other, enabling logic neither engine can achieve alone.</p>
+  <h3>Integration Matrix</h3>
+  <table>
+    <tr><th>Direction</th><th>Mechanism</th><th>1.0</th></tr>
+    <tr><td>Rule→Rule</td><td>SetVariable + Mustache</td><td>✅</td></tr>
+    <tr><td>Rule→Script</td><td>flow.matched_rules / rule_variables</td><td>✅</td></tr>
+    <tr><td>Script→Script</td><td>sharedState same isolate</td><td>✅</td></tr>
+    <tr><td>Script→Rule</td><td>setTag / setVariable</td><td>1.x</td></tr>
+  </table>
+
+  <h3>Pattern 1: Rule Extraction → Script Decision</h3>
+  <p>Rules extract variables, scripts make complex decisions:</p>
+  <pre><code>// Rules
+[&#123;"id":"extract-api-version","stage":"RequestHeaders","priority":100,
+  "filter":&#123;"type":"Path","config":&#123;"mode":"Regex","value":"/api/v(\d+)/"&#125;&#125;,
+  "actions":[&#123;"type":"SetVariable","config":&#123;"name":"api_version","value":"v1"&#125;&#125;]&#125;,
+ &#123;"id":"extract-auth-info","stage":"RequestHeaders","priority":90,
+  "filter":&#123;"type":"RequestHeader","config":&#123;"name":"Authorization",
+    "value":&#123;"mode":"Contains","value":"Bearer"&#125;&#125;&#125;,
+  "actions":[&#123;"type":"SetVariable","config":&#123;"name":"auth_type","value":"bearer"&#125;&#125;]&#125;]
+
+// Script
+globalThis.onRequest = (ctx, flow) => &#123;
+  const v = flow.rule_variables["api_version"];
+  const a = flow.rule_variables["auth_type"];
+  if (v === "v1" && a !== "bearer") &#123;
+    return &#123; action: "respond", status: 410,
+      headers: [["content-type", "text/plain"]],
+      body: "Use /api/v2/ with Bearer auth." &#125;;
+  &#125;
+  if (v === "v2") &#123;
+    const key = flow.network.client_ip + ":v2";
+    sharedState._c = sharedState._c || &#123;&#125;;
+    sharedState._c[key] = (sharedState._c[key] || 0) + 1;
+    flow.request.headers.push(["X-Rate-Count", String(sharedState._c[key])]);
+  &#125;
+&#125;;</code></pre>
+
+  <h3>Pattern 2: Rule Tagging → Script Inheritance</h3>
+  <pre><code>// Rule
+&#123;"id":"tag-slow","stage":"RequestHeaders","priority":50,
+ "filter":&#123;"type":"Or","config":[
+   &#123;"type":"Path","config":&#123;"mode":"Contains","value":"/report"&#125;&#125;,
+   &#123;"type":"Path","config":&#123;"mode":"Contains","value":"/export"&#125;&#125;]&#125;,
+ "actions":[
+   &#123;"type":"Tag","config":&#123;"key":"type","value":"slow"&#125;&#125;,
+   &#123;"type":"SetVariable","config":&#123;"name":"trace","value":"1"&#125;&#125;]&#125;
+
+// Script
+globalThis.onResponse = (ctx, flow) => &#123;
+  if (!flow.matched_rules.includes("tag-slow")) return;
+  if (!flow.response) return;
+  const dur = Date.now() - new Date(flow.startTime).getTime();
+  flow.response.headers.push(["X-Server-Timing", "total;dur=" + dur]);
+  delete sharedState[flow.id];
+&#125;;</code></pre>
+
+  <h3>Pattern 3: Rule Rate Limit + Script Cache Fallback</h3>
+  <pre><code>// Rule
+&#123;"id":"rate-limit","stage":"RequestHeaders","priority":100,
+ "filter":&#123;"type":"All"&#125;,
+ "actions":[
+   &#123;"type":"RateLimit","config":&#123;"key":"&#123;&#123;ip&#125;&#125;","limit":100,"window_ms":60000&#125;&#125;,
+   &#123;"type":"SetVariable","config":&#123;"name":"limited","value":"1"&#125;&#125;]&#125;
+
+// Script
+sharedState._cache = sharedState._cache || &#123;&#125;;
+globalThis.onResponse = (ctx, flow) => &#123;
+  if (!flow.response || flow.response.status >= 300) return;
+  sharedState._cache[new URL(flow.request.url).pathname] = &#123;
+    status: flow.response.status, headers: flow.response.headers,
+    body: flow.response.body, cachedAt: Date.now() &#125;;
+&#125;;
+globalThis.onRequest = (ctx, flow) => &#123;
+  if (flow.rule_variables["limited"] !== "1") return;
+  const c = sharedState._cache[new URL(flow.request.url).pathname];
+  if (c && Date.now() - c.cachedAt < 300000) &#123;
+    return &#123; action: "respond", status: c.status,
+      headers: [...c.headers, ["X-Cache", "HIT"]],
+      body: c.body?.content || "" &#125;;
+  &#125;
+  return &#123; action: "respond", status: 429,
+    headers: [["content-type", "text/plain"]], body: "Rate limit exceeded" &#125;;
+&#125;;</code></pre>
+
+  <h3>Pattern 4: Script→Rule (1.x Roadmap)</h3>
+  <pre><code>// 1.x: script injects tag for subsequent rules to auto-block
+globalThis.onRequest = (ctx, flow) => &#123;
+  if (atob(flow.request.body?.content||"").includes("DROP TABLE")) &#123;
+    ctx.setTag("attack", "sqli");     // 1.x
+    ctx.setVariable("why", "SQLi");   // 1.x
+  &#125;
+&#125;;</code></pre>
+
+
   <h2>Debugging</h2>
   <h3>View Matched Rules</h3>
   <pre><code>// In a script
