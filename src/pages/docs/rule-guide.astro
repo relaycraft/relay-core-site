@@ -374,6 +374,7 @@ relay-core-cli rules validate rules.json</code></pre>
   <ul>
     <li><b>规则不生效</b>：检查 <code>"active": true</code> 和 stage 是否匹配流量阶段</li>
     <li><b>多个动作执行顺序</b>：actions 数组按顺序执行；若前一个动作是终端动作（MockResponse 等），后续动作不执行</li>
+    <li><b>Inspect 断点在 CLI 模式不工作</b>：CLI 没有桌面 UI 来展示拦截界面。Inspect 需要 Tauri（RelayCraft 桌面端）才能暂停流并等待用户操作。CLI 下 Inspect 是 no-op，不会暂停流量</li>
     <li><b>MapLocal 文件访问</b>：需配置 sandbox_root；未配置时发出 deprecation warning，1.1 起将拒绝执行</li>
     <li><b>body 较大时性能</b>：ResponseBody filter 需要缓存完整响应体；大文件建议用 Path filter 替代</li>
     <li><b>MapRemote 循环</b>：注意不要将流量转发回 RelayCore 自身代理端口</li>

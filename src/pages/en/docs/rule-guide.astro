@@ -316,6 +316,7 @@ globalThis.onResponse = (ctx, flow) => &#123;
   <h2>Common Issues</h2>
   <ul>
     <li><b>Rule not firing</b>: Check <code>"active": true</code> and that stage matches the traffic stage</li>
+    <li><b>Inspect/breakpoints not working in CLI</b>: The Inspect action requires a desktop UI (Tauri/RelayCraft) to display the interception dialog. In CLI mode, Inspect is a no-op — rules with Inspect actions will not pause traffic</li>
     <li><b>Action order</b>: Actions execute in array order; terminal actions (MockResponse etc.) prevent subsequent actions from running</li>
     <li><b>MapLocal file access</b>: Requires sandbox_root config; emits deprecation warning without it, will be enforced in 1.1</li>
     <li><b>Large body performance</b>: ResponseBody filter caches the full response; prefer Path filter for large files</li>
