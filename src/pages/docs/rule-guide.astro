@@ -236,6 +236,125 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li><b>Continue</b>：修改型规则（修改 header/body）、观测型规则（打 tag/设变量）通常应 Continue，允许多条规则叠加效果</li>
   </ul>
 
+  <h2>规则↔脚本联动</h2>
+  <p>RelayCore 独家——规则与脚本互感知，实现单一引擎无法完成的复杂逻辑。</p>
+  <h3>联动方向</h3>
+  <table>
+    <tr><th>方向</th><th>机制</th><th>1.0</th></tr>
+    <tr><td>规则→规则</td><td>SetVariable + Mustache</td><td>✅</td></tr>
+    <tr><td>规则→脚本</td><td>flow.matched_rules / rule_variables</td><td>✅</td></tr>
+    <tr><td>脚本→脚本</td><td>sharedState 同引擎实例</td><td>✅</td></tr>
+    <tr><td>脚本→规则</td><td>setTag / setVariable</td><td>1.x</td></tr>
+  </table>
+
+  <h3>场景 1：规则提取 → 脚本决策</h3>
+  <p>规则执行轻量级匹配并提取变量，脚本做复杂判断和处理：</p>
+  <pre><code>// ===== 规则 JSON =====
+[&#123;
+  "id": "extract-api-version",
+  "stage": "RequestHeaders",
+  "priority": 100, "termination": "Continue",
+  "filter": &#123; "type": "Path", "config": &#123; "mode": "Regex", "value": "/api/v(\d+)/" &#125;&#125;,
+  "actions": [&#123; "type": "SetVariable", "config": &#123; "name": "api_version", "value": "v1" &#125;&#125;]
+&#125;, &#123;
+  "id": "extract-auth-info",
+  "stage": "RequestHeaders",
+  "priority": 90, "termination": "Continue",
+  "filter": &#123; "type": "RequestHeader",
+    "config": &#123; "name": "Authorization", "value": &#123; "mode": "Contains", "value": "Bearer" &#125;&#125;&#125;,
+  "actions": [&#123; "type": "SetVariable", "config": &#123; "name": "auth_type", "value": "bearer" &#125;&#125;]
+&#125;]
+
+// ===== 脚本 =====
+globalThis.onRequest = (ctx, flow) => &#123;
+  const v = flow.rule_variables["api_version"];
+  const a = flow.rule_variables["auth_type"];
+  if (v === "v1" && a !== "bearer") &#123;
+    return &#123; action: "respond", status: 410,
+      headers: [["content-type", "text/plain"]],
+      body: "Deprecated. Use /api/v2/ with Bearer." &#125;;
+  &#125;
+  if (v === "v2") &#123;
+    const key = flow.network.client_ip + ":v2";
+    sharedState._c = sharedState._c || &#123;&#125;;
+    sharedState._c[key] = (sharedState._c[key] || 0) + 1;
+    flow.request.headers.push(["X-Rate-Count", String(sharedState._c[key])]);
+  &#125;
+&#125;;</code></pre>
+
+  <h3>场景 2：规则打标记 → 脚本继承</h3>
+  <p>规则在 RequestHeaders 阶段打 Tag 和 SetVariable，脚本在 Response 阶段读取并追加性能头：</p>
+  <pre><code>// ===== 规则 =====
+&#123;
+  "id": "tag-slow", "stage": "RequestHeaders", "priority": 50,
+  "filter": &#123; "type": "Or", "config": [
+    &#123; "type": "Path", "config": &#123; "mode": "Contains", "value": "/report" &#125;&#125;,
+    &#123; "type": "Path", "config": &#123; "mode": "Contains", "value": "/export" &#125;&#125;
+  ]&#125;,
+  "actions": [
+    &#123; "type": "Tag", "config": &#123; "key": "type", "value": "slow" &#125;&#125;,
+    &#123; "type": "SetVariable", "config": &#123; "name": "trace", "value": "1" &#125;&#125;
+  ]
+&#125;
+
+// ===== 脚本 =====
+globalThis.onResponse = (ctx, flow) => &#123;
+  if (!flow.matched_rules.includes("tag-slow")) return;
+  if (!flow.response) return;
+  const dur = Date.now() - new Date(flow.startTime).getTime();
+  flow.response.headers.push(["X-Server-Timing", "total;dur=" + dur]);
+  delete sharedState[flow.id];
+&#125;;</code></pre>
+
+  <h3>场景 3：规则限速 + 脚本智能降级</h3>
+  <p>规则触发限速后，脚本不直接返回 429，而是优先从 sharedState 返回缓存响应：</p>
+  <pre><code>// ===== 规则 =====
+&#123;
+  "id": "rate-limit", "stage": "RequestHeaders", "priority": 100,
+  "filter": &#123; "type": "All" &#125;,
+  "actions": [
+    &#123; "type": "RateLimit",
+      "config": &#123; "key": "&#123;&#123;ip&#125;&#125;", "limit": 100, "window_ms": 60000 &#125;&#125;,
+    &#123; "type": "SetVariable",
+      "config": &#123; "name": "limited", "value": "1" &#125;&#125;
+  ]
+&#125;
+
+// ===== 脚本 =====
+sharedState._cache = sharedState._cache || &#123;&#125;;
+globalThis.onResponse = (ctx, flow) => &#123;
+  if (!flow.response || flow.response.status >= 300) return;
+  const path = new URL(flow.request.url).pathname;
+  sharedState._cache[path] = &#123;
+    status: flow.response.status, headers: flow.response.headers,
+    body: flow.response.body, cachedAt: Date.now() &#125;;
+&#125;;
+globalThis.onRequest = (ctx, flow) => &#123;
+  if (flow.rule_variables["limited"] !== "1") return;
+  const path = new URL(flow.request.url).pathname;
+  const c = sharedState._cache[path];
+  if (c && Date.now() - c.cachedAt < 300000) &#123;
+    return &#123; action: "respond", status: c.status,
+      headers: [...c.headers, ["X-Cache", "HIT"]],
+      body: c.body?.content || "" &#125;;
+  &#125;
+  return &#123; action: "respond", status: 429,
+    headers: [["content-type", "text/plain"]],
+    body: "Rate limit exceeded" &#125;;
+&#125;;</code></pre>
+
+  <h3>场景 4：脚本→规则（1.x 路线图）</h3>
+  <p>当前 Script → Rule 方向（ctx.setTag / ctx.setVariable）已降级 1.x，未来可实现：</p>
+  <pre><code>// 1.x 愿景
+globalThis.onRequest = (ctx, flow) => &#123;
+  const body = atob(flow.request.body?.content || "");
+  if (body.includes("DROP TABLE")) &#123;
+    ctx.setTag("attack", "sqli");      // 1.x
+    ctx.setVariable("why", "SQLi");    // 1.x
+  &#125;
+&#125;;
+// 后续规则匹配脚本标记并自动 Drop</code></pre>
+
   <h2>调试技巧</h2>
   <h3>查看命中规则</h3>
   <pre><code># 在脚本中查看
