@@ -2,132 +2,241 @@
 import DocsLayout from '../../layouts/DocsLayout.astro';
 ---
 
-<DocsLayout title="脚本" description="用于动态流量修改的 Deno/V8 脚本">
-  <h1>脚本</h1>
+<DocsLayout title="脚本 API 参考" description="RelayCore Deno/V8 脚本引擎完整 API 参考">
+  <h1>脚本 API 参考</h1>
 
-  <p>RelayCore 包含一个 Deno/V8 运行时，用于使用 JavaScript 或 TypeScript 动态修改请求和响应。</p>
+  <p>RelayCore 内嵌 Deno/V8 运行时，通过 <code>globalThis</code> 全局钩子函数拦截和修改流量。脚本引擎支持 JavaScript 和 TypeScript。</p>
 
-  <h2>概述</h2>
-  <p>脚本可以在各个阶段拦截和修改流量：</p>
-  <ul>
-    <li><code>onRequest</code> — 在请求被转发之前</li>
-    <li><code>onResponse</code> — 在响应被接收之后</li>
-    <li><code>onWebSocket</code> — 用于 WebSocket 消息</li>
-  </ul>
+  <h2>生命周期钩子</h2>
+  <p>脚本通过定义 <code>globalThis</code> 上的命名函数注册钩子。RelayCore 1.0 提供 11 个钩子，覆盖 HTTP、WebSocket 和连接生命周期：</p>
 
-  <h2>基本脚本</h2>
-  <pre><code>import &#123; Flow, FlowAction &#125; from "relay:script";
-
-async function onRequest(flow: Flow): Promise&lt;FlowAction&gt; &#123;
-  console.log(`Request: $&#123;flow.method&#125; $&#123;flow.url&#125;`);
-
-  // 添加自定义 header
-  flow.request.headers["X-Script-Ran"] = "true";
-
-  // 记录并继续
-  return FlowAction.Continue;
-&#125;
-
-async function onResponse(flow: Flow): Promise&lt;FlowAction&gt; &#123;
-  console.log(`Response: $&#123;flow.status&#125; for $&#123;flow.url&#125;`);
-
-  // 为特定 URL 返回模拟响应
-  if (flow.path === "/api/mocked") &#123;
-    return FlowAction.Mock(&#123;
-      status: 200,
-      headers: &#123; "content-type": "application/json" &#125;,
-      body: JSON.stringify(&#123; mocked: true &#125;),
-    &#125;);
-  &#125;
-
-  return FlowAction.Continue;
-&#125;</code></pre>
+  <table>
+    <tr><th>钩子</th><th>触发时机</th><th>签名</th></tr>
+    <tr><td><code>onRequestHeaders</code></td><td>请求头接收后</td><td><code>(ctx, flow) => flow | undefined</code></td></tr>
+    <tr><td><code>onRequest</code></td><td>请求体就绪后，转发前</td><td><code>(ctx, flow, body) => action</code></td></tr>
+    <tr><td><code>onResponseHeaders</code></td><td>响应头接收后</td><td><code>(ctx, flow) => flow | undefined</code></td></tr>
+    <tr><td><code>onResponse</code></td><td>响应体就绪后</td><td><code>(ctx, flow, body) => action</code></td></tr>
+    <tr><td><code>onWebSocketMessage</code></td><td>WebSocket 帧到达</td><td><code>(ctx, flow, message) => message | undefined</code></td></tr>
+    <tr><td><code>onWebSocketStart</code></td><td>WebSocket 握手完成</td><td><code>(ctx, flow) => void</code></td></tr>
+    <tr><td><code>onWebSocketEnd</code></td><td>WebSocket 正常关闭</td><td><code>(ctx, flow, code, reason) => void</code></td></tr>
+    <tr><td><code>onWebSocketError</code></td><td>WebSocket 协议/IO 错误</td><td><code>(ctx, flow, error) => void</code></td></tr>
+    <tr><td><code>onConnect</code></td><td>客户端建立 TCP 连接</td><td><code>(ctx, conn) => &#123;drop:true&#125; | undefined</code></td></tr>
+    <tr><td><code>onDisconnect</code></td><td>连接关闭</td><td><code>(ctx, conn, stats) => void</code></td></tr>
+    <tr><td><code>onError</code></td><td>任何钩子抛错时</td><td><code>(ctx, flow, error, stage) => void</code></td></tr>
+  </table>
 
   <h2>Flow 对象</h2>
-  <pre><code>interface Flow &#123;
-  id: string;
-  timestamp: Date;
-  method: string;
-  url: string;
-  host: string;
-  path: string;
-  protocol: string;
-  status?: number;
+  <p>每个钩子收到的 <code>flow</code> 参数包含当前流的完整信息：</p>
+
+  <pre><code>// Flow 结构（脚本侧视角）
+&#123;
+  id: string,           // UUID
+  startTime: string,    // ISO 8601
+  tags: string[],       // 标签列表
+
+  network: &#123;
+    client_ip: string,
+    server_ip: string,
+    protocol: "TCP" | "UDP",
+    tls: boolean,
+    sni: string | null,
+  &#125;,
 
   request: &#123;
-    headers: Record&lt;string, string&gt;;
-    body?: Uint8Array;
-    bodyText?: string;
-    bodyJson?: unknown;
-  &#125;;
+    method: string,
+    url: string,        // 完整 URL
+    version: string,    // "HTTP/1.1" | "HTTP/2.0"
+    headers: [string, string][],
+    body: &#123;
+      encoding: string,
+      size: number,
+      content: string,  // base64 编码
+    &#125; | null,
+    cookies: [string, string][],
+  &#125;,
 
-  response?: &#123;
-    headers: Record&lt;string, string&gt;;
-    body?: Uint8Array;
-    bodyText?: string;
-    bodyJson?: unknown;
-  &#125;;
+  response: &#123;
+    status: number,
+    statusText: string,
+    version: string,
+    headers: [string, string][],
+    body: &#123; encoding, size, content &#125; | null,
+    cookies: [string, string][],
+  &#125; | null,
 
-  duration_ms: number;
-  size: number;
+  // 规则桥接（RelayCore 独家）
+  matched_rules: string[],       // 命中的规则 ID 列表
+  rule_variables: Record<string, string>,  // SetVariable 设置的变量
 &#125;</code></pre>
 
-  <h2>FlowAction</h2>
-  <pre><code>enum FlowAction &#123;
-  Continue = "continue",      // 正常继续
-  Drop = "drop",              // 丢弃流量
-  Mock = "mock",              // 返回模拟响应
-  Intercept = "intercept",    // 暂停以供检查
-  Redirect = "redirect",      // 重定向到 URL
+  <h2>内置工具库 <code>relay.*</code></h2>
+  <p>全局对象 <code>relay</code> 提供常用工具函数：</p>
+
+  <h3>relay.uuid()</h3>
+  <pre><code>const id = relay.uuid();  // "550e8400-e29b-41d4-a716-446655440000"</code></pre>
+
+  <h3>relay.hash(algorithm, data)</h3>
+  <pre><code>const sha = relay.hash("sha256", "hello");
+// 支持: sha1, sha256, sha512, md5
+// 返回 hex 字符串</code></pre>
+
+  <h3>relay.base64.encode / relay.base64.decode</h3>
+  <pre><code>const b64 = relay.base64.encode("hello world");   // "aGVsbG8gd29ybGQ="
+const raw = relay.base64.decode(b64);              // Uint8Array</code></pre>
+
+  <h3>relay.json.parseSafe / relay.json.stringifyPretty</h3>
+  <pre><code>const obj = relay.json.parseSafe('&#123;"a":1&#125;');      // &#123;a:1&#125; 或 undefined
+const txt = relay.json.stringifyPretty(obj);          // 2 空格缩进</code></pre>
+
+  <h3>relay.env(name)</h3>
+  <p>读取白名单内的环境变量，需 CLI 参数 <code>--script-env-allow</code> 显式声明：</p>
+  <pre><code>// CLI: relay-core run --script-env-allow=BACKEND_HOST
+const host = relay.env("BACKEND_HOST");  // "api.example.com"
+const miss = relay.env("SECRET");        // undefined（未在白名单）</code></pre>
+
+  <h3>relay.fetch(url, options?)</h3>
+  <p>发起受控 HTTP 子请求。默认关闭，需 <code>--enable-script-fetch</code> 显式开启。</p>
+  <pre><code>const resp = await relay.fetch("http://auth.internal/verify", &#123;
+  method: "POST",
+  headers: &#123; "Authorization": flow.request.headers.find(h => h[0]==="authorization")?.[1] &#125;,
+  body: JSON.stringify(&#123; flow_id: flow.id &#125;),
+  timeout_ms: 2000,
+&#125;);
+// resp: &#123; status, headers, body &#125;
+if (resp.status !== 200) &#123;
+  throw new Error("Auth failed");
 &#125;</code></pre>
+  <table>
+    <tr><th>安全控制</th><th>说明</th></tr>
+    <tr><td>默认关闭</td><td>必须传 <code>--enable-script-fetch</code></td></tr>
+    <tr><td>白名单</td><td><code>--script-fetch-allow=host1,host2</code></td></tr>
+    <tr><td>防递归</td><td>fetch 自身代理端口会被拒绝</td></tr>
+    <tr><td>并发上限</td><td><code>--script-fetch-max-concurrency=8</code></td></tr>
+    <tr><td>超时上限</td><td>硬上限 30s</td></tr>
+    <tr><td>审计</td><td>每次 fetch 进入 Audit Trail</td></tr>
+  </table>
 
-  <h2>高级示例</h2>
-  <pre><code>import &#123; Flow, FlowAction &#125; from "relay:script";
+  <h3>relay.readBody(flow)</h3>
+  <pre><code>const body = await relay.readBody(flow);
+// 对于流式 body，返回累积内容</code></pre>
 
-// 用于测试的模拟 API 响应
-const mocks = new Map([
-  ["/api/users", &#123; users: [&#123; id: 1, name: "Alice" &#125;] &#125;],
-  ["/api/products", &#123; products: [&#123; id: 1, name: "Widget" &#125;] &#125;],
-]);
+  <h2>全局状态 <code>sharedState</code></h2>
+  <p><code>globalThis.sharedState</code> 是同一引擎实例内所有钩子共享的键值存储：</p>
+  <pre><code>// 在 onRequest 中存储
+globalThis.onRequest = (ctx, flow) => &#123;
+  sharedState[flow.id] = &#123; start: Date.now() &#125;;
+&#125;;
 
-async function onRequest(flow: Flow): Promise&lt;FlowAction&gt; &#123;
-  // 如果缺少则注入 auth token
-  if (flow.path.startsWith("/api/") &amp;&amp; !flow.request.headers["authorization"]) &#123;
-    flow.request.headers["authorization"] = "Bearer test-token-123";
+// 在 onResponse 中读取
+globalThis.onResponse = (ctx, flow) => &#123;
+  const meta = sharedState[flow.id];
+  if (meta) &#123;
+    console.log(`Flow $&#123;#36;&#123;flow.id&#125; took $&#123;#36;&#123;Date.now() - meta.start&#125;ms`);
+    delete sharedState[flow.id];  // 及时清理防泄漏
   &#125;
-  return FlowAction.Continue;
-&#125;
+&#125;;</code></pre>
 
-async function onResponse(flow: Flow): Promise&lt;FlowAction&gt; &#123;
-  if (flow.response &amp;&amp; flow.response.bodyJson) &#123;
-    // 记录所有 API 响应
-    console.log(`API Response for $&#123;flow.path&#125;:`, flow.response.bodyJson);
+  <h2>日志分级 <code>console.*</code></h2>
+  <p>脚本中 5 级日志分别映射到 Rust 的 <code>tracing</code>：</p>
+  <pre><code>console.log("请求到达");     // tracing::info!    — 运行时可见
+console.info("状态正常");     // tracing::info!
+console.warn("限速触发");     // tracing::warn!    — 需关注
+console.error("鉴权失败");    // tracing::error!   — 必定可见
+console.debug("变量值: " + x); // tracing::debug!  — RUST_LOG=debug 才可见</code></pre>
 
-    // 向响应注入元数据
-    if (Array.isArray(flow.response.bodyJson)) &#123;
-      flow.response.bodyJson._meta = &#123;
-        mocked: true,
-        timestamp: new Date().toISOString(),
-      &#125;;
-    &#125;
+  <h2>连接级钩子</h2>
+  <pre><code>// 连接过滤 — onConnect 返回 &#123;drop:true&#125; 直接拒绝连接
+globalThis.onConnect = (ctx, conn) => &#123;
+  // conn: &#123; id, client_ip, client_port &#125;
+  if (conn.client_ip.startsWith("192.168.1.")) &#123;
+    return &#123; drop: true &#125;;
   &#125;
-  return FlowAction.Continue;
-&#125;</code></pre>
+&#125;;
 
-  <h2>加载脚本</h2>
-  <pre><code># 加载脚本
-relay-core-cli scripts load ./path/to/script.ts
+// 连接统计
+globalThis.onDisconnect = (ctx, conn, stats) => &#123;
+  // stats: &#123; duration_ms, flows_count &#125;
+  console.log(`Connection $&#123;#36;&#123;conn.id&#125;: $&#123;#36;&#123;stats.flows_count&#125; flows`);
+&#125;;</code></pre>
 
-# 列出已加载的脚本
-relay-core-cli scripts list
+  <h2>WebSocket 生命周期</h2>
+  <pre><code>globalThis.onWebSocketStart = (ctx, flow) => &#123;
+  console.log(`WS opened: $&#123;#36;&#123;flow.request.url&#125;`);
+&#125;;
 
-# 卸载脚本
-relay-core-cli scripts unload my-script</code></pre>
+globalThis.onWebSocketEnd = (ctx, flow, code, reason) => &#123;
+  console.log(`WS closed: $&#123;#36;&#123;code&#125; $&#123;#36;&#123;reason&#125;`);
+&#125;;
 
-  <h2>脚本配置</h2>
-  <pre><code># 在 config.toml 中
-[scripting]
-enabled = true
-deno_dir = "~/.relay-core/deno"
-auto_reload = true</code></pre>
+globalThis.onWebSocketError = (ctx, flow, error) => &#123;
+  console.error(`WS error: $&#123;#36;&#123;error&#125;`);
+&#125;;</code></pre>
+
+  <h2>规则桥接</h2>
+  <p>RelayCore 独家能力——脚本可以感知规则引擎的执行结果：</p>
+  <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
+  // 读取命中的规则
+  if (flow.matched_rules.includes("rule-block-tracking")) &#123;
+    flow.response.headers.push(["X-Blocked-By", "RelayCore"]);
+  &#125;
+
+  // 读取规则引擎 SetVariable 设置的变量
+  const count = flow.rule_variables["rate_limit_count"];
+  if (count && parseInt(count) > 100) &#123;
+    console.warn(`Rate limit exceeded: $&#123;#36;&#123;count&#125;`);
+  &#125;
+&#125;;</code></pre>
+
+  <h2>脚本管理与部署</h2>
+
+  <h3>CLI 命令</h3>
+  <pre><code># 通过 HTTP API 加载脚本
+curl -X POST http://127.0.0.1:18082/api/v1/script \
+  -H "Content-Type: application/json" \
+  -d '&#123;"name": "my-script", "source": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.request.url); &#125;"&#125;'
+
+# MCP 工具（通过 AI Agent）
+mcp: relay-core set_script --name my-script --source ./script.ts
+
+# Bundle 模式：使用 npm 包
+relay-core scripts init my-project      # 脚手架
+cd my-project && npm install jwt-decode  # 安装依赖
+relay-core scripts build                 # esbuild 打包
+relay-core scripts dev                   # build + 热上传 + watch</code></pre>
+
+  <h3>Bundle 模式与 npm 生态</h3>
+  <p>RelayCore 的 V8 isolate 不内置 npm 解析器。要通过 esbuild 将脚本和依赖打包为单文件：</p>
+  <pre><code>// src/main.ts — 正常 import npm 包
+import jwtDecode from "jwt-decode";
+import &#123; XMLParser &#125; from "fast-xml-parser";
+
+globalThis.onRequest = (ctx, flow) => &#123;
+  const auth = flow.request.headers.find(h => h[0] === "authorization");
+  if (auth) &#123;
+    const payload = jwtDecode(auth[1]);
+    console.log("JWT subject:", payload.sub);
+  &#125;
+&#125;;
+
+// relay-core scripts build → dist/bundle.js（单文件 IIFE）
+// 直接加载 bundle.js 即可</code></pre>
+
+  <h3>配置</h3>
+  <pre><code># config.toml
+[script]
+enable_fetch = true
+fetch_allow = ["auth.internal", "api.example.com"]
+fetch_timeout_ms = 3000
+fetch_max_concurrency = 8</code></pre>
+
+  <h2>可观测性</h2>
+  <p>脚本执行指标自动上报到 Prometheus：</p>
+  <table>
+    <tr><th>指标</th><th>说明</th></tr>
+    <tr><td><code>script_hook_duration_us&#123;hook&#125;</code></td><td>单次钩子执行耗时（直方图）</td></tr>
+    <tr><td><code>script_hook_invocations_total&#123;hook&#125;</code></td><td>钩子累计调用次数</td></tr>
+    <tr><td><code>script_hook_errors_total&#123;hook&#125;</code></td><td>钩子累计错误次数</td></tr>
+    <tr><td><code>script_fetch_total&#123;target,status&#125;</code></td><td>fetch 调用计数</td></tr>
+    <tr><td><code>script_env_access_total&#123;key&#125;</code></td><td>env 访问计数（不记录值）</td></tr>
+  </table>
 </DocsLayout>

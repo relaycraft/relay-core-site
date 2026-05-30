@@ -1,0 +1,99 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="vs mitmproxy" description="Detailed comparison of RelayCore scripting vs mitmproxy">
+  <h1>vs mitmproxy</h1>
+
+  <p>RelayCore's scripting engine is designed to replace mitmproxy's script system for <strong>core daily workflows</strong>, while providing differentiated capabilities no competitor offers.</p>
+
+  <h2>Capability Matrix</h2>
+
+  <table>
+    <tr><th>Capability</th><th>RelayCore 1.0</th><th>mitmproxy</th><th>Notes</th></tr>
+    <tr><td>HTTP request/response hooks</td><td>✅ 4 hooks</td><td>✅ 4 hooks</td><td>Feature parity</td></tr>
+    <tr><td>WebSocket message frames</td><td>✅</td><td>✅</td><td>Feature parity</td></tr>
+    <tr><td>WebSocket lifecycle</td><td>✅ start/end/error</td><td>✅</td><td>Feature parity</td></tr>
+    <tr><td>Connection hooks</td><td>✅ onConnect/onDisconnect</td><td>✅ clientconnect/clientdisconnect</td><td>RelayCore adds drop support</td></tr>
+    <tr><td>Error callback</td><td>✅ onError</td><td>✅ error</td><td>RelayCore includes stage info</td></tr>
+    <tr><td>Cross-request state</td><td>✅ sharedState</td><td>✅ Python globals</td><td>Different model: per-isolate vs process-global</td></tr>
+    <tr><td>Env variable access</td><td>✅ relay.env + whitelist</td><td>✅ os.environ</td><td>RelayCore is more secure (whitelist)</td></tr>
+    <tr><td>Graded logging</td><td>✅ 5 levels → tracing</td><td>✅ logging module</td><td>Feature parity</td></tr>
+    <tr><td>Execution metrics</td><td>✅ Prometheus native</td><td>✅ addon trace</td><td>RelayCore integrates directly with monitoring</td></tr>
+    <tr><td>Built-in tools (uuid/hash/base64/json)</td><td>✅ relay.* global</td><td>✅ Python stdlib</td><td>Python has this naturally</td></tr>
+    <tr><td>Sub-requests (fetch)</td><td>✅ relay.fetch + safety controls</td><td>✅ requests/httpx</td><td>mitmproxy has richer HTTP client</td></tr>
+    <tr><td>Rule→script awareness</td><td>✅ matched_rules + rule_variables</td><td>❌ None</td><td><strong>RelayCore exclusive</strong></td></tr>
+    <tr><td>npm packages</td><td>✅ Bundle mode (esbuild)</td><td>✅ pip install</td><td>mitmproxy experience is more natural</td></tr>
+  </table>
+
+  <h2>What mitmproxy has that RelayCore 1.0 doesn't</h2>
+
+  <table>
+    <tr><th>Capability</th><th>Importance</th><th>Reason for 1.0 exclusion</th></tr>
+    <tr><td>DNS/TCP/UDP layer hooks</td><td>Medium</td><td>Transparent proxy app-layer MITM is 1.x scope</td></tr>
+    <tr><td>TLS clienthello hook</td><td>Low</td><td>SNI filtering achievable via rule engine</td></tr>
+    <tr><td>Streaming body chunk modification</td><td>Medium</td><td>High engineering cost; 1.0 provides full body replacement</td></tr>
+    <tr><td>Built-in Mock Server</td><td>Low</td><td>Achievable via onRequest mock responses</td></tr>
+    <tr><td>@command system</td><td>Low</td><td>CLI subcommands + TUI cover primary use cases</td></tr>
+    <tr><td>Structured error stack / source map</td><td>Low</td><td>onError + console.* + Prometheus provide basic debugging</td></tr>
+  </table>
+
+  <h2>What RelayCore has that mitmproxy doesn't</h2>
+
+  <table>
+    <tr><th>Capability</th><th>Value</th></tr>
+    <tr><td><strong>Rule↔Script dual engine</strong></td><td>Scripts can observe rule execution context — a unique RelayCore differentiator</td></tr>
+    <tr><td><strong>Prometheus-native metrics</strong></td><td>Script performance flows directly into monitoring, zero extra integration</td></tr>
+    <tr><td><strong>Secure defaults</strong></td><td>relay.env whitelist, relay.fetch disabled-by-default + allowlist + anti-recursion + audit — external access is fully controlled</td></tr>
+    <tr><td><strong>Multi-host uniform</strong></td><td>Same script runs identically across CLI / HTTP API / MCP / Tauri</td></tr>
+  </table>
+
+  <h2>Migration Guide</h2>
+
+  <h3>From mitmproxy Python scripts</h3>
+  <pre><code># mitmproxy
+def request(flow):
+    flow.request.headers["X-Custom"] = "value"
+
+# RelayCore
+globalThis.onRequestHeaders = (ctx, flow) => &#123;
+  flow.request.headers.push(["X-Custom", "value"]);
+  return flow;
+&#125;;</code></pre>
+
+  <pre><code># mitmproxy
+def response(flow):
+    if flow.response.status_code == 404:
+        flow.response = http.Response.make(200, b"OK", &#123;"Content-Type": "text/plain"&#125;)
+
+# RelayCore
+globalThis.onResponse = (ctx, flow) => &#123;
+  if (flow.response?.status === 404) &#123;
+    return &#123;
+      action: "respond",
+      status: 200,
+      headers: [["content-type", "text/plain"]],
+      body: "OK",
+    &#125;;
+  &#125;
+&#125;;</code></pre>
+
+  <h3>Key Differences</h3>
+  <ul>
+    <li><strong>Headers format</strong>: mitmproxy uses <code>dict</code>, RelayCore uses <code>[key, value][]</code> arrays (preserving duplicate headers)</li>
+    <li><strong>Body encoding</strong>: RelayCore body.content is base64 — decode with <code>atob()</code>, modify, then <code>btoa()</code> to write back</li>
+    <li><strong>Global state</strong>: mitmproxy Python globals are process-wide; RelayCore sharedState is per-isolate, but same flow = same engine guaranteed</li>
+    <li><strong>Return semantics</strong>: onRequestHeaders/onResponseHeaders return modified flow; onRequest/onResponse can return &#123;action: "respond"&#125; to terminate proxying</li>
+  </ul>
+
+  <h2>When to Choose Which</h2>
+  <table>
+    <tr><th>Scenario</th><th>Recommendation</th><th>Reason</th></tr>
+    <tr><td>Daily HTTP API debugging</td><td>Either</td><td>Feature parity</td></tr>
+    <tr><td>Rule + script coordination</td><td><strong>RelayCore</strong></td><td>Exclusive rule↔script bridge</td></tr>
+    <tr><td>Transparent proxy TCP/UDP scripting</td><td>mitmproxy</td><td>RelayCore 1.0 doesn't support</td></tr>
+    <tr><td>Heavy Python ecosystem dependency</td><td>mitmproxy</td><td>Native Python pip ecosystem</td></tr>
+    <tr><td>Embedded / desktop integration</td><td><strong>RelayCore</strong></td><td>Tauri + CLI + MCP multi-host</td></tr>
+    <tr><td>Production controlled scripting</td><td><strong>RelayCore</strong></td><td>Secure defaults + Prometheus + audit</td></tr>
+  </table>
+</DocsLayout>

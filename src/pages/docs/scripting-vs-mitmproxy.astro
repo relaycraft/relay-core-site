@@ -1,0 +1,99 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="与 mitmproxy 对比" description="RelayCore 脚本能力与 mitmproxy 的详细对比">
+  <h1>与 mitmproxy 对比</h1>
+
+  <p>RelayCore 脚本引擎的设计目标是在 <strong>核心日常场景</strong> 下替代 mitmproxy 的脚本体系，同时提供竞品不具备的差异化能力。</p>
+
+  <h2>能力覆盖矩阵</h2>
+
+  <table>
+    <tr><th>能力</th><th>RelayCore 1.0</th><th>mitmproxy</th><th>备注</th></tr>
+    <tr><td>HTTP 请求/响应钩子</td><td>✅ 4 钩子</td><td>✅ 4 钩子</td><td>功能对等</td></tr>
+    <tr><td>WebSocket 消息帧</td><td>✅</td><td>✅</td><td>功能对等</td></tr>
+    <tr><td>WebSocket 生命周期</td><td>✅ start/end/error</td><td>✅</td><td>功能对等</td></tr>
+    <tr><td>连接级钩子</td><td>✅ onConnect/onDisconnect</td><td>✅ clientconnect/clientdisconnect</td><td>RelayCore 额外支持连接拒绝（drop）</td></tr>
+    <tr><td>错误回调</td><td>✅ onError</td><td>✅ error</td><td>RelayCore 含 stage 定位</td></tr>
+    <tr><td>跨请求状态共享</td><td>✅ sharedState</td><td>✅ Python 全局变量</td><td>不同模型：per-isolate vs 进程全局</td></tr>
+    <tr><td>环境变量访问</td><td>✅ relay.env + 白名单</td><td>✅ os.environ</td><td>RelayCore 更安全（白名单控制）</td></tr>
+    <tr><td>日志分级</td><td>✅ 5 级 → tracing</td><td>✅ logging 模块</td><td>功能对等</td></tr>
+    <tr><td>执行指标</td><td>✅ Prometheus 原生</td><td>✅ addon trace</td><td>RelayCore 直接接入监控体系</td></tr>
+    <tr><td>内置工具（uuid/hash/base64/json）</td><td>✅ relay.* 全局对象</td><td>✅ Python 标准库</td><td>RelayCore 手动提供；Python 语言天然</td></tr>
+    <tr><td>子请求（fetch）</td><td>✅ relay.fetch + 安全控制</td><td>✅ requests/httpx</td><td>mitmproxy 功能更全（全 HTTP method、重定向、cookie jar）</td></tr>
+    <tr><td>规则→脚本感知</td><td>✅ flow.matched_rules + flow.rule_variables</td><td>❌ 无</td><td><strong>RelayCore 独家</strong></td></tr>
+    <tr><td>npm 包使用</td><td>✅ Bundle 模式（esbuild）</td><td>✅ pip install</td><td>mitmproxy 体验更自然</td></tr>
+  </table>
+
+  <h2>mitmproxy 有而 RelayCore 1.0 没有的</h2>
+
+  <table>
+    <tr><th>能力</th><th>重要性</th><th>1.0 不做的理由</th></tr>
+    <tr><td>DNS/TCP/UDP 层钩子</td><td>中</td><td>透明代理应用层 MITM 不在 1.0 范围</td></tr>
+    <tr><td>TLS clienthello 钩子</td><td>低</td><td>SNI 过滤可通过规则引擎实现</td></tr>
+    <tr><td>流式 Body 内逐块修改</td><td>中</td><td>工程量大（需重构 body pipeline）；1.0 提供完整 body 替换</td></tr>
+    <tr><td>内嵌 Mock Server</td><td>低</td><td>可通过 onRequest 返回 mock 响应达到同等效果</td></tr>
+    <tr><td>自定义命令 @command</td><td>低</td><td>CLI 子命令 + TUI 交互已覆盖主要场景</td></tr>
+    <tr><td>结构化错误栈 / source map</td><td>低</td><td>onError + console.* + Prometheus 指标已提供基本调试能力</td></tr>
+  </table>
+
+  <h2>RelayCore 有而 mitmproxy 没有的</h2>
+
+  <table>
+    <tr><th>能力</th><th>价值</th></tr>
+    <tr><td><strong>规则↔脚本双引擎</strong></td><td>脚本可感知规则命中上下文（matched_rules / rule_variables），这是 RelayCore 独有的差异化能力</td></tr>
+    <tr><td><strong>Prometheus 原生指标</strong></td><td>脚本性能直接进入监控体系，无需额外集成</td></tr>
+    <tr><td><strong>安全默认值</strong></td><td>relay.env 白名单、relay.fetch 默认关闭+白名单+防递归+审计——脚本对外部系统的访问完全可控</td></tr>
+    <tr><td><strong>多宿主统一</strong></td><td>同一脚本在 CLI / HTTP API / MCP / Tauri 下一致运行</td></tr>
+  </table>
+
+  <h2>迁移指南</h2>
+
+  <h3>从 mitmproxy Python 脚本迁移</h3>
+  <pre><code># mitmproxy
+def request(flow):
+    flow.request.headers["X-Custom"] = "value"
+
+# RelayCore
+globalThis.onRequestHeaders = (ctx, flow) => &#123;
+  flow.request.headers.push(["X-Custom", "value"]);
+  return flow;
+&#125;;</code></pre>
+
+  <pre><code># mitmproxy
+def response(flow):
+    if flow.response.status_code == 404:
+        flow.response = http.Response.make(200, b"OK", &#123;"Content-Type": "text/plain"&#125;)
+
+# RelayCore
+globalThis.onResponse = (ctx, flow) => &#123;
+  if (flow.response?.status === 404) &#123;
+    return &#123;
+      action: "respond",
+      status: 200,
+      headers: [["content-type", "text/plain"]],
+      body: "OK",
+    &#125;;
+  &#125;
+&#125;;</code></pre>
+
+  <h3>关键差异</h3>
+  <ul>
+    <li><strong>headers 格式</strong>: mitmproxy 用 <code>dict</code>，RelayCore 用 <code>[key, value][]</code> 数组（保留重复 header）</li>
+    <li><strong>body 编码</strong>: RelayCore 的 body.content 是 base64 字符串，需 <code>atob()</code> 解码后处理，修改后 <code>btoa()</code> 写回</li>
+    <li><strong>全局状态</strong>: mitmproxy 的 Python 全局变量是进程级共享；RelayCore 的 sharedState 是 per-isolate，但同 flow 保证路同引擎</li>
+    <li><strong>返回语义</strong>: onRequestHeaders/onResponseHeaders 返回修改后的 flow（或不返回）；onRequest/onResponse 可返回 &#123;action: "respond"&#125; 来终止代理</li>
+  </ul>
+
+  <h2>选型建议</h2>
+  <table>
+    <tr><th>场景</th><th>推荐</th><th>理由</th></tr>
+    <tr><td>日常 HTTP API 抓包调试</td><td>任意</td><td>功能对等</td></tr>
+    <tr><td>需要规则+脚本联动</td><td><strong>RelayCore</strong></td><td>独家规则↔脚本桥接</td></tr>
+    <tr><td>透明代理 TCP/UDP 脚本</td><td>mitmproxy</td><td>RelayCore 1.0 不支持</td></tr>
+    <tr><td>Python 生态重度依赖</td><td>mitmproxy</td><td>原生 Python pip 生态</td></tr>
+    <tr><td>嵌入式 / 桌面应用集成</td><td><strong>RelayCore</strong></td><td>Tauri + CLI + MCP 多宿主</td></tr>
+    <tr><td>生产环境可控脚本</td><td><strong>RelayCore</strong></td><td>安全默认值 + Prometheus + 审计</td></tr>
+  </table>
+</DocsLayout>

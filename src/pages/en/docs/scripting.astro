@@ -2,132 +2,241 @@
 import DocsLayout from '../../../layouts/DocsLayout.astro';
 ---
 
-<DocsLayout title="Scripting" description="Deno/V8 scripting for dynamic traffic modification">
-  <h1>Scripting</h1>
+<DocsLayout title="Scripting API Reference" description="Complete API reference for RelayCore Deno/V8 scripting engine">
+  <h1>Scripting API Reference</h1>
 
-  <p>RelayCore includes a Deno/V8 runtime for dynamic request and response modification using JavaScript or TypeScript.</p>
+  <p>RelayCore embeds a Deno/V8 runtime for intercepting and modifying traffic via <code>globalThis</code> hook functions. The scripting engine supports both JavaScript and TypeScript.</p>
 
-  <h2>Overview</h2>
-  <p>Scripts can intercept and modify flows at various stages:</p>
-  <ul>
-    <li><code>onRequest</code> — Before the request is forwarded</li>
-    <li><code>onResponse</code> — After the response is received</li>
-    <li><code>onWebSocket</code> — For WebSocket messages</li>
-  </ul>
+  <h2>Lifecycle Hooks</h2>
+  <p>Scripts register hooks by defining named functions on <code>globalThis</code>. RelayCore 1.0 provides 11 hooks covering HTTP, WebSocket, and connection lifecycles:</p>
 
-  <h2>Basic Script</h2>
-  <pre><code>import &#123; Flow, FlowAction &#125; from "relay:script";
-
-async function onRequest(flow: Flow): Promise&lt;FlowAction&gt; &#123;
-  console.log(`Request: $&#123;flow.method&#125; $&#123;flow.url&#125;`);
-
-  // Add custom header
-  flow.request.headers["X-Script-Ran"] = "true";
-
-  // Log and continue
-  return FlowAction.Continue;
-&#125;
-
-async function onResponse(flow: Flow): Promise&lt;FlowAction&gt; &#123;
-  console.log(`Response: $&#123;flow.status&#125; for $&#123;flow.url&#125;`);
-
-  // Return mock response for specific URLs
-  if (flow.path === "/api/mocked") &#123;
-    return FlowAction.Mock(&#123;
-      status: 200,
-      headers: &#123; "content-type": "application/json" &#125;,
-      body: JSON.stringify(&#123; mocked: true &#125;),
-    &#125;);
-  &#125;
-
-  return FlowAction.Continue;
-&#125;</code></pre>
+  <table>
+    <tr><th>Hook</th><th>Trigger</th><th>Signature</th></tr>
+    <tr><td><code>onRequestHeaders</code></td><td>After request headers received</td><td><code>(ctx, flow) => flow | undefined</code></td></tr>
+    <tr><td><code>onRequest</code></td><td>Request body ready, before forward</td><td><code>(ctx, flow, body) => action</code></td></tr>
+    <tr><td><code>onResponseHeaders</code></td><td>After response headers received</td><td><code>(ctx, flow) => flow | undefined</code></td></tr>
+    <tr><td><code>onResponse</code></td><td>Response body ready</td><td><code>(ctx, flow, body) => action</code></td></tr>
+    <tr><td><code>onWebSocketMessage</code></td><td>WebSocket frame received</td><td><code>(ctx, flow, message) => message | undefined</code></td></tr>
+    <tr><td><code>onWebSocketStart</code></td><td>WebSocket handshake complete</td><td><code>(ctx, flow) => void</code></td></tr>
+    <tr><td><code>onWebSocketEnd</code></td><td>WebSocket normal close</td><td><code>(ctx, flow, code, reason) => void</code></td></tr>
+    <tr><td><code>onWebSocketError</code></td><td>WebSocket protocol/IO error</td><td><code>(ctx, flow, error) => void</code></td></tr>
+    <tr><td><code>onConnect</code></td><td>Client TCP connection established</td><td><code>(ctx, conn) => &#123;drop:true&#125; | undefined</code></td></tr>
+    <tr><td><code>onDisconnect</code></td><td>Connection closed</td><td><code>(ctx, conn, stats) => void</code></td></tr>
+    <tr><td><code>onError</code></td><td>Any hook throws an error</td><td><code>(ctx, flow, error, stage) => void</code></td></tr>
+  </table>
 
   <h2>Flow Object</h2>
-  <pre><code>interface Flow &#123;
-  id: string;
-  timestamp: Date;
-  method: string;
-  url: string;
-  host: string;
-  path: string;
-  protocol: string;
-  status?: number;
+  <p>The <code>flow</code> parameter contains the complete state of the current flow:</p>
+
+  <pre><code>// Flow structure (script-side view)
+&#123;
+  id: string,           // UUID
+  startTime: string,    // ISO 8601
+  tags: string[],
+
+  network: &#123;
+    client_ip: string,
+    server_ip: string,
+    protocol: "TCP" | "UDP",
+    tls: boolean,
+    sni: string | null,
+  &#125;,
 
   request: &#123;
-    headers: Record&lt;string, string&gt;;
-    body?: Uint8Array;
-    bodyText?: string;
-    bodyJson?: unknown;
-  &#125;;
+    method: string,
+    url: string,        // Full URL
+    version: string,    // "HTTP/1.1" | "HTTP/2.0"
+    headers: [string, string][],
+    body: &#123;
+      encoding: string,
+      size: number,
+      content: string,  // base64 encoded
+    &#125; | null,
+    cookies: [string, string][],
+  &#125;,
 
-  response?: &#123;
-    headers: Record&lt;string, string&gt;;
-    body?: Uint8Array;
-    bodyText?: string;
-    bodyJson?: unknown;
-  &#125;;
+  response: &#123;
+    status: number,
+    statusText: string,
+    version: string,
+    headers: [string, string][],
+    body: &#123; encoding, size, content &#125; | null,
+    cookies: [string, string][],
+  &#125; | null,
 
-  duration_ms: number;
-  size: number;
+  // Rule bridge (RelayCore exclusive)
+  matched_rules: string[],              // Rule IDs that matched
+  rule_variables: Record<string, string>, // Variables set by SetVariable action
 &#125;</code></pre>
 
-  <h2>FlowAction</h2>
-  <pre><code>enum FlowAction &#123;
-  Continue = "continue",      // Proceed normally
-  Drop = "drop",              // Drop the flow
-  Mock = "mock",              // Return mock response
-  Intercept = "intercept",    // Pause for inspection
-  Redirect = "redirect",      // Redirect to URL
+  <h2>Built-in Utilities <code>relay.*</code></h2>
+  <p>The global <code>relay</code> object provides commonly needed utility functions:</p>
+
+  <h3>relay.uuid()</h3>
+  <pre><code>const id = relay.uuid();  // "550e8400-e29b-41d4-a716-446655440000"</code></pre>
+
+  <h3>relay.hash(algorithm, data)</h3>
+  <pre><code>const sha = relay.hash("sha256", "hello");
+// Supported: sha1, sha256, sha512, md5
+// Returns hex string</code></pre>
+
+  <h3>relay.base64.encode / relay.base64.decode</h3>
+  <pre><code>const b64 = relay.base64.encode("hello world");   // "aGVsbG8gd29ybGQ="
+const raw = relay.base64.decode(b64);              // Uint8Array</code></pre>
+
+  <h3>relay.json.parseSafe / relay.json.stringifyPretty</h3>
+  <pre><code>const obj = relay.json.parseSafe('&#123;"a":1&#125;');      // &#123;a:1&#125; or undefined
+const txt = relay.json.stringifyPretty(obj);          // 2-space indent</code></pre>
+
+  <h3>relay.env(name)</h3>
+  <p>Reads whitelisted environment variables. Requires <code>--script-env-allow</code> CLI flag:</p>
+  <pre><code>// CLI: relay-core run --script-env-allow=BACKEND_HOST
+const host = relay.env("BACKEND_HOST");  // "api.example.com"
+const miss = relay.env("SECRET");        // undefined (not whitelisted)</code></pre>
+
+  <h3>relay.fetch(url, options?)</h3>
+  <p>Make controlled outbound HTTP sub-requests. Disabled by default; requires <code>--enable-script-fetch</code>.</p>
+  <pre><code>const resp = await relay.fetch("http://auth.internal/verify", &#123;
+  method: "POST",
+  headers: &#123; "Authorization": flow.request.headers.find(h => h[0]==="authorization")?.[1] &#125;,
+  body: JSON.stringify(&#123; flow_id: flow.id &#125;),
+  timeout_ms: 2000,
+&#125;);
+// resp: &#123; status, headers, body &#125;
+if (resp.status !== 200) &#123;
+  throw new Error("Auth failed");
 &#125;</code></pre>
+  <table>
+    <tr><th>Control</th><th>Description</th></tr>
+    <tr><td>Disabled by default</td><td>Must pass <code>--enable-script-fetch</code></td></tr>
+    <tr><td>Allowlist</td><td><code>--script-fetch-allow=host1,host2</code></td></tr>
+    <tr><td>Anti-recursion</td><td>Fetching own proxy port is rejected</td></tr>
+    <tr><td>Concurrency cap</td><td><code>--script-fetch-max-concurrency=8</code></td></tr>
+    <tr><td>Timeout cap</td><td>Hard limit 30s</td></tr>
+    <tr><td>Audit</td><td>Every fetch enters the Audit Trail</td></tr>
+  </table>
 
-  <h2>Advanced Example</h2>
-  <pre><code>import &#123; Flow, FlowAction &#125; from "relay:script";
+  <h3>relay.readBody(flow)</h3>
+  <pre><code>const body = await relay.readBody(flow);
+// For streaming bodies, returns accumulated content</code></pre>
 
-// Mock API responses for testing
-const mocks = new Map([
-  ["/api/users", &#123; users: [&#123; id: 1, name: "Alice" &#125;] &#125;],
-  ["/api/products", &#123; products: [&#123; id: 1, name: "Widget" &#125;] &#125;],
-]);
+  <h2>Global State <code>sharedState</code></h2>
+  <p><code>globalThis.sharedState</code> is a key-value store shared across all hooks within the same engine instance:</p>
+  <pre><code>// Store in onRequest
+globalThis.onRequest = (ctx, flow) => &#123;
+  sharedState[flow.id] = &#123; start: Date.now() &#125;;
+&#125;;
 
-async function onRequest(flow: Flow): Promise&lt;FlowAction&gt; &#123;
-  // Inject auth token if missing
-  if (flow.path.startsWith("/api/") &amp;&amp; !flow.request.headers["authorization"]) &#123;
-    flow.request.headers["authorization"] = "Bearer test-token-123";
+// Read in onResponse
+globalThis.onResponse = (ctx, flow) => &#123;
+  const meta = sharedState[flow.id];
+  if (meta) &#123;
+    console.log(`Flow $&#123;#36;&#123;flow.id&#125; took $&#123;#36;&#123;Date.now() - meta.start&#125;ms`);
+    delete sharedState[flow.id];  // Clean up to prevent leaks
   &#125;
-  return FlowAction.Continue;
-&#125;
+&#125;;</code></pre>
 
-async function onResponse(flow: Flow): Promise&lt;FlowAction&gt; &#123;
-  if (flow.response &amp;&amp; flow.response.bodyJson) &#123;
-    // Log all API responses
-    console.log(`API Response for $&#123;flow.path&#125;:`, flow.response.bodyJson);
+  <h2>Graded Logging <code>console.*</code></h2>
+  <p>Five log levels map to Rust <code>tracing</code>:</p>
+  <pre><code>console.log("Request received");   // tracing::info!    — visible at runtime
+console.info("Status OK");        // tracing::info!
+console.warn("Rate limit hit");   // tracing::warn!    — needs attention
+console.error("Auth failed");     // tracing::error!   — always visible
+console.debug("Var value: " + x); // tracing::debug!   — only with RUST_LOG=debug</code></pre>
 
-    // Inject metadata into responses
-    if (Array.isArray(flow.response.bodyJson)) &#123;
-      flow.response.bodyJson._meta = &#123;
-        mocked: true,
-        timestamp: new Date().toISOString(),
-      &#125;;
-    &#125;
+  <h2>Connection Hooks</h2>
+  <pre><code>// Connection filtering — return &#123;drop:true&#125; to reject
+globalThis.onConnect = (ctx, conn) => &#123;
+  // conn: &#123; id, client_ip, client_port &#125;
+  if (conn.client_ip.startsWith("192.168.1.")) &#123;
+    return &#123; drop: true &#125;;
   &#125;
-  return FlowAction.Continue;
-&#125;</code></pre>
+&#125;;
 
-  <h2>Loading Scripts</h2>
-  <pre><code># Load a script
-relay-core-cli scripts load ./path/to/script.ts
+// Connection statistics
+globalThis.onDisconnect = (ctx, conn, stats) => &#123;
+  // stats: &#123; duration_ms, flows_count &#125;
+  console.log(`Connection $&#123;#36;&#123;conn.id&#125;: $&#123;#36;&#123;stats.flows_count&#125; flows`);
+&#125;;</code></pre>
 
-# List loaded scripts
-relay-core-cli scripts list
+  <h2>WebSocket Lifecycle</h2>
+  <pre><code>globalThis.onWebSocketStart = (ctx, flow) => &#123;
+  console.log(`WS opened: $&#123;#36;&#123;flow.request.url&#125;`);
+&#125;;
 
-# Unload a script
-relay-core-cli scripts unload my-script</code></pre>
+globalThis.onWebSocketEnd = (ctx, flow, code, reason) => &#123;
+  console.log(`WS closed: $&#123;#36;&#123;code&#125; $&#123;#36;&#123;reason&#125;`);
+&#125;;
 
-  <h2>Script Configuration</h2>
-  <pre><code># In config.toml
-[scripting]
-enabled = true
-deno_dir = "~/.relay-core/deno"
-auto_reload = true</code></pre>
+globalThis.onWebSocketError = (ctx, flow, error) => &#123;
+  console.error(`WS error: $&#123;#36;&#123;error&#125;`);
+&#125;;</code></pre>
+
+  <h2>Rule Bridge</h2>
+  <p>RelayCore exclusive — scripts can observe rule engine execution results:</p>
+  <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
+  // Read matched rules
+  if (flow.matched_rules.includes("rule-block-tracking")) &#123;
+    flow.response.headers.push(["X-Blocked-By", "RelayCore"]);
+  &#125;
+
+  // Read variables set by rule engine SetVariable action
+  const count = flow.rule_variables["rate_limit_count"];
+  if (count && parseInt(count) > 100) &#123;
+    console.warn(`Rate limit exceeded: $&#123;#36;&#123;count&#125;`);
+  &#125;
+&#125;;</code></pre>
+
+  <h2>Script Management & Deployment</h2>
+
+  <h3>CLI Commands</h3>
+  <pre><code># Load a script via HTTP API
+curl -X POST http://127.0.0.1:18082/api/v1/script \
+  -H "Content-Type: application/json" \
+  -d '&#123;"name": "my-script", "source": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.request.url); &#125;"&#125;'
+
+# MCP tool (via AI Agent)
+mcp: relay-core set_script --name my-script --source ./script.ts
+
+# Bundle mode: use npm packages
+relay-core scripts init my-project      # Scaffold
+cd my-project && npm install jwt-decode  # Install deps
+relay-core scripts build                 # esbuild bundle
+relay-core scripts dev                   # build + hot reload + watch</code></pre>
+
+  <h3>Bundle Mode & npm Ecosystem</h3>
+  <p>RelayCore's V8 isolate does not include an npm resolver. Bundle scripts with dependencies via esbuild:</p>
+  <pre><code>// src/main.ts — import npm packages as usual
+import jwtDecode from "jwt-decode";
+import &#123; XMLParser &#125; from "fast-xml-parser";
+
+globalThis.onRequest = (ctx, flow) => &#123;
+  const auth = flow.request.headers.find(h => h[0] === "authorization");
+  if (auth) &#123;
+    const payload = jwtDecode(auth[1]);
+    console.log("JWT subject:", payload.sub);
+  &#125;
+&#125;;
+
+// relay-core scripts build → dist/bundle.js (single IIFE file)
+// Load bundle.js directly</code></pre>
+
+  <h3>Configuration</h3>
+  <pre><code># config.toml
+[script]
+enable_fetch = true
+fetch_allow = ["auth.internal", "api.example.com"]
+fetch_timeout_ms = 3000
+fetch_max_concurrency = 8</code></pre>
+
+  <h2>Observability</h2>
+  <p>Script execution metrics are automatically reported to Prometheus:</p>
+  <table>
+    <tr><th>Metric</th><th>Description</th></tr>
+    <tr><td><code>script_hook_duration_us&#123;hook&#125;</code></td><td>Per-hook execution duration (histogram)</td></tr>
+    <tr><td><code>script_hook_invocations_total&#123;hook&#125;</code></td><td>Cumulative hook invocations</td></tr>
+    <tr><td><code>script_hook_errors_total&#123;hook&#125;</code></td><td>Cumulative hook errors</td></tr>
+    <tr><td><code>script_fetch_total&#123;target,status&#125;</code></td><td>fetch call count</td></tr>
+    <tr><td><code>script_env_access_total&#123;key&#125;</code></td><td>env access count (values not recorded)</td></tr>
+  </table>
 </DocsLayout>

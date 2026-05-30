@@ -1,0 +1,222 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Scripting Guide" description="Common patterns and best practices for RelayCore scripting">
+  <h1>Scripting Guide</h1>
+
+  <p>This guide covers common patterns, best practices, and debugging techniques for RelayCore scripts.</p>
+
+  <h2>Quick Start</h2>
+  <pre><code>// script.js — minimal script
+globalThis.onRequest = (ctx, flow) => &#123;
+  console.log(`$&#123;#36;&#123;flow.request.method&#125; $&#123;#36;&#123;flow.request.url&#125;`);
+&#125;;</code></pre>
+  <p>Load via HTTP API:</p>
+  <pre><code>curl -X POST http://127.0.0.1:18082/api/v1/script \
+  -H "Content-Type: application/json" \
+  -d '&#123;"name": "logger", "source": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.request.url); &#125;"&#125;'</code></pre>
+
+  <h2>Common Patterns</h2>
+
+  <h3>1. Auth Injection</h3>
+  <pre><code>globalThis.onRequestHeaders = (ctx, flow) => &#123;
+  if (flow.request.url.includes("/api/")) &#123;
+    const existing = flow.request.headers.find(h => h[0] === "authorization");
+    if (!existing) &#123;
+      flow.request.headers.push(["authorization", "Bearer $&#123;#36;&#123;getToken()&#125;"]);
+    &#125;
+  &#125;
+  return flow;
+&#125;;
+
+function getToken() &#123;
+  return relay.env("API_TOKEN") || "dev-token";
+&#125;</code></pre>
+
+  <h3>2. Mock Responses</h3>
+  <pre><code>const mocks = &#123;
+  "/api/users": [&#123; id: 1, name: "Alice" &#125;, &#123; id: 2, name: "Bob" &#125;],
+  "/api/health": &#123; status: "ok", version: "1.0" &#125;,
+&#125;;
+
+globalThis.onRequest = (ctx, flow) => &#123;
+  const path = new URL(flow.request.url).pathname;
+  if (mocks[path]) &#123;
+    return &#123;
+      action: "respond",
+      status: 200,
+      headers: [["content-type", "application/json"]],
+      body: JSON.stringify(mocks[path]),
+    &#125;;
+  &#125;
+&#125;;</code></pre>
+
+  <h3>3. Request Rewriting</h3>
+  <pre><code>globalThis.onRequestHeaders = (ctx, flow) => &#123;
+  if (flow.request.url.includes("api.example.com")) &#123;
+    flow.request.url = flow.request.url.replace(
+      "api.example.com", "staging.example.com"
+    );
+    flow.request.headers = flow.request.headers.filter(
+      h => h[0].toLowerCase() !== "host"
+    );
+    flow.request.headers.push(["host", "staging.example.com"]);
+  &#125;
+  return flow;
+&#125;;</code></pre>
+
+  <h3>4. Response Sanitization</h3>
+  <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
+  if (!flow.response?.body) return;
+  const raw = atob(flow.response.body.content);
+
+  const data = relay.json.parseSafe(raw);
+  if (!data) return;
+
+  const sanitized = redactPersonalInfo(data);
+  const newBody = relay.json.stringifyPretty(sanitized);
+  flow.response.body.content = btoa(newBody);
+  flow.response.body.size = newBody.length;
+&#125;;
+
+function redactPersonalInfo(obj) &#123;
+  if (typeof obj !== "object" || obj === null) return obj;
+  if (Array.isArray(obj)) return obj.map(redactPersonalInfo);
+  const result = &#123;&#125;;
+  for (const [k, v] of Object.entries(obj)) &#123;
+    if (/phone|mobile|id_card|ssn/i.test(k)) &#123;
+      result[k] = "***REDACTED***";
+    &#125; else &#123;
+      result[k] = redactPersonalInfo(v);
+    &#125;
+  &#125;
+  return result;
+&#125;</code></pre>
+
+  <h3>5. Rate Limiting</h3>
+  <pre><code>const RATE_LIMIT = 100;
+const WINDOW_MS = 60_000;
+
+globalThis.onRequest = (ctx, flow) => &#123;
+  const ip = flow.network.client_ip;
+  const now = Date.now();
+
+  if (!sharedState._rateLimit) sharedState._rateLimit = &#123;&#125;;
+  const entry = sharedState._rateLimit[ip] || &#123; count: 0, reset: now + WINDOW_MS &#125;;
+
+  if (now > entry.reset) &#123;
+    entry.count = 0;
+    entry.reset = now + WINDOW_MS;
+  &#125;
+
+  entry.count++;
+  sharedState._rateLimit[ip] = entry;
+
+  if (entry.count > RATE_LIMIT) &#123;
+    return &#123;
+      action: "respond",
+      status: 429,
+      headers: [["content-type", "text/plain"]],
+      body: "Too Many Requests",
+    &#125;;
+  &#125;
+&#125;;</code></pre>
+
+  <h3>6. Cross-Hook Context</h3>
+  <pre><code>globalThis.onRequest = (ctx, flow) => &#123;
+  sharedState[flow.id] = &#123;
+    startTime: Date.now(),
+    authType: flow.request.headers.find(h => h[0] === "authorization")
+      ? "bearer" : "none",
+  &#125;;
+&#125;;
+
+globalThis.onResponse = (ctx, flow) => &#123;
+  const meta = sharedState[flow.id];
+  if (!meta) return;
+
+  const duration = Date.now() - meta.startTime;
+  if (duration > 5000) &#123;
+    console.warn(`Slow request: $&#123;#36;&#123;flow.request.url&#125; ($&#123;#36;&#123;duration&#125;ms)`);
+  &#125;
+  delete sharedState[flow.id];  // Clean up immediately
+&#125;;</code></pre>
+
+  <h3>7. IP Blacklist</h3>
+  <pre><code>const BLOCKED_NETS = ["10.0.0.", "192.168.254."];
+
+globalThis.onConnect = (ctx, conn) => &#123;
+  for (const net of BLOCKED_NETS) &#123;
+    if (conn.client_ip.startsWith(net)) &#123;
+      console.warn(`Blocked connection from $&#123;#36;&#123;conn.client_ip&#125;`);
+      return &#123; drop: true &#125;;
+    &#125;
+  &#125;
+&#125;;</code></pre>
+
+  <h3>8. External Auth (relay.fetch)</h3>
+  <pre><code>globalThis.onRequest = async (ctx, flow) => &#123;
+  const auth = flow.request.headers.find(h => h[0] === "authorization");
+  if (!auth) return;
+
+  try &#123;
+    const resp = await relay.fetch("http://auth.internal/verify", &#123;
+      method: "POST",
+      headers: &#123; "Content-Type": "application/json" &#125;,
+      body: JSON.stringify(&#123; token: auth[1] &#125;),
+      timeout_ms: 3000,
+    &#125;);
+
+    if (resp.status !== 200) &#123;
+      return &#123;
+        action: "respond",
+        status: 401,
+        headers: [["content-type", "text/plain"]],
+        body: "Authentication failed",
+      &#125;;
+    &#125;
+  &#125; catch (e) &#123;
+    console.error("Auth service unreachable:", e);
+  &#125;
+&#125;;</code></pre>
+
+  <h2>Debugging</h2>
+
+  <h3>Log Levels</h3>
+  <pre><code>console.debug("Flow id:", flow.id);          // needs RUST_LOG=relay_core_script=debug
+console.log("Request handled");              // visible by default
+console.error("This should not happen!");    // always visible</code></pre>
+
+  <h3>Global Error Handler</h3>
+  <pre><code>globalThis.onError = (ctx, flow, error, stage) => &#123;
+  console.error(`[$&#123;#36;&#123;stage&#125;] $&#123;#36;&#123;error&#125;`);
+  sharedState._errors = sharedState._errors || [];
+  sharedState._errors.push(&#123;
+    flow_id: flow?.id, stage,
+    message: String(error),
+    time: new Date().toISOString(),
+  &#125;);
+&#125;;</code></pre>
+
+  <h3>Prometheus Metrics</h3>
+  <pre><code>curl http://127.0.0.1:18082/api/v1/metrics/prometheus | grep script_</code></pre>
+
+  <h2>Performance Notes</h2>
+  <ul>
+    <li><strong>Hook execution blocks the proxy thread</strong> — keep hooks under 10ms</li>
+    <li><strong>Avoid synchronous large body processing</strong> — JSON parsing >1MB bodies risks OOM</li>
+    <li><strong>Clean up sharedState</strong> — stale entries trigger warnings at 10k keys</li>
+    <li><strong>relay.fetch has concurrency limits</strong> — max 8 concurrent requests by default</li>
+    <li><strong>Per-isolate sharedState</strong> — different engine isolates have independent state (same flow = same engine guaranteed)</li>
+    <li><strong>Minify bundles</strong> — use esbuild <code>--minify</code> for faster script load</li>
+  </ul>
+
+  <h2>Testing Scripts</h2>
+  <pre><code># Full integration test suite for scripting
+cargo test --package relay-core-script
+
+# Covers: all 11 hooks, relay.* utilities, relay.fetch,
+#         env whitelist, sharedState, onError,
+#         matched_rules, rule_variables</code></pre>
+</DocsLayout>
