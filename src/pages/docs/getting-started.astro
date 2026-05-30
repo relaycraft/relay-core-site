@@ -44,10 +44,10 @@ relay-core-cli run
 # 带 TUI 界面
 relay-core-cli run --ui
 
-# 指定端口
-relay-core-cli run --port 8080</code></pre>
+# 指定监听地址
+relay-core-cli run --listen 127.0.0.1:9090</code></pre>
 
-  <p>代理默认在 8080 端口启动。打开 <code>http://localhost:8080/ui</code> 访问 Web 界面。</p>
+  <p>代理默认监听 <code>127.0.0.1:8080</code>。使用 <code>--ui</code> 启用 TUI 交互界面，使用 <code>--api-port 8082</code> 启用 REST API 和 SSE 事件流。</p>
 
   <h2>配置客户端</h2>
 

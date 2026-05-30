@@ -44,10 +44,10 @@ relay-core-cli run
 # With TUI interface
 relay-core-cli run --ui
 
-# On specific port
-relay-core-cli run --port 8080</code></pre>
+# Custom listen address
+relay-core-cli run --listen 127.0.0.1:9090</code></pre>
 
-  <p>The proxy will start on port 8080 by default. Open <code>http://localhost:8080/ui</code> for the web interface.</p>
+  <p>The proxy listens on <code>127.0.0.1:8080</code> by default. Use <code>--ui</code> for the interactive TUI, or <code>--api-port 8082</code> to enable the REST API and SSE event stream.</p>
 
   <h2>Configure Your Client</h2>
 
