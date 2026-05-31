@@ -31,7 +31,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <pre><code>// Flow structure (script-side view)
 &#123;
   id: string,           // UUID
-  startTime: string,    // ISO 8601
+  start_time: string,    // ISO 8601
   tags: string[],
 
   network: &#123;
@@ -42,32 +42,37 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     sni: string | null,
   &#125;,
 
-  request: &#123;
-    method: string,
-    url: string,        // Full URL
-    version: string,    // "HTTP/1.1" | "HTTP/2.0"
-    headers: [string, string][],
-    body: &#123;
-      encoding: string,
-      size: number,
-      content: string,  // base64 encoded
-    &#125; | null,
-    cookies: [string, string][],
-  &#125;,
-
-  response: &#123;
-    status: number,
-    statusText: string,
-    version: string,
-    headers: [string, string][],
-    body: &#123; encoding, size, content &#125; | null,
-    cookies: [string, string][],
-  &#125; | null,
-
   // Rule bridge (RelayCore exclusive)
   matched_rules: string[],              // Rule IDs that matched
   rule_variables: Record<string, string>, // Variables set by SetVariable action
-&#125;</code></pre>
+
+  // Application-layer protocol data
+  layer: &#123;
+    type: "Http" | "WebSocket",
+    data: &#123;
+      // When type = "Http":
+      request: &#123;
+        method: string,
+        url: string,        // Full URL
+        version: string,    // "HTTP/1.1" | "HTTP/2.0"
+        headers: [string, string][],
+        body: &#123;
+          encoding: string,
+          size: number,
+          content: string,  // base64 encoded
+        &#125; | null,
+        cookies: [string, string][],
+      &#125;,
+      response: &#123;
+        status: number,
+        status_text: string,
+        version: string,
+        headers: [string, string][],
+        body: &#123; encoding, size, content &#125; | null,
+        cookies: [string, string][],
+      &#125; | null,
+    &#125;
+  &#125;</code></pre>
 
   <h2>Built-in Utilities <code>relay.*</code></h2>
   <p>The global <code>relay</code> object provides commonly needed utility functions:</p>
@@ -98,7 +103,7 @@ const miss = relay.env("SECRET");        // undefined (not whitelisted)</code></
   <p>Make controlled outbound HTTP sub-requests. Disabled by default; requires <code>--enable-script-fetch</code>.</p>
   <pre><code>const resp = await relay.fetch("http://auth.internal/verify", &#123;
   method: "POST",
-  headers: &#123; "Authorization": flow.request.headers.find(h => h[0]==="authorization")?.[1] &#125;,
+  headers: &#123; "Authorization": flow.layer.data.request.headers.find(h => h[0]==="authorization")?.[1] &#125;,
   body: JSON.stringify(&#123; flow_id: flow.id &#125;),
   timeout_ms: 2000,
 &#125;);
@@ -161,7 +166,7 @@ globalThis.onDisconnect = (ctx, conn, stats) => &#123;
 
   <h2>WebSocket Lifecycle</h2>
   <pre><code>globalThis.onWebSocketStart = (ctx, flow) => &#123;
-  console.log(`WS opened: $&#123;#36;&#123;flow.request.url&#125;`);
+  console.log(`WS opened: $&#123;#36;&#123;flow.layer.data.request.url&#125;`);
 &#125;;
 
 globalThis.onWebSocketEnd = (ctx, flow, code, reason) => &#123;
@@ -177,7 +182,7 @@ globalThis.onWebSocketError = (ctx, flow, error) => &#123;
   <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
   // Read matched rules
   if (flow.matched_rules.includes("rule-block-tracking")) &#123;
-    flow.response.headers.push(["X-Blocked-By", "RelayCore"]);
+    flow.layer.data.response.headers.push(["X-Blocked-By", "RelayCore"]);
   &#125;
 
   // Read variables set by rule engine SetVariable action
@@ -193,10 +198,10 @@ globalThis.onWebSocketError = (ctx, flow, error) => &#123;
   <pre><code># Load a script via HTTP API
 curl -X POST http://127.0.0.1:18082/api/v1/script \
   -H "Content-Type: application/json" \
-  -d '&#123;"name": "my-script", "source": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.request.url); &#125;"&#125;'
+  -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'
 
 # MCP tool (via AI Agent)
-mcp: relay-core set_script --name my-script --source ./script.ts
+mcp: relay-core set_script --script script.js
 
 # Bundle mode: use npm packages
 relay-core scripts init my-project      # Scaffold
@@ -211,7 +216,7 @@ import jwtDecode from "jwt-decode";
 import &#123; XMLParser &#125; from "fast-xml-parser";
 
 globalThis.onRequest = (ctx, flow) => &#123;
-  const auth = flow.request.headers.find(h => h[0] === "authorization");
+  const auth = flow.layer.data.request.headers.find(h => h[0] === "authorization");
   if (auth) &#123;
     const payload = jwtDecode(auth[1]);
     console.log("JWT subject:", payload.sub);

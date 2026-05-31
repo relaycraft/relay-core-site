@@ -53,17 +53,17 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <h3>From mitmproxy Python scripts</h3>
   <pre><code># mitmproxy
 def request(flow):
-    flow.request.headers["X-Custom"] = "value"
+    flow.layer.data.request.headers["X-Custom"] = "value"
 
 # RelayCore
 globalThis.onRequestHeaders = (ctx, flow) => &#123;
-  flow.request.headers.push(["X-Custom", "value"]);
+  flow.layer.data.request.headers.push(["X-Custom", "value"]);
   return flow;
 &#125;;</code></pre>
 
   <pre><code># mitmproxy
 def response(flow):
-    if flow.response.status_code == 404:
+    if flow.layer.data.response.status_code == 404:
         flow.response = http.Response.make(200, b"OK", &#123;"Content-Type": "text/plain"&#125;)
 
 # RelayCore

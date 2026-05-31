@@ -10,21 +10,21 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <h2>Quick Start</h2>
   <pre><code>// script.js — minimal script
 globalThis.onRequest = (ctx, flow) => &#123;
-  console.log(`$&#123;#36;&#123;flow.request.method&#125; $&#123;#36;&#123;flow.request.url&#125;`);
+  console.log(`$&#123;#36;&#123;flow.layer.data.request.method&#125; $&#123;#36;&#123;flow.layer.data.request.url&#125;`);
 &#125;;</code></pre>
   <p>Load via HTTP API:</p>
   <pre><code>curl -X POST http://127.0.0.1:18082/api/v1/script \
   -H "Content-Type: application/json" \
-  -d '&#123;"name": "logger", "source": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.request.url); &#125;"&#125;'</code></pre>
+  -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'</code></pre>
 
   <h2>Common Patterns</h2>
 
   <h3>1. Auth Injection</h3>
   <pre><code>globalThis.onRequestHeaders = (ctx, flow) => &#123;
-  if (flow.request.url.includes("/api/")) &#123;
-    const existing = flow.request.headers.find(h => h[0] === "authorization");
+  if (flow.layer.data.request.url.includes("/api/")) &#123;
+    const existing = flow.layer.data.request.headers.find(h => h[0] === "authorization");
     if (!existing) &#123;
-      flow.request.headers.push(["authorization", "Bearer $&#123;#36;&#123;getToken()&#125;"]);
+      flow.layer.data.request.headers.push(["authorization", "Bearer $&#123;#36;&#123;getToken()&#125;"]);
     &#125;
   &#125;
   return flow;
@@ -41,7 +41,7 @@ function getToken() &#123;
 &#125;;
 
 globalThis.onRequest = (ctx, flow) => &#123;
-  const path = new URL(flow.request.url).pathname;
+  const path = new URL(flow.layer.data.request.url).pathname;
   if (mocks[path]) &#123;
     return &#123;
       action: "respond",
@@ -54,14 +54,14 @@ globalThis.onRequest = (ctx, flow) => &#123;
 
   <h3>3. Request Rewriting</h3>
   <pre><code>globalThis.onRequestHeaders = (ctx, flow) => &#123;
-  if (flow.request.url.includes("api.example.com")) &#123;
-    flow.request.url = flow.request.url.replace(
+  if (flow.layer.data.request.url.includes("api.example.com")) &#123;
+    flow.layer.data.request.url = flow.layer.data.request.url.replace(
       "api.example.com", "staging.example.com"
     );
-    flow.request.headers = flow.request.headers.filter(
+    flow.layer.data.request.headers = flow.layer.data.request.headers.filter(
       h => h[0].toLowerCase() !== "host"
     );
-    flow.request.headers.push(["host", "staging.example.com"]);
+    flow.layer.data.request.headers.push(["host", "staging.example.com"]);
   &#125;
   return flow;
 &#125;;</code></pre>
@@ -69,15 +69,15 @@ globalThis.onRequest = (ctx, flow) => &#123;
   <h3>4. Response Sanitization</h3>
   <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
   if (!flow.response?.body) return;
-  const raw = atob(flow.response.body.content);
+  const raw = atob(flow.layer.data.response.body.content);
 
   const data = relay.json.parseSafe(raw);
   if (!data) return;
 
   const sanitized = redactPersonalInfo(data);
   const newBody = relay.json.stringifyPretty(sanitized);
-  flow.response.body.content = btoa(newBody);
-  flow.response.body.size = newBody.length;
+  flow.layer.data.response.body.content = btoa(newBody);
+  flow.layer.data.response.body.size = newBody.length;
 &#125;;
 
 function redactPersonalInfo(obj) &#123;
@@ -127,7 +127,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
   <pre><code>globalThis.onRequest = (ctx, flow) => &#123;
   sharedState[flow.id] = &#123;
     startTime: Date.now(),
-    authType: flow.request.headers.find(h => h[0] === "authorization")
+    authType: flow.layer.data.request.headers.find(h => h[0] === "authorization")
       ? "bearer" : "none",
   &#125;;
 &#125;;
@@ -138,7 +138,7 @@ globalThis.onResponse = (ctx, flow) => &#123;
 
   const duration = Date.now() - meta.startTime;
   if (duration > 5000) &#123;
-    console.warn(`Slow request: $&#123;#36;&#123;flow.request.url&#125; ($&#123;#36;&#123;duration&#125;ms)`);
+    console.warn(`Slow request: $&#123;#36;&#123;flow.layer.data.request.url&#125; ($&#123;#36;&#123;duration&#125;ms)`);
   &#125;
   delete sharedState[flow.id];  // Clean up immediately
 &#125;;</code></pre>
@@ -157,7 +157,7 @@ globalThis.onConnect = (ctx, conn) => &#123;
 
   <h3>8. External Auth (relay.fetch)</h3>
   <pre><code>globalThis.onRequest = async (ctx, flow) => &#123;
-  const auth = flow.request.headers.find(h => h[0] === "authorization");
+  const auth = flow.layer.data.request.headers.find(h => h[0] === "authorization");
   if (!auth) return;
 
   try &#123;

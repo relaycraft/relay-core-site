@@ -31,7 +31,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <pre><code>// Flow 结构（脚本侧视角）
 &#123;
   id: string,           // UUID
-  startTime: string,    // ISO 8601
+  start_time: string,    // ISO 8601
   tags: string[],       // 标签列表
 
   network: &#123;
@@ -42,32 +42,37 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     sni: string | null,
   &#125;,
 
-  request: &#123;
-    method: string,
-    url: string,        // 完整 URL
-    version: string,    // "HTTP/1.1" | "HTTP/2.0"
-    headers: [string, string][],
-    body: &#123;
-      encoding: string,
-      size: number,
-      content: string,  // base64 编码
-    &#125; | null,
-    cookies: [string, string][],
-  &#125;,
-
-  response: &#123;
-    status: number,
-    statusText: string,
-    version: string,
-    headers: [string, string][],
-    body: &#123; encoding, size, content &#125; | null,
-    cookies: [string, string][],
-  &#125; | null,
-
   // 规则桥接（RelayCore 独家）
   matched_rules: string[],       // 命中的规则 ID 列表
   rule_variables: Record<string, string>,  // SetVariable 设置的变量
-&#125;</code></pre>
+
+  // 应用层协议数据
+  layer: &#123;
+    type: "Http" | "WebSocket",
+    data: &#123;
+      // type = "Http" 时有:
+      request: &#123;
+        method: string,
+        url: string,        // 完整 URL
+        version: string,    // "HTTP/1.1" | "HTTP/2.0"
+        headers: [string, string][],
+        body: &#123;
+          encoding: string,
+          size: number,
+          content: string,  // base64 编码
+        &#125; | null,
+        cookies: [string, string][],
+      &#125;,
+      response: &#123;
+        status: number,
+        status_text: string,
+        version: string,
+        headers: [string, string][],
+        body: &#123; encoding, size, content &#125; | null,
+        cookies: [string, string][],
+      &#125; | null,
+    &#125;
+  &#125;</code></pre>
 
   <h2>内置工具库 <code>relay.*</code></h2>
   <p>全局对象 <code>relay</code> 提供常用工具函数：</p>
@@ -98,7 +103,7 @@ const miss = relay.env("SECRET");        // undefined（未在白名单）</code
   <p>发起受控 HTTP 子请求。默认关闭，需 <code>--enable-script-fetch</code> 显式开启。</p>
   <pre><code>const resp = await relay.fetch("http://auth.internal/verify", &#123;
   method: "POST",
-  headers: &#123; "Authorization": flow.request.headers.find(h => h[0]==="authorization")?.[1] &#125;,
+  headers: &#123; "Authorization": flow.layer.data.request.headers.find(h => h[0]==="authorization")?.[1] &#125;,
   body: JSON.stringify(&#123; flow_id: flow.id &#125;),
   timeout_ms: 2000,
 &#125;);
@@ -161,7 +166,7 @@ globalThis.onDisconnect = (ctx, conn, stats) => &#123;
 
   <h2>WebSocket 生命周期</h2>
   <pre><code>globalThis.onWebSocketStart = (ctx, flow) => &#123;
-  console.log(`WS opened: $&#123;#36;&#123;flow.request.url&#125;`);
+  console.log(`WS opened: $&#123;#36;&#123;flow.layer.data.request.url&#125;`);
 &#125;;
 
 globalThis.onWebSocketEnd = (ctx, flow, code, reason) => &#123;
@@ -177,7 +182,7 @@ globalThis.onWebSocketError = (ctx, flow, error) => &#123;
   <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
   // 读取命中的规则
   if (flow.matched_rules.includes("rule-block-tracking")) &#123;
-    flow.response.headers.push(["X-Blocked-By", "RelayCore"]);
+    flow.layer.data.response.headers.push(["X-Blocked-By", "RelayCore"]);
   &#125;
 
   // 读取规则引擎 SetVariable 设置的变量
@@ -193,10 +198,10 @@ globalThis.onWebSocketError = (ctx, flow, error) => &#123;
   <pre><code># 通过 HTTP API 加载脚本
 curl -X POST http://127.0.0.1:18082/api/v1/script \
   -H "Content-Type: application/json" \
-  -d '&#123;"name": "my-script", "source": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.request.url); &#125;"&#125;'
+  -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'
 
 # MCP 工具（通过 AI Agent）
-mcp: relay-core set_script --name my-script --source ./script.ts
+mcp: relay-core set_script --script script.js
 
 # Bundle 模式：使用 npm 包
 relay-core scripts init my-project      # 脚手架
@@ -211,7 +216,7 @@ import jwtDecode from "jwt-decode";
 import &#123; XMLParser &#125; from "fast-xml-parser";
 
 globalThis.onRequest = (ctx, flow) => &#123;
-  const auth = flow.request.headers.find(h => h[0] === "authorization");
+  const auth = flow.layer.data.request.headers.find(h => h[0] === "authorization");
   if (auth) &#123;
     const payload = jwtDecode(auth[1]);
     console.log("JWT subject:", payload.sub);
