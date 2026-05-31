@@ -1,0 +1,23 @@
+/* Shiki syntax highlighting — relaycore.dev dark palette */
+
+.docs-content pre code.shiki {
+  background: none !important;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  display: block;
+  overflow-x: auto;
+}
+
+.docs-content pre code.shiki .line {
+  display: block;
+}
+
+.docs-content pre code.shiki .line:empty::after {
+  content: ' ';
+}
+
+/* Fallback when build hook skips a block */
+.docs-content pre code:not(.shiki) {
+  color: var(--text-secondary);
+}

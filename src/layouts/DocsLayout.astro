@@ -354,12 +354,20 @@ function isActive(href: string) {
     margin: var(--space-md) 0;
   }
 
-  .docs-content :global(pre code) {
+  .docs-content :global(pre code:not(.shiki)) {
     background: none;
     border: none;
     padding: 0;
     font-size: inherit;
     color: var(--text-secondary);
+  }
+
+  .docs-content :global(pre code.shiki) {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    display: block;
   }
 
   .docs-content :global(.diagram-wrapper) {
