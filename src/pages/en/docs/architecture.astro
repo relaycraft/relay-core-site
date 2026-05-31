@@ -1,5 +1,6 @@
 ---
 import DocsLayout from '../../../layouts/DocsLayout.astro';
+import ArchitectureDiagram from '../../../components/ArchitectureDiagram.astro';
 ---
 
 <DocsLayout title="Architecture" description="RelayCore internal architecture">
@@ -9,29 +10,12 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <h2>High-Level Overview</h2>
 
-  <pre><code>┌─────────────────────────────────────────────────────────────┐
-│                    ADAPTER LAYER                             │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────┐   │
-│  │ HTTP API│  │   MCP   │  │  Tauri  │  │  Embedded   │   │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └──────┬──────┘   │
-│       └────────────┴─────────────┴─────────────┘           │
-│                          │                                   │
-│                          ▼                                   │
-│               ┌─────────────────┐                           │
-│               │relay-core-runtime│                          │
-│               │(State, Events)   │                          │
-│               └────────┬─────────┘                           │
-│                        │                                      │
-└────────────────────────┼────────────────────────────────────┘
-                         │
-     ┌───────────────────┼───────────────────┐
-     ▼                   ▼                   ▼
-┌──────────┐  ┌──────────────┐  ┌──────────────┐
-│   lib    │  │   storage    │  │   script     │
-│ (engine) │  │  (SQLite)    │  │  (Deno/V8)   │
-└──────────┘  └──────────────┘  └──────────────┘</code></pre>
+  <ArchitectureDiagram />
 
   <h2>Core Crates</h2>
+
+  <h3>relay-core-api (Internal)</h3>
+  <p>Shared contracts (Flow, Rule, Policy, Event). Crates exchange data through it; users should use runtime re-exports.</p>
 
   <h3>relay-core-runtime (Public)</h3>
   <p>The main API crate. Provides <code>CoreState</code> for state orchestration, proxy lifecycle management, rule evaluation, and event distribution.</p>
@@ -43,27 +27,27 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <p>MCP adapter. Exposes tools for AI agents to observe and control the proxy programmatically.</p>
 
   <h3>relay-core-cli (Beta)</h3>
-  <p>Standalone CLI binary with TUI. Provides terminal interface for running the proxy and managing rules/flows.</p>
+  <p>Standalone CLI and TUI. <code>relay-core-cli run</code> starts the proxy plus embedded REST+SSE (<code>--api-port</code>) and a control API.</p>
 
   <h3>relay-core-lib (Internal)</h3>
-  <p>Core interception engine. Handles HTTP/HTTPS proxy, WebSocket, MITM with TLS, and the rule engine.</p>
+  <p>Traffic engine: HTTP/HTTPS proxy, WebSocket, MITM/TLS, rule execution. Runtime wires Script / Rule interceptors into lib's chain.</p>
 
   <h3>relay-core-storage (Internal)</h3>
   <p>SQLite persistence. Handles flow storage with LRU cache and audit logging.</p>
 
   <h3>relay-core-script (Internal)</h3>
-  <p>Deno/V8 JavaScript runtime for dynamic request/response modification.</p>
+  <p>Deno/V8 scripting (optional feature). Injected by runtime into lib's interceptor chain — not a parallel proxy path.</p>
 
   <h2>Data Flow</h2>
 
   <ol>
-    <li>Client connects to proxy (e.g., <code>curl --proxy http://localhost:8080 https://example.com</code>)</li>
-    <li><code>relay-core-lib</code> captures the request</li>
-    <li>Rules are evaluated against the flow</li>
+    <li>Client connects to the proxy (e.g., <code>curl --proxy http://localhost:8080 https://example.com</code>)</li>
+    <li><code>relay-core-lib</code> captures and forwards traffic</li>
+    <li>Interceptor chain runs: Script → Rule → Metrics → host adapter (order from runtime)</li>
     <li>For HTTPS: MITM intercepts and decrypts</li>
-    <li>Flow is stored in <code>relay-core-storage</code></li>
-    <li>Events are published via CoreState event bus</li>
-    <li>Adapters (HTTP API, MCP, CLI) can query/control via CoreState</li>
+    <li>Flows go to runtime in-memory LRU; optional persistence via <code>relay-core-storage</code> when configured</li>
+    <li>Events published on the CoreState bus (flows, audit)</li>
+    <li>Adapters (HTTP, MCP, CLI, Tauri) query and control through CoreState</li>
   </ol>
 
   <h2>Configuration</h2>

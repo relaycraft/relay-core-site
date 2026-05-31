@@ -1,5 +1,6 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import ArchitectureDiagram from '../../components/ArchitectureDiagram.astro';
 ---
 
 <DocsLayout title="架构" description="RelayCore 内部架构">
@@ -9,39 +10,12 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>架构总览</h2>
 
-  <div class="diagram-wrapper">
-    <pre class="ascii-diagram">┌──────────────────────────────────────────────────────────────────────────┐
-│                         Adapter Layer (PUBLIC)                           │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐            │
-│  │  HTTP API │  │    MCP    │  │   Tauri   │  │  CLI/TUI  │            │
-│  │ REST + SSE│  │AI Adapter │  │ Desktop   │  │ Terminal  │            │
-│  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘            │
-└─────────┼──────────────┼──────────────┼──────────────┼───────────────────┘
-          └──────────────┴───────┬──────┴──────────────┘
-                                 │
-                    ┌────────────▼────────────┐
-                    │    relay-core-runtime    │
-                    │  ┌──────────────────┐   │
-                    │  │    CoreState     │   │
-                    │  │  State & Events  │   │
-                    │  └──────────────────┘   │
-                    └────────────┬────────────┘
-                                 │
-┌───────────────────────────────┼───────────────────────────────────────────┤
-│                        Proxy Engine (INTERNAL)                          │
-│                    ┌──────────┼──────────┐                               │
-│           ┌────────▼────────┐│┌─────────▼─────────┐                     │
-│           │ relay-core-lib  │││relay-core-storage  │                     │
-│           │  MITM/Proxy/TLS │││      SQLite        │                     │
-│           └─────────────────┘│└───────────────────┘                     │
-│                              │                    ┌───────────────────┐  │
-│                              │                    │relay-core-script  │  │
-│                              │                    │     Deno/V8       │  │
-│                              │                    └───────────────────┘  │
-└──────────────────────────────┴───────────────────────────────────────────┘</pre>
-  </div>
+  <ArchitectureDiagram />
 
   <h2>核心 Crate</h2>
+
+  <h3>relay-core-api (内部)</h3>
+  <p>共享类型契约（Flow、Rule、Policy、Event）。各 crate 通过它交换数据，用户应依赖 runtime 的 re-export。</p>
 
   <h3>relay-core-runtime (公开)</h3>
   <p>主要 API crate。提供 <code>CoreState</code> 用于状态编排、代理生命周期管理、规则评估和事件分发。</p>
@@ -53,27 +27,27 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>MCP 适配器。为 AI 代理暴露工具，以编程方式观察和控制代理。</p>
 
   <h3>relay-core-cli (Beta)</h3>
-  <p>带 TUI 的独立 CLI 二进制文件。提供用于运行代理和管理规则/流量的终端界面。</p>
+  <p>独立 CLI 与 TUI。<code>relay-core-cli run</code> 会同时启动代理、内嵌 REST+SSE（<code>--api-port</code>）和控制 API。</p>
 
   <h3>relay-core-lib (内部)</h3>
-  <p>核心拦截引擎。处理 HTTP/HTTPS 代理、WebSocket、MITM 和 TLS 以及规则引擎。</p>
+  <p>流量引擎：HTTP/HTTPS 代理、WebSocket、MITM/TLS、规则执行。runtime 将 Script / Rule 等拦截器组装进 lib 的拦截链。</p>
 
   <h3>relay-core-storage (内部)</h3>
   <p>SQLite 持久化。处理带有 LRU 缓存的流存储和审计日志。</p>
 
   <h3>relay-core-script (内部)</h3>
-  <p>用于动态请求/响应修改的 Deno/V8 JavaScript 运行时。</p>
+  <p>Deno/V8 脚本引擎（可选 feature）。由 runtime 注入 lib 拦截器链，不是与 lib 平行的第二条代理路径。</p>
 
   <h2>数据流</h2>
 
   <ol>
     <li>客户端连接到代理（例如 <code>curl --proxy http://localhost:8080 https://example.com</code>）</li>
-    <li><code>relay-core-lib</code> 捕获请求</li>
-    <li>根据流评估规则</li>
+    <li><code>relay-core-lib</code> 捕获并转发流量</li>
+    <li>拦截器链依次执行：Script → Rule → Metrics → 宿主 adapter（顺序见 runtime）</li>
     <li>对于 HTTPS：MITM 拦截和解密</li>
-    <li>流存储在 <code>relay-core-storage</code></li>
-    <li>通过 CoreState 事件总线发布事件</li>
-    <li>适配器（HTTP API、MCP、CLI）可以通过 CoreState 查询/控制</li>
+    <li>流写入 runtime 内存 LRU；若配置了 DB 则可选持久化到 <code>relay-core-storage</code></li>
+    <li>通过 CoreState 事件总线发布 Flow / Audit 事件</li>
+    <li>适配器（HTTP、MCP、CLI、Tauri）经 CoreState 查询与控制</li>
   </ol>
 
   <h2>配置</h2>

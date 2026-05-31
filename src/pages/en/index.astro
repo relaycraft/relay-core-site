@@ -6,6 +6,7 @@ import EndpointRow from '../../components/EndpointRow.astro';
 import FeatureIcon from '../../components/FeatureIcon.astro';
 import InstallIcon from '../../components/InstallIcon.astro';
 import TerminalDots from '../../components/TerminalDots.astro';
+import ArchitectureDiagram from '../../components/ArchitectureDiagram.astro';
 import '../../styles/home.css';
 
 const apiSampleJson = `{
@@ -123,7 +124,7 @@ const sourceCmd = 'git clone https://github.com/relaycraft/relay-core && cd rela
     </div>
 
     <div class="architecture-diagram">
-      <img src="/docs/diagrams/relay-core-architecture.svg" alt="RelayCore Architecture" />
+      <ArchitectureDiagram />
     </div>
 
     <div class="crates-grid">
@@ -145,17 +146,27 @@ const sourceCmd = 'git clone https://github.com/relaycraft/relay-core && cd rela
       <div class="crate-item beta">
         <span class="crate-badge">BETA</span>
         <span class="crate-name">relay-core-cli</span>
-        <span class="crate-desc">Standalone CLI and TUI</span>
+        <span class="crate-desc">CLI · TUI · embedded HTTP API</span>
+      </div>
+      <div class="crate-item internal">
+        <span class="crate-badge">INTERNAL</span>
+        <span class="crate-name">relay-core-api</span>
+        <span class="crate-desc">Flow / Rule shared contracts</span>
       </div>
       <div class="crate-item internal">
         <span class="crate-badge">INTERNAL</span>
         <span class="crate-name">relay-core-lib</span>
-        <span class="crate-desc">Core engine: MITM, TLS, proxy</span>
+        <span class="crate-desc">MITM · proxy · rule execution</span>
+      </div>
+      <div class="crate-item internal">
+        <span class="crate-badge">INTERNAL</span>
+        <span class="crate-name">relay-core-script</span>
+        <span class="crate-desc">Deno/V8 scripting (optional)</span>
       </div>
       <div class="crate-item internal">
         <span class="crate-badge">INTERNAL</span>
         <span class="crate-name">relay-core-storage</span>
-        <span class="crate-desc">SQLite persistence</span>
+        <span class="crate-desc">SQLite persistence (optional)</span>
       </div>
     </div>
   </section>

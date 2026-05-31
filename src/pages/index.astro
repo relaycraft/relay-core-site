@@ -6,6 +6,7 @@ import EndpointRow from '../components/EndpointRow.astro';
 import FeatureIcon from '../components/FeatureIcon.astro';
 import InstallIcon from '../components/InstallIcon.astro';
 import TerminalDots from '../components/TerminalDots.astro';
+import ArchitectureDiagram from '../components/ArchitectureDiagram.astro';
 import '../styles/home.css';
 import { translations, getLocaleFromUrl } from '../i18n/translations';
 
@@ -122,35 +123,7 @@ const apiRequestUrl = 'http://127.0.0.1:3000/api/v1/flows?limit=10';
     </div>
 
     <div class="architecture-diagram">
-      <pre class="ascii-diagram">┌──────────────────────────────────────────────────────────────────────────┐
-│                         Adapter Layer (PUBLIC)                           │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐            │
-│  │  HTTP API │  │    MCP    │  │   Tauri   │  │  CLI/TUI  │            │
-│  │ REST + SSE│  │AI Adapter │  │ Desktop   │  │ Terminal  │            │
-│  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘            │
-└─────────┼──────────────┼──────────────┼──────────────┼───────────────────┘
-          └──────────────┴───────┬──────┴──────────────┘
-                                 │
-                    ┌────────────▼────────────┐
-                    │    relay-core-runtime    │
-                    │  ┌──────────────────┐   │
-                    │  │    CoreState     │   │
-                    │  │  State & Events  │   │
-                    │  └──────────────────┘   │
-                    └────────────┬────────────┘
-                                 │
-┌───────────────────────────────┼───────────────────────────────────────────┤
-│                        Proxy Engine (INTERNAL)                          │
-│                    ┌──────────┼──────────┐                               │
-│           ┌────────▼────────┐│┌─────────▼─────────┐                     │
-│           │ relay-core-lib  │││relay-core-storage  │                     │
-│           │  MITM/Proxy/TLS │││      SQLite        │                     │
-│           └─────────────────┘│└───────────────────┘                     │
-│                              │                    ┌───────────────────┐  │
-│                              │                    │relay-core-script  │  │
-│                              │                    │     Deno/V8       │  │
-│                              │                    └───────────────────┘  │
-└──────────────────────────────┴───────────────────────────────────────────┘</pre>
+      <ArchitectureDiagram />
     </div>
 
     <div class="crates-grid">
@@ -172,17 +145,27 @@ const apiRequestUrl = 'http://127.0.0.1:3000/api/v1/flows?limit=10';
       <div class="crate-item beta">
         <span class="crate-badge">BETA</span>
         <span class="crate-name">relay-core-cli</span>
-        <span class="crate-desc">独立 CLI 和 TUI</span>
+        <span class="crate-desc">CLI · TUI · 内嵌 HTTP API</span>
+      </div>
+      <div class="crate-item internal">
+        <span class="crate-badge">INTERNAL</span>
+        <span class="crate-name">relay-core-api</span>
+        <span class="crate-desc">Flow / Rule 共享契约</span>
       </div>
       <div class="crate-item internal">
         <span class="crate-badge">INTERNAL</span>
         <span class="crate-name">relay-core-lib</span>
-        <span class="crate-desc">核心引擎：MITM、TLS、代理</span>
+        <span class="crate-desc">MITM · 代理 · 规则执行</span>
+      </div>
+      <div class="crate-item internal">
+        <span class="crate-badge">INTERNAL</span>
+        <span class="crate-name">relay-core-script</span>
+        <span class="crate-desc">Deno/V8 脚本（可选）</span>
       </div>
       <div class="crate-item internal">
         <span class="crate-badge">INTERNAL</span>
         <span class="crate-name">relay-core-storage</span>
-        <span class="crate-desc">SQLite 持久化</span>
+        <span class="crate-desc">SQLite 持久化（可选）</span>
       </div>
     </div>
   </section>
