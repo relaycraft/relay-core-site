@@ -5,63 +5,133 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="Tauri 插件" description="在 Tauri 应用中使用 RelayCore">
   <h1>Tauri 插件</h1>
 
-  <p><code>relay-core-tauri</code> 是 RelayCraft 桌面端的 Tauri v2 插件，在应用进程内嵌入 RelayCore 运行时（<code>CoreState</code>），通过 Tauri command 暴露代理生命周期、流量查询与拦截控制。</p>
+  <p><code>relay-core-tauri</code> 是 RelayCore 的 Tauri v2 宿主适配器：在桌面应用进程内嵌入 <code>CoreState</code>，通过 Tauri command 暴露代理启动、流量查询、拦截控制与 CA 管理。RelayCraft 桌面端即基于此插件构建；你也可以在自建 Tauri 应用中集成同一套能力。</p>
 
-  <p>该 crate 面向 <strong>RelayCraft 桌面应用及自建 Tauri 宿主</strong>，不是独立 CLI 分发形态。</p>
+  <h2>适用场景</h2>
+
+  <ul>
+    <li>需要在<strong>桌面应用内</strong>运行 MITM 代理，而不是单独启动 CLI</li>
+    <li>前端 UI 要直接调用 <code>invoke</code> 查询 Flow、处理断点、读写策略</li>
+    <li>与 CLI / HTTP API / MCP 共享同一 runtime，保证行为一致</li>
+  </ul>
 
   <h2>架构位置</h2>
 
   <ul>
-    <li><strong>数据面</strong>：<code>relay-core-lib</code> 捕获与 MITM</li>
-    <li><strong>编排层</strong>：<code>relay-core-runtime</code> 的 <code>CoreState</code></li>
-    <li><strong>宿主适配</strong>：<code>relay-core-tauri</code> 将 CoreState 挂载到 Tauri 应用并暴露 IPC</li>
+    <li><strong>数据面</strong>：<code>relay-core-lib</code> — 捕获与 MITM</li>
+    <li><strong>编排层</strong>：<code>relay-core-runtime</code> — <code>CoreState</code></li>
+    <li><strong>宿主适配</strong>：<code>relay-core-tauri</code> — Tauri IPC 与 Flow 事件桥接</li>
   </ul>
 
-  <h2>注册插件</h2>
+  <h2>快速集成</h2>
+
+  <h3>1. 添加依赖</h3>
+
+  <p>在 Tauri 应用的 <code>src-tauri/Cargo.toml</code> 中引入插件 crate（与 RelayCore 主仓库同版本）：</p>
+
+  <pre><code>[dependencies]
+relay-core-tauri = &#123; git = "https://github.com/relaycraft/relay-core", tag = "v0.5.2" &#125;
+tauri = &#123; version = "2", features = [] &#125;</code></pre>
+
+  <h3>2. 注册插件</h3>
 
   <pre><code>// src-tauri/src/lib.rs
-relay_core_tauri::init()</code></pre>
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() &#123;
+    tauri::Builder::default()
+        .plugin(relay_core_tauri::init())
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+&#125;</code></pre>
 
-  <p>插件 ID 为 <code>relay-core-tauri</code>。初始化时会创建 <code>RelayCoreState</code>（内含 <code>CoreState</code> 与 <code>TauriContext</code>）并注册到 Tauri 状态管理。</p>
+  <p>插件 ID 为 <code>relay-core-tauri</code>。初始化时会创建 <code>RelayCoreState</code>（包装 <code>CoreState</code> 与 <code>TauriContext</code>）并注册到 Tauri 状态管理。</p>
+
+  <h3>3. 配置权限（Tauri v2 capabilities）</h3>
+
+  <p>默认仅允许 <code>start_core_proxy</code>。完整桌面调试场景建议在 capability 中显式开放所需 command：</p>
+
+  <pre><code>&#123;
+  "identifier": "main-capability",
+  "windows": ["main"],
+  "permissions": [
+    "relay-core-tauri:allow-start-core-proxy",
+    "relay-core-tauri:allow-stop-core-proxy",
+    "relay-core-tauri:allow-get-core-status",
+    "relay-core-tauri:allow-get-flow-detail",
+    "relay-core-tauri:allow-get-pending-intercepts",
+    "relay-core-tauri:allow-resume-flow",
+    "relay-core-tauri:allow-install-ca-cert"
+  ]
+&#125;</code></pre>
+
+  <h3>4. 从前端启动代理</h3>
+
+  <pre><code>import &#123; invoke &#125; from "@tauri-apps/api/core";
+
+// 默认端口 8080；CA 写入应用 app_data_dir
+await invoke("plugin:relay-core-tauri|start_core_proxy", &#123; port: 8080 &#125;);
+
+const status = await invoke("plugin:relay-core-tauri|get_core_status");
+console.log(status);</code></pre>
+
+  <p>首次 HTTPS 拦截前需信任 CA：<code>start_core_proxy</code> 会在应用数据目录生成证书，再调用 <code>install_ca_cert</code> 打开系统安装引导（macOS / Windows）。</p>
 
   <h2>可用 Commands</h2>
 
   <table>
-    <tr><th>Command</th><th>说明</th></tr>
-    <tr><td><code>start_core_proxy</code></td><td>启动嵌入式代理</td></tr>
-    <tr><td><code>stop_core_proxy</code></td><td>停止代理</td></tr>
-    <tr><td><code>get_core_status</code></td><td>查询运行状态</td></tr>
-    <tr><td><code>get_core_metrics</code></td><td>获取运行时指标</td></tr>
-    <tr><td><code>get_flow_detail</code></td><td>获取单条 Flow 详情</td></tr>
-    <tr><td><code>get_pending_intercepts</code></td><td>列出待处理拦截</td></tr>
-    <tr><td><code>resume_flow</code></td><td>恢复或丢弃已暂停流量</td></tr>
-    <tr><td><code>set_intercept_rule</code></td><td>设置拦截规则</td></tr>
-    <tr><td><code>get_policy</code> / <code>update_policy</code> / <code>patch_policy</code></td><td>策略读写</td></tr>
-    <tr><td><code>load_script</code></td><td>加载脚本</td></tr>
-    <tr><td><code>get_ca_cert_path</code></td><td>获取 CA 证书路径</td></tr>
-    <tr><td><code>install_ca_cert</code></td><td>安装 CA 到系统信任存储（平台相关）</td></tr>
-    <tr><td><code>get_recent_audit</code></td><td>获取最近审计事件</td></tr>
+    <thead>
+      <tr><th>Command</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>start_core_proxy</code></td><td>启动嵌入式代理（可选 <code>port</code>，默认 8080）</td></tr>
+      <tr><td><code>stop_core_proxy</code></td><td>停止代理</td></tr>
+      <tr><td><code>get_core_status</code></td><td>运行状态快照</td></tr>
+      <tr><td><code>get_core_metrics</code></td><td>Prometheus 兼容指标</td></tr>
+      <tr><td><code>get_flow_detail</code></td><td>按 ID 获取 Flow 详情</td></tr>
+      <tr><td><code>get_pending_intercepts</code></td><td>列出待处理拦截</td></tr>
+      <tr><td><code>resume_flow</code></td><td>继续或丢弃已暂停流量</td></tr>
+      <tr><td><code>set_intercept_rule</code></td><td>设置拦截规则</td></tr>
+      <tr><td><code>get_policy</code> / <code>update_policy</code> / <code>patch_policy</code></td><td>代理策略读写</td></tr>
+      <tr><td><code>load_script</code></td><td>热加载 Deno 脚本</td></tr>
+      <tr><td><code>get_ca_cert_path</code></td><td>返回 CA 证书路径（需先启动代理）</td></tr>
+      <tr><td><code>install_ca_cert</code></td><td>打开系统 CA 安装引导</td></tr>
+      <tr><td><code>get_recent_audit</code></td><td>最近控制面审计事件</td></tr>
+    </tbody>
   </table>
 
-  <h2>权限（Tauri v2）</h2>
+  <h2>典型工作流</h2>
 
-  <p>插件使用 Tauri capability 权限模型。默认权限集包含 <code>allow-start-core-proxy</code>。其余 command 需按需在 <code>capabilities</code> 中显式允许（如 <code>relay-core-tauri:allow-get-flow-detail</code>）。</p>
+  <pre><code>// 1. 启动代理
+await invoke("plugin:relay-core-tauri|start_core_proxy", &#123; port: 8080 &#125;);
+
+// 2. 安装 CA（用户需在系统对话框中确认信任）
+await invoke("plugin:relay-core-tauri|install_ca_cert");
+
+// 3. 查询待处理拦截并恢复
+const pending = await invoke("plugin:relay-core-tauri|get_pending_intercepts");
+// ... UI 展示后 ...
+await invoke("plugin:relay-core-tauri|resume_flow", &#123; id: "flow-id:request", action: "continue" &#125;);</code></pre>
 
   <h2>与 CLI / MCP 的关系</h2>
 
-  <ul>
-    <li><strong>CLI</strong>（<code>relay-core-cli</code>）：独立二进制，适合终端调试</li>
-    <li><strong>MCP</strong>（<code>relay-core-probe</code> / <code>@relay-core/mcp</code>）：面向 AI Agent 的 MCP 适配器</li>
-    <li><strong>Tauri 插件</strong>：面向桌面应用内嵌，与 RelayCraft UI 深度集成</li>
-  </ul>
+  <table>
+    <thead>
+      <tr><th>宿主</th><th>适用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>relay-core-cli</code></td><td>终端调试、脚本开发、CI</td></tr>
+      <tr><td><code>relay-core-probe</code>（<code>@relay-core/mcp</code>）</td><td>AI Agent / IDE 集成</td></tr>
+      <tr><td><code>relay-core-tauri</code></td><td>桌面应用内嵌，与 UI 深度集成</td></tr>
+    </tbody>
+  </table>
 
-  <p>三者共享同一套 runtime 能力面，差异在宿主与交互方式。</p>
+  <p>三者共享同一套 runtime 能力面；差异在宿主进程与交互方式。CLI 侧文档见<a href="/docs/getting-started">快速开始</a>，HTTP 控制面见<a href="/docs/api">HTTP API</a>。</p>
 
   <h2>相关文档</h2>
 
   <ul>
     <li><a href="/docs/architecture">架构</a></li>
-    <li><a href="/docs/getting-started">快速开始</a>（CLI 路径）</li>
+    <li><a href="/docs/scripting">脚本 API</a></li>
     <li><a href="/docs/mcp">MCP 服务器</a></li>
   </ul>
 </DocsLayout>

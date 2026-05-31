@@ -2,98 +2,106 @@
 import DocsLayout from '../../../layouts/DocsLayout.astro';
 ---
 
-<DocsLayout title="vs mitmproxy" description="Detailed comparison of RelayCore scripting vs mitmproxy">
-  <h1>vs mitmproxy</h1>
+<DocsLayout title="Scripting Overview" description="What RelayCore scripting can do and when to use it">
+  <h1>Scripting Overview</h1>
 
-  <p>RelayCore's scripting engine is designed to replace mitmproxy's script system for <strong>core daily workflows</strong>, while providing differentiated capabilities no competitor offers.</p>
+  <p>RelayCore's script engine runs on Deno/V8 with TypeScript hooks. It complements the <a href="/en/docs/rule-engine">rule engine</a>: rules excel at declarative matching and fixed actions; scripts fit branching logic, cross-request state, and dynamic computation.</p>
 
-  <h2>Capability Matrix</h2>
-
-  <table>
-    <tr><th>Capability</th><th>RelayCore 1.0</th><th>mitmproxy</th><th>Notes</th></tr>
-    <tr><td>HTTP request/response hooks</td><td>✅ 4 hooks</td><td>✅ 4 hooks</td><td>Feature parity</td></tr>
-    <tr><td>WebSocket message frames</td><td>✅</td><td>✅</td><td>Feature parity</td></tr>
-    <tr><td>WebSocket lifecycle</td><td>✅ start/end/error</td><td>✅</td><td>Feature parity</td></tr>
-    <tr><td>Connection hooks</td><td>✅ onConnect/onDisconnect</td><td>✅ clientconnect/clientdisconnect</td><td>RelayCore adds drop support</td></tr>
-    <tr><td>Error callback</td><td>✅ onError</td><td>✅ error</td><td>RelayCore includes stage info</td></tr>
-    <tr><td>Cross-request state</td><td>✅ sharedState</td><td>✅ Python globals</td><td>Different model: per-isolate vs process-global</td></tr>
-    <tr><td>Env variable access</td><td>✅ relay.env + whitelist</td><td>✅ os.environ</td><td>RelayCore is more secure (whitelist)</td></tr>
-    <tr><td>Graded logging</td><td>✅ 5 levels → tracing</td><td>✅ logging module</td><td>Feature parity</td></tr>
-    <tr><td>Execution metrics</td><td>✅ Prometheus native</td><td>✅ addon trace</td><td>RelayCore integrates directly with monitoring</td></tr>
-    <tr><td>Built-in tools (uuid/hash/base64/json)</td><td>✅ relay.* global</td><td>✅ Python stdlib</td><td>Python has this naturally</td></tr>
-    <tr><td>Sub-requests (fetch)</td><td>✅ relay.fetch + safety controls</td><td>✅ requests/httpx</td><td>mitmproxy has richer HTTP client</td></tr>
-    <tr><td>Rule→script awareness</td><td>✅ matched_rules + rule_variables</td><td>❌ None</td><td><strong>RelayCore exclusive</strong></td></tr>
-    <tr><td>npm packages</td><td>✅ Bundle mode (esbuild)</td><td>✅ pip install</td><td>mitmproxy experience is more natural</td></tr>
-  </table>
-
-  <h2>What mitmproxy has that RelayCore 1.0 doesn't</h2>
+  <h2>Scripts vs rules</h2>
 
   <table>
-    <tr><th>Capability</th><th>Importance</th><th>Reason for 1.0 exclusion</th></tr>
-    <tr><td>DNS/TCP/UDP layer hooks</td><td>Medium</td><td>Transparent proxy app-layer MITM is 1.x scope</td></tr>
-    <tr><td>TLS clienthello hook</td><td>Low</td><td>SNI filtering achievable via rule engine</td></tr>
-    <tr><td>Streaming body chunk modification</td><td>Medium</td><td>High engineering cost; 1.0 provides full body replacement</td></tr>
-    <tr><td>Built-in Mock Server</td><td>Low</td><td>Achievable via onRequest mock responses</td></tr>
-    <tr><td>@command system</td><td>Low</td><td>CLI subcommands + TUI cover primary use cases</td></tr>
-    <tr><td>Structured error stack / source map</td><td>Low</td><td>onError + console.* + Prometheus provide basic debugging</td></tr>
+    <thead>
+      <tr><th>Need</th><th>Use</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Rewrite headers or mock a fixed response by URL/method</td><td>Rules</td></tr>
+      <tr><td>Transform bodies dynamically, aggregate stats, cross-request cache</td><td>Scripts</td></tr>
+      <tr><td>Manual breakpoints with UI-driven resume</td><td>Rules + Tauri / HTTP API</td></tr>
+      <tr><td>Business logic (signing, token refresh, A/B routing)</td><td>Scripts</td></tr>
+    </tbody>
   </table>
 
-  <h2>What RelayCore has that mitmproxy doesn't</h2>
+  <h2>Lifecycle hooks</h2>
+
+  <p>Register callbacks on <code>globalThis</code> to run at each proxy stage:</p>
 
   <table>
-    <tr><th>Capability</th><th>Value</th></tr>
-    <tr><td><strong>Rule↔Script dual engine</strong></td><td>Scripts can observe rule execution context — a unique RelayCore differentiator</td></tr>
-    <tr><td><strong>Prometheus-native metrics</strong></td><td>Script performance flows directly into monitoring, zero extra integration</td></tr>
-    <tr><td><strong>Secure defaults</strong></td><td>relay.env whitelist, relay.fetch disabled-by-default + allowlist + anti-recursion + audit — external access is fully controlled</td></tr>
-    <tr><td><strong>Multi-host uniform</strong></td><td>Same script runs identically across CLI / HTTP API / MCP / Tauri</td></tr>
+    <thead>
+      <tr><th>Hook</th><th>When it runs</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>onConnect</code> / <code>onDisconnect</code></td><td>TCP connect and teardown</td></tr>
+      <tr><td><code>onRequestHeaders</code> / <code>onResponseHeaders</code></td><td>HTTP headers (read/write)</td></tr>
+      <tr><td><code>onRequest</code> / <code>onResponse</code></td><td>Full request/response including body</td></tr>
+      <tr><td><code>onWebSocketMessage</code></td><td>WebSocket frame interception</td></tr>
+      <tr><td><code>onError</code></td><td>Proxy or script errors with stage info</td></tr>
+    </tbody>
   </table>
 
-  <h2>Migration Guide</h2>
+  <p>See <a href="/en/docs/scripting">Scripting API</a> for types and <a href="/en/docs/scripting-guide">Scripting Guide</a> for workflow.</p>
 
-  <h3>From mitmproxy Python scripts</h3>
+  <h2>Runtime features</h2>
+
+  <ul>
+    <li><strong>TypeScript / npm</strong>: bundle with esbuild, load via CLI <code>--script</code> or HTTP <code>/api/v1/script</code></li>
+    <li><strong>sharedState</strong>: cross-request in-memory state (per-isolate; good for counters and cache indexes)</li>
+    <li><strong>relay.env</strong>: whitelist-controlled env access (<code>--script-env-allow</code>)</li>
+    <li><strong>relay.fetch</strong>: optional sub-requests; disabled by default with allowlist and audit</li>
+    <li><strong>relay.* helpers</strong>: uuid, hash, base64, json, and more</li>
+    <li><strong>Rule context</strong>: <code>flow.matched_rules</code> and <code>flow.rule_variables</code> expose rule match results to scripts</li>
+    <li><strong>Observability</strong>: script duration metrics via Prometheus (see <a href="/en/docs/observability">Monitoring</a>)</li>
+  </ul>
+
+  <h2>Minimal example</h2>
+
+  <pre><code>globalThis.onRequestHeaders = (_ctx, flow) => &#123;
+  flow.layer.data.request.headers.push(["X-RelayCore", "1"]);
+  return flow;
+&#125;;
+
+globalThis.onResponse = (_ctx, flow) => &#123;
+  if (flow.response?.status === 404) &#123;
+    console.warn("404:", flow.id);
+  &#125;
+  return flow;
+&#125;;</code></pre>
+
+  <pre><code># Run with script hot-reload
+relay-core-cli run --script ./hooks.ts --script-watch</code></pre>
+
+  <h2>Compared to other script models</h2>
+
+  <p>If you know Python addons (e.g. mitmproxy) or similar proxy extensions, the main differences are:</p>
+
+  <ul>
+    <li><strong>Language</strong>: TypeScript instead of Python; npm via bundle step</li>
+    <li><strong>Headers</strong>: <code>[name, value][]</code> arrays preserve duplicate headers</li>
+    <li><strong>Body</strong>: <code>body.content</code> is base64 — use <code>atob</code> / <code>btoa</code></li>
+    <li><strong>Global state</strong>: <code>sharedState</code> instead of process-wide Python globals</li>
+    <li><strong>Mock responses</strong>: prefer <a href="/en/docs/rule-engine">rule engine</a> Mock actions; scripts for dynamic logic</li>
+  </ul>
+
+  <h3>Migrating from a Python addon</h3>
+
   <pre><code># mitmproxy
 def request(flow):
-    flow.layer.data.request.headers["X-Custom"] = "value"
+    flow.request.headers["X-Custom"] = "value"
 
 # RelayCore
-globalThis.onRequestHeaders = (ctx, flow) => &#123;
+globalThis.onRequestHeaders = (_ctx, flow) => &#123;
   flow.layer.data.request.headers.push(["X-Custom", "value"]);
   return flow;
 &#125;;</code></pre>
 
-  <pre><code># mitmproxy
-def response(flow):
-    if flow.layer.data.response.status_code == 404:
-        flow.response = http.Response.make(200, b"OK", &#123;"Content-Type": "text/plain"&#125;)
+  <h2>Same script, multiple hosts</h2>
 
-# RelayCore
-globalThis.onResponse = (ctx, flow) => &#123;
-  if (flow.response?.status === 404) &#123;
-    return &#123;
-      action: "respond",
-      status: 200,
-      headers: [["content-type", "text/plain"]],
-      body: "OK",
-    &#125;;
-  &#125;
-&#125;;</code></pre>
+  <p>One script can load consistently across shared runtime hosts:</p>
 
-  <h3>Key Differences</h3>
   <ul>
-    <li><strong>Headers format</strong>: mitmproxy uses <code>dict</code>, RelayCore uses <code>[key, value][]</code> arrays (preserving duplicate headers)</li>
-    <li><strong>Body encoding</strong>: RelayCore body.content is base64 — decode with <code>atob()</code>, modify, then <code>btoa()</code> to write back</li>
-    <li><strong>Global state</strong>: mitmproxy Python globals are process-wide; RelayCore sharedState is per-isolate, but same flow = same engine guaranteed</li>
-    <li><strong>Return semantics</strong>: onRequestHeaders/onResponseHeaders return modified flow; in 0.5.1 onRequest/onResponse return flow (<code>&#123;action: "respond"&#125;</code> is 1.x — use rules for Mock)</li>
+    <li><code>relay-core-cli run --script</code></li>
+    <li>HTTP API <code>POST /api/v1/script</code></li>
+    <li>Tauri <code>load_script</code> command</li>
   </ul>
 
-  <h2>When to Choose Which</h2>
-  <table>
-    <tr><th>Scenario</th><th>Recommendation</th><th>Reason</th></tr>
-    <tr><td>Daily HTTP API debugging</td><td>Either</td><td>Feature parity</td></tr>
-    <tr><td>Rule + script coordination</td><td><strong>RelayCore</strong></td><td>Exclusive rule↔script bridge</td></tr>
-    <tr><td>Transparent proxy TCP/UDP scripting</td><td>mitmproxy</td><td>RelayCore 1.0 doesn't support</td></tr>
-    <tr><td>Heavy Python ecosystem dependency</td><td>mitmproxy</td><td>Native Python pip ecosystem</td></tr>
-    <tr><td>Embedded / desktop integration</td><td><strong>RelayCore</strong></td><td>Tauri + CLI + MCP multi-host</td></tr>
-    <tr><td>Production controlled scripting</td><td><strong>RelayCore</strong></td><td>Secure defaults + Prometheus + audit</td></tr>
-  </table>
+  <p>CLI for local dev, HTTP API for web UI or automation, Tauri for embedded desktop apps. See <a href="/en/docs/architecture">Architecture</a>.</p>
 </DocsLayout>

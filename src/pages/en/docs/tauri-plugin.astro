@@ -5,63 +5,132 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="Tauri Plugin" description="Use RelayCore in Tauri applications">
   <h1>Tauri Plugin</h1>
 
-  <p><code>relay-core-tauri</code> is the Tauri v2 plugin used by the RelayCraft desktop app. It embeds the RelayCore runtime (<code>CoreState</code>) inside the application process and exposes proxy lifecycle, flow inspection, and intercept control via Tauri commands.</p>
+  <p><code>relay-core-tauri</code> is RelayCore's Tauri v2 host adapter. It embeds <code>CoreState</code> inside your desktop app and exposes proxy lifecycle, flow inspection, intercept control, and CA management through Tauri commands. The RelayCraft desktop app is built on this plugin; you can integrate the same surface in your own Tauri host.</p>
 
-  <p>This crate targets <strong>RelayCraft and custom Tauri hosts</strong>, not standalone CLI distribution.</p>
+  <h2>When to use it</h2>
+
+  <ul>
+    <li>Run MITM proxy <strong>inside a desktop app</strong> instead of a separate CLI process</li>
+    <li>Drive flow queries, breakpoints, and policy from your frontend via <code>invoke</code></li>
+    <li>Share the same runtime behavior as CLI, HTTP API, and MCP adapters</li>
+  </ul>
 
   <h2>Where it sits</h2>
 
   <ul>
-    <li><strong>Data plane</strong>: <code>relay-core-lib</code> capture and MITM</li>
-    <li><strong>Orchestration</strong>: <code>relay-core-runtime</code> <code>CoreState</code></li>
-    <li><strong>Host adapter</strong>: <code>relay-core-tauri</code> mounts CoreState in Tauri and exposes IPC</li>
+    <li><strong>Data plane</strong>: <code>relay-core-lib</code> — capture and MITM</li>
+    <li><strong>Orchestration</strong>: <code>relay-core-runtime</code> — <code>CoreState</code></li>
+    <li><strong>Host adapter</strong>: <code>relay-core-tauri</code> — Tauri IPC and flow event bridge</li>
   </ul>
 
-  <h2>Register the plugin</h2>
+  <h2>Quick integration</h2>
+
+  <h3>1. Add dependency</h3>
+
+  <p>In your Tauri app's <code>src-tauri/Cargo.toml</code> (pin the same version as RelayCore):</p>
+
+  <pre><code>[dependencies]
+relay-core-tauri = &#123; git = "https://github.com/relaycraft/relay-core", tag = "v0.5.2" &#125;
+tauri = &#123; version = "2", features = [] &#125;</code></pre>
+
+  <h3>2. Register the plugin</h3>
 
   <pre><code>// src-tauri/src/lib.rs
-relay_core_tauri::init()</code></pre>
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() &#123;
+    tauri::Builder::default()
+        .plugin(relay_core_tauri::init())
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+&#125;</code></pre>
 
-  <p>Plugin ID: <code>relay-core-tauri</code>. On setup it creates <code>RelayCoreState</code> (wrapping <code>CoreState</code> and <code>TauriContext</code>) and registers it with Tauri state.</p>
+  <p>Plugin ID: <code>relay-core-tauri</code>. Setup creates <code>RelayCoreState</code> (wrapping <code>CoreState</code> and <code>TauriContext</code>) and registers it with Tauri state.</p>
+
+  <h3>3. Capabilities (Tauri v2)</h3>
+
+  <p>The default permission set only allows <code>start_core_proxy</code>. For a full desktop workflow, allow the commands you need explicitly:</p>
+
+  <pre><code>&#123;
+  "identifier": "main-capability",
+  "windows": ["main"],
+  "permissions": [
+    "relay-core-tauri:allow-start-core-proxy",
+    "relay-core-tauri:allow-stop-core-proxy",
+    "relay-core-tauri:allow-get-core-status",
+    "relay-core-tauri:allow-get-flow-detail",
+    "relay-core-tauri:allow-get-pending-intercepts",
+    "relay-core-tauri:allow-resume-flow",
+    "relay-core-tauri:allow-install-ca-cert"
+  ]
+&#125;</code></pre>
+
+  <h3>4. Start proxy from the frontend</h3>
+
+  <pre><code>import &#123; invoke &#125; from "@tauri-apps/api/core";
+
+// Default port 8080; CA is written under app_data_dir
+await invoke("plugin:relay-core-tauri|start_core_proxy", &#123; port: 8080 &#125;);
+
+const status = await invoke("plugin:relay-core-tauri|get_core_status");
+console.log(status);</code></pre>
+
+  <p>For HTTPS interception, trust the CA first: <code>start_core_proxy</code> generates certificates in the app data directory, then call <code>install_ca_cert</code> to open the OS trust prompt (macOS / Windows).</p>
 
   <h2>Available commands</h2>
 
   <table>
-    <tr><th>Command</th><th>Description</th></tr>
-    <tr><td><code>start_core_proxy</code></td><td>Start embedded proxy</td></tr>
-    <tr><td><code>stop_core_proxy</code></td><td>Stop proxy</td></tr>
-    <tr><td><code>get_core_status</code></td><td>Runtime status</td></tr>
-    <tr><td><code>get_core_metrics</code></td><td>Runtime metrics</td></tr>
-    <tr><td><code>get_flow_detail</code></td><td>Single flow detail</td></tr>
-    <tr><td><code>get_pending_intercepts</code></td><td>List pending intercepts</td></tr>
-    <tr><td><code>resume_flow</code></td><td>Resume or drop paused traffic</td></tr>
-    <tr><td><code>set_intercept_rule</code></td><td>Set intercept rule</td></tr>
-    <tr><td><code>get_policy</code> / <code>update_policy</code> / <code>patch_policy</code></td><td>Policy read/write</td></tr>
-    <tr><td><code>load_script</code></td><td>Load script</td></tr>
-    <tr><td><code>get_ca_cert_path</code></td><td>CA certificate path</td></tr>
-    <tr><td><code>install_ca_cert</code></td><td>Install CA to system trust store (platform-specific)</td></tr>
-    <tr><td><code>get_recent_audit</code></td><td>Recent audit events</td></tr>
+    <thead>
+      <tr><th>Command</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>start_core_proxy</code></td><td>Start embedded proxy (optional <code>port</code>, default 8080)</td></tr>
+      <tr><td><code>stop_core_proxy</code></td><td>Stop proxy</td></tr>
+      <tr><td><code>get_core_status</code></td><td>Runtime status snapshot</td></tr>
+      <tr><td><code>get_core_metrics</code></td><td>Prometheus-compatible metrics</td></tr>
+      <tr><td><code>get_flow_detail</code></td><td>Flow detail by ID</td></tr>
+      <tr><td><code>get_pending_intercepts</code></td><td>List pending intercepts</td></tr>
+      <tr><td><code>resume_flow</code></td><td>Resume or drop paused traffic</td></tr>
+      <tr><td><code>set_intercept_rule</code></td><td>Set intercept rule</td></tr>
+      <tr><td><code>get_policy</code> / <code>update_policy</code> / <code>patch_policy</code></td><td>Proxy policy read/write</td></tr>
+      <tr><td><code>load_script</code></td><td>Hot-load Deno script</td></tr>
+      <tr><td><code>get_ca_cert_path</code></td><td>CA certificate path (proxy must be running)</td></tr>
+      <tr><td><code>install_ca_cert</code></td><td>Open OS CA install prompt</td></tr>
+      <tr><td><code>get_recent_audit</code></td><td>Recent control-plane audit events</td></tr>
+    </tbody>
   </table>
 
-  <h2>Permissions (Tauri v2)</h2>
+  <h2>Typical workflow</h2>
 
-  <p>The plugin uses Tauri capability permissions. The default set includes <code>allow-start-core-proxy</code>. Other commands must be explicitly allowed in capabilities (e.g. <code>relay-core-tauri:allow-get-flow-detail</code>).</p>
+  <pre><code>// 1. Start proxy
+await invoke("plugin:relay-core-tauri|start_core_proxy", &#123; port: 8080 &#125;);
+
+// 2. Install CA (user confirms trust in the OS dialog)
+await invoke("plugin:relay-core-tauri|install_ca_cert");
+
+// 3. Inspect and resume pending intercepts
+const pending = await invoke("plugin:relay-core-tauri|get_pending_intercepts");
+await invoke("plugin:relay-core-tauri|resume_flow", &#123; id: "flow-id:request", action: "continue" &#125;);</code></pre>
 
   <h2>CLI / MCP / Tauri</h2>
 
-  <ul>
-    <li><strong>CLI</strong> (<code>relay-core-cli</code>): standalone binary for terminal workflows</li>
-    <li><strong>MCP</strong> (<code>relay-core-probe</code> / <code>@relay-core/mcp</code>): MCP adapter for AI agents</li>
-    <li><strong>Tauri plugin</strong>: embedded in desktop apps, integrated with RelayCraft UI</li>
-  </ul>
+  <table>
+    <thead>
+      <tr><th>Host</th><th>Best for</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>relay-core-cli</code></td><td>Terminal debugging, script dev, CI</td></tr>
+      <tr><td><code>relay-core-probe</code> (<code>@relay-core/mcp</code>)</td><td>AI agents and IDE integration</td></tr>
+      <tr><td><code>relay-core-tauri</code></td><td>Embedded desktop apps with native UI</td></tr>
+    </tbody>
+  </table>
 
-  <p>All three share the same runtime capability surface; they differ in host and interaction model.</p>
+  <p>All three share the same runtime capability surface. See <a href="/en/docs/getting-started">Quick Start</a> for CLI and <a href="/en/docs/api">HTTP API</a> for the REST control plane.</p>
 
   <h2>See also</h2>
 
   <ul>
     <li><a href="/en/docs/architecture">Architecture</a></li>
-    <li><a href="/en/docs/getting-started">Quick Start</a> (CLI path)</li>
+    <li><a href="/en/docs/scripting">Scripting API</a></li>
     <li><a href="/en/docs/mcp">MCP Server</a></li>
   </ul>
 </DocsLayout>
