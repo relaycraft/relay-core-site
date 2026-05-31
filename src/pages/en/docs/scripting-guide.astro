@@ -17,6 +17,15 @@ globalThis.onRequest = (ctx, flow) => &#123;
   -H "Content-Type: application/json" \
   -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'</code></pre>
 
+  <h2>0.5.x API Notes</h2>
+  <ul>
+    <li><strong>Flow shape</strong>: HTTP request/response live at <code>flow.layer.data.request</code> / <code>flow.layer.data.response</code> (not <code>flow.request</code>)</li>
+    <li><strong>sharedState</strong>: use <code>get(key)</code> / <code>set(key, value)</code> / <code>delete(key)</code>, not plain object properties</li>
+    <li><strong>Rule variables</strong>: scripts run before rules in <code>onRequestHeaders</code>; read <code>flow.rule_variables</code> in <code>onRequest</code> or later hooks</li>
+    <li><strong>Mock / direct responses</strong>: <code>&#123; action: "respond" &#125;</code> is not supported in 0.5.1 — use rule <code>MockResponse</code> (see <a href="/en/docs/rule-guide">Rule Guide</a>)</li>
+    <li><strong>Sandbox</strong>: no global <code>URL</code> — parse paths with a string helper (see §2)</li>
+  </ul>
+
   <h2>Common Patterns</h2>
 
   <h3>1. Auth Injection</h3>
@@ -35,21 +44,20 @@ function getToken() &#123;
 &#125;</code></pre>
 
   <h3>2. Mock Responses</h3>
-  <pre><code>const mocks = &#123;
-  "/api/users": [&#123; id: 1, name: "Alice" &#125;, &#123; id: 2, name: "Bob" &#125;],
-  "/api/health": &#123; status: "ok", version: "1.0" &#125;,
-&#125;;
+  <p>In 0.5.1, prefer rule-engine <code>MockResponse</code> for mocks (see <a href="/en/docs/rule-guide">Rule Guide §2</a>). The sandbox has no global <code>URL</code> object:</p>
+  <pre><code>function pathname(url) &#123;
+  const start = url.indexOf("://");
+  const slash = start >= 0 ? url.indexOf("/", start + 3) : url.indexOf("/");
+  return (slash >= 0 ? url.slice(slash) : "/").split("?")[0];
+&#125;
 
-globalThis.onRequest = (ctx, flow) => &#123;
-  const path = new URL(flow.layer.data.request.url).pathname;
-  if (mocks[path]) &#123;
-    return &#123;
-      action: "respond",
-      status: 200,
-      headers: [["content-type", "application/json"]],
-      body: JSON.stringify(mocks[path]),
-    &#125;;
+// Tag paths that a MockResponse / Drop rule should handle
+globalThis.onRequestHeaders = (ctx, flow) => &#123;
+  const path = pathname(flow.layer.data.request.url);
+  if (path === "/api/users" || path === "/api/health") &#123;
+    flow.tags.push("mock-candidate");
   &#125;
+  return flow;
 &#125;;</code></pre>
 
   <h3>3. Request Rewriting</h3>
@@ -68,7 +76,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
 
   <h3>4. Response Sanitization</h3>
   <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
-  if (!flow.response?.body) return;
+  if (flow.layer.type !== "Http" || !flow.layer.data.response?.body) return;
   const raw = atob(flow.layer.data.response.body.content);
 
   const data = relay.json.parseSafe(raw);
@@ -78,6 +86,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
   const newBody = relay.json.stringifyPretty(sanitized);
   flow.layer.data.response.body.content = btoa(newBody);
   flow.layer.data.response.body.size = newBody.length;
+  return flow;
 &#125;;
 
 function redactPersonalInfo(obj) &#123;
@@ -101,9 +110,8 @@ const WINDOW_MS = 60_000;
 globalThis.onRequest = (ctx, flow) => &#123;
   const ip = flow.network.client_ip;
   const now = Date.now();
-
-  if (!sharedState._rateLimit) sharedState._rateLimit = &#123;&#125;;
-  const entry = sharedState._rateLimit[ip] || &#123; count: 0, reset: now + WINDOW_MS &#125;;
+  const bucket = sharedState.get("_rateLimit") || &#123;&#125;;
+  const entry = bucket[ip] || &#123; count: 0, reset: now + WINDOW_MS &#125;;
 
   if (now > entry.reset) &#123;
     entry.count = 0;
@@ -111,36 +119,35 @@ globalThis.onRequest = (ctx, flow) => &#123;
   &#125;
 
   entry.count++;
-  sharedState._rateLimit[ip] = entry;
+  bucket[ip] = entry;
+  sharedState.set("_rateLimit", bucket);
 
   if (entry.count > RATE_LIMIT) &#123;
-    return &#123;
-      action: "respond",
-      status: 429,
-      headers: [["content-type", "text/plain"]],
-      body: "Too Many Requests",
-    &#125;;
+    flow.tags.push("rate-limited");
+    // Return 429 via rule RateLimit action (Rule Guide §8)
   &#125;
+  return flow;
 &#125;;</code></pre>
 
   <h3>6. Cross-Hook Context</h3>
   <pre><code>globalThis.onRequest = (ctx, flow) => &#123;
-  sharedState[flow.id] = &#123;
+  sharedState.set(flow.id, &#123;
     startTime: Date.now(),
-    authType: flow.layer.data.request.headers.find(h => h[0] === "authorization")
+    authType: flow.layer.data.request.headers.find(h => h[0].toLowerCase() === "authorization")
       ? "bearer" : "none",
-  &#125;;
+  &#125;);
+  return flow;
 &#125;;
 
 globalThis.onResponse = (ctx, flow) => &#123;
-  const meta = sharedState[flow.id];
+  const meta = sharedState.get(flow.id);
   if (!meta) return;
 
   const duration = Date.now() - meta.startTime;
   if (duration > 5000) &#123;
     console.warn(`Slow request: $&#123;#36;&#123;flow.layer.data.request.url&#125; ($&#123;#36;&#123;duration&#125;ms)`);
   &#125;
-  delete sharedState[flow.id];  // Clean up immediately
+  sharedState.delete(flow.id);
 &#125;;</code></pre>
 
   <h3>7. IP Blacklist</h3>
@@ -169,12 +176,8 @@ globalThis.onConnect = (ctx, conn) => &#123;
     &#125;);
 
     if (resp.status !== 200) &#123;
-      return &#123;
-        action: "respond",
-        status: 401,
-        headers: [["content-type", "text/plain"]],
-        body: "Authentication failed",
-      &#125;;
+      flow.tags.push("auth-failed");
+      // 0.5.1: block / 401 via MockResponse or Drop rules
     &#125;
   &#125; catch (e) &#123;
     console.error("Auth service unreachable:", e);
@@ -191,12 +194,13 @@ console.error("This should not happen!");    // always visible</code></pre>
   <h3>Global Error Handler</h3>
   <pre><code>globalThis.onError = (ctx, flow, error, stage) => &#123;
   console.error(`[$&#123;#36;&#123;stage&#125;] $&#123;#36;&#123;error&#125;`);
-  sharedState._errors = sharedState._errors || [];
-  sharedState._errors.push(&#123;
+  const errors = sharedState.get("_errors") || [];
+  errors.push(&#123;
     flow_id: flow?.id, stage,
     message: String(error),
     time: new Date().toISOString(),
   &#125;);
+  sharedState.set("_errors", errors);
 &#125;;</code></pre>
 
   <h3>Prometheus Metrics</h3>

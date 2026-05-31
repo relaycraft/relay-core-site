@@ -129,15 +129,16 @@ if (resp.status !== 200) &#123;
   <p><code>globalThis.sharedState</code> 是同一引擎实例内所有钩子共享的键值存储：</p>
   <pre><code>// 在 onRequest 中存储
 globalThis.onRequest = (ctx, flow) => &#123;
-  sharedState[flow.id] = &#123; start: Date.now() &#125;;
+  sharedState.set(flow.id, &#123; start: Date.now() &#125;);
+  return flow;
 &#125;;
 
 // 在 onResponse 中读取
 globalThis.onResponse = (ctx, flow) => &#123;
-  const meta = sharedState[flow.id];
+  const meta = sharedState.get(flow.id);
   if (meta) &#123;
     console.log(`Flow $&#123;#36;&#123;flow.id&#125; took $&#123;#36;&#123;Date.now() - meta.start&#125;ms`);
-    delete sharedState[flow.id];  // 及时清理防泄漏
+    sharedState.delete(flow.id);
   &#125;
 &#125;;</code></pre>
 

@@ -129,6 +129,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     &#123; "type": "AddResponseHeader", "config": &#123; "name": "Access-Control-Allow-Headers", "value": "Content-Type,Authorization" &#125;&#125;
   ]
 &#125;</code></pre>
+  <p><strong>0.5.1 注意：</strong><code>ResponseHeaders</code> 阶段的修改会写入 flow 记录，但当前 CLI 代理尚未将变更后的响应头写回实际 HTTP 响应（已知限制）。</p>
 
   <h3>6. 响应体内容替换</h3>
   <pre><code>&#123;
@@ -238,6 +239,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>规则↔脚本联动</h2>
   <p>RelayCore 独家——规则与脚本互感知，实现单一引擎无法完成的复杂逻辑。</p>
+  <p><strong>0.5.1 注意：</strong>脚本在 <code>onRequestHeaders</code> 阶段先于规则执行；读取 <code>flow.rule_variables</code> 请在 <code>onRequest</code>。脚本直接返回 <code>&#123; action: "respond" &#125;</code> 尚未支持，Mock/阻断请用规则 action。</p>
   <h3>联动方向</h3>
   <table>
     <tr><th>方向</th><th>机制</th><th>1.0</th></tr>
@@ -270,16 +272,17 @@ globalThis.onRequest = (ctx, flow) => &#123;
   const v = flow.rule_variables["api_version"];
   const a = flow.rule_variables["auth_type"];
   if (v === "v1" && a !== "bearer") &#123;
-    return &#123; action: "respond", status: 410,
-      headers: [["content-type", "text/plain"]],
-      body: "Deprecated. Use /api/v2/ with Bearer." &#125;;
+    flow.tags.push("deprecated-api");
+    // 返回 410 请用 MockResponse 规则；&#123; action: "respond" &#125; 为 1.x 路线图
   &#125;
   if (v === "v2") &#123;
     const key = flow.network.client_ip + ":v2";
-    sharedState._c = sharedState._c || &#123;&#125;;
-    sharedState._c[key] = (sharedState._c[key] || 0) + 1;
-    flow.request.headers.push(["X-Rate-Count", String(sharedState._c[key])]);
+    const counts = sharedState.get("_v2counts") || &#123;&#125;;
+    counts[key] = (counts[key] || 0) + 1;
+    sharedState.set("_v2counts", counts);
+    flow.layer.data.request.headers.push(["X-Rate-Count", String(counts[key])]);
   &#125;
+  return flow;
 &#125;;</code></pre>
 
   <h3>场景 2：规则打标记 → 脚本继承</h3>
@@ -300,14 +303,14 @@ globalThis.onRequest = (ctx, flow) => &#123;
 // ===== 脚本 =====
 globalThis.onResponse = (ctx, flow) => &#123;
   if (!flow.matched_rules.includes("tag-slow")) return;
-  if (!flow.response) return;
-  const dur = Date.now() - new Date(flow.startTime).getTime();
-  flow.response.headers.push(["X-Server-Timing", "total;dur=" + dur]);
-  delete sharedState[flow.id];
+  if (flow.layer.type !== "Http" || !flow.layer.data.response) return;
+  const dur = Date.now() - new Date(flow.start_time).getTime();
+  flow.layer.data.response.headers.push(["X-Server-Timing", "total;dur=" + dur]);
+  sharedState.delete(flow.id);
 &#125;;</code></pre>
 
   <h3>场景 3：规则限速 + 脚本智能降级</h3>
-  <p>规则触发限速后，脚本不直接返回 429，而是优先从 sharedState 返回缓存响应：</p>
+  <p>规则触发限速后，脚本可缓存成功响应；直接返回缓存/429 需 <code>&#123; action: "respond" &#125;</code>（1.x 路线图）。0.5.1 可先做缓存与打标：</p>
   <pre><code>// ===== 规则 =====
 &#123;
   "id": "rate-limit", "stage": "RequestHeaders", "priority": 100,
@@ -321,34 +324,42 @@ globalThis.onResponse = (ctx, flow) => &#123;
 &#125;
 
 // ===== 脚本 =====
-sharedState._cache = sharedState._cache || &#123;&#125;;
+function pathname(url) &#123;
+  const start = url.indexOf("://");
+  const slash = start >= 0 ? url.indexOf("/", start + 3) : url.indexOf("/");
+  return (slash >= 0 ? url.slice(slash) : "/").split("?")[0];
+&#125;
+
 globalThis.onResponse = (ctx, flow) => &#123;
-  if (!flow.response || flow.response.status >= 300) return;
-  const path = new URL(flow.request.url).pathname;
-  sharedState._cache[path] = &#123;
-    status: flow.response.status, headers: flow.response.headers,
-    body: flow.response.body, cachedAt: Date.now() &#125;;
+  if (flow.layer.type !== "Http" || !flow.layer.data.response) return;
+  const res = flow.layer.data.response;
+  if (res.status >= 300) return;
+  const path = pathname(flow.layer.data.request.url);
+  const cache = sharedState.get("_cache") || &#123;&#125;;
+  cache[path] = &#123;
+    status: res.status, headers: res.headers,
+    body: res.body, cachedAt: Date.now() &#125;;
+  sharedState.set("_cache", cache);
 &#125;;
 globalThis.onRequest = (ctx, flow) => &#123;
-  if (flow.rule_variables["limited"] !== "1") return;
-  const path = new URL(flow.request.url).pathname;
-  const c = sharedState._cache[path];
+  if (flow.rule_variables["limited"] !== "1") return flow;
+  const path = pathname(flow.layer.data.request.url);
+  const cache = sharedState.get("_cache") || &#123;&#125;;
+  const c = cache[path];
   if (c && Date.now() - c.cachedAt < 300000) &#123;
-    return &#123; action: "respond", status: c.status,
-      headers: [...c.headers, ["X-Cache", "HIT"]],
-      body: c.body?.content || "" &#125;;
+    flow.tags.push("cache-hit");
+    // 1.x：&#123; action: "respond" &#125; 可直接返回 c
   &#125;
-  return &#123; action: "respond", status: 429,
-    headers: [["content-type", "text/plain"]],
-    body: "Rate limit exceeded" &#125;;
+  return flow;
 &#125;;</code></pre>
 
   <h3>场景 4：脚本→规则（1.x 路线图）</h3>
   <p>当前 Script → Rule 方向（ctx.setTag / ctx.setVariable）已降级 1.x，未来可实现：</p>
   <pre><code>// 1.x 愿景
 globalThis.onRequest = (ctx, flow) => &#123;
-  const body = atob(flow.request.body?.content || "");
-  if (body.includes("DROP TABLE")) &#123;
+  const body = flow.layer.data.request.body;
+  const raw = body ? atob(body.content || "") : "";
+  if (raw.includes("DROP TABLE")) &#123;
     ctx.setTag("attack", "sqli");      // 1.x
     ctx.setVariable("why", "SQLi");    // 1.x
   &#125;
@@ -377,6 +388,7 @@ relay-core-cli rules validate rules.json</code></pre>
     <li><b>Inspect 断点在 CLI 模式不工作</b>：CLI 没有桌面 UI 来展示拦截界面。Inspect 需要 Tauri（RelayCraft 桌面端）才能暂停流并等待用户操作。CLI 下 Inspect 是 no-op，不会暂停流量</li>
     <li><b>MapLocal 文件访问</b>：需配置 sandbox_root；未配置时发出 deprecation warning，1.1 起将拒绝执行</li>
     <li><b>body 较大时性能</b>：ResponseBody filter 需要缓存完整响应体；大文件建议用 Path filter 替代</li>
+    <li><b>ResponseHeaders 未写回客户端</b>：0.5.1 CLI 下 <code>AddResponseHeader</code> 等修改会出现在 flow 记录中，但尚未同步到 curl/浏览器实际响应</li>
     <li><b>MapRemote 循环</b>：注意不要将流量转发回 RelayCore 自身代理端口</li>
   </ul>
 </DocsLayout>

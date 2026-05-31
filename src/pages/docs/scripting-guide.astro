@@ -17,6 +17,15 @@ globalThis.onRequest = (ctx, flow) => &#123;
   -H "Content-Type: application/json" \
   -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'</code></pre>
 
+  <h2>0.5.x API 备忘</h2>
+  <ul>
+    <li><strong>Flow 结构</strong>：HTTP 请求/响应在 <code>flow.layer.data.request</code> / <code>flow.layer.data.response</code>（不是 <code>flow.request</code>）</li>
+    <li><strong>sharedState</strong>：使用 <code>get(key)</code> / <code>set(key, value)</code> / <code>delete(key)</code>，不是普通对象属性</li>
+    <li><strong>规则变量</strong>：脚本在 <code>onRequestHeaders</code> 阶段先于规则执行；读取 <code>flow.rule_variables</code> 请在 <code>onRequest</code> 或更晚钩子</li>
+    <li><strong>Mock / 直接响应</strong>：0.5.1 脚本尚不支持 <code>&#123; action: "respond" &#125;</code>，请用规则 <code>MockResponse</code>（见<a href="/docs/rule-guide">规则指南</a>）</li>
+    <li><strong>沙箱限制</strong>：无 <code>URL</code> 全局对象，解析路径请用字符串 helper（见 §2）</li>
+  </ul>
+
   <h2>常用模式</h2>
 
   <h3>1. 认证注入</h3>
@@ -36,24 +45,20 @@ function getToken() &#123;
 &#125;</code></pre>
 
   <h3>2. Mock 响应</h3>
-  <p>在请求阶段拦截并返回模拟响应，无需真实后端：</p>
-  <pre><code>const mocks = &#123;
-  "/api/users": [&#123; id: 1, name: "Alice" &#125;, &#123; id: 2, name: "Bob" &#125;],
-  "/api/health": &#123; status: "ok", version: "1.0" &#125;,
-&#125;;
+  <p>0.5.1 中 Mock 请优先使用规则引擎 <code>MockResponse</code>（见<a href="/docs/rule-guide">规则指南 §2</a>）。脚本侧若需匹配路径，沙箱内没有 <code>URL</code> 对象：</p>
+  <pre><code>function pathname(url) &#123;
+  const start = url.indexOf("://");
+  const slash = start >= 0 ? url.indexOf("/", start + 3) : url.indexOf("/");
+  return (slash >= 0 ? url.slice(slash) : "/").split("?")[0];
+&#125;
 
-globalThis.onRequest = (ctx, flow) => &#123;
-  const path = new URL(flow.layer.data.request.url).pathname;
-  if (mocks[path]) &#123;
-    const body = JSON.stringify(mocks[path]);
-    return &#123;
-      action: "respond",
-      status: 200,
-      headers: [["content-type", "application/json"]],
-      body: body,
-    &#125;;
+// 示例：为特定路径打 tag，配合 MockResponse / Drop 规则
+globalThis.onRequestHeaders = (ctx, flow) => &#123;
+  const path = pathname(flow.layer.data.request.url);
+  if (path === "/api/users" || path === "/api/health") &#123;
+    flow.tags.push("mock-candidate");
   &#125;
-  // 未匹配继续正常代理
+  return flow;
 &#125;;</code></pre>
 
   <h3>3. 请求重写</h3>
@@ -77,7 +82,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
   <h3>4. 响应脱敏</h3>
   <p>自动移除敏感字段如手机号、证件号：</p>
   <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
-  if (!flow.response?.body) return;
+  if (flow.layer.type !== "Http" || !flow.layer.data.response?.body) return;
   const raw = atob(flow.layer.data.response.body.content);
   if (!isJson(raw)) return;
 
@@ -88,6 +93,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
   const newBody = relay.json.stringifyPretty(sanitized);
   flow.layer.data.response.body.content = btoa(newBody);
   flow.layer.data.response.body.size = newBody.length;
+  return flow;
 &#125;;
 
 function redactPersonalInfo(obj) &#123;
@@ -116,9 +122,8 @@ const WINDOW_MS = 60_000;
 globalThis.onRequest = (ctx, flow) => &#123;
   const ip = flow.network.client_ip;
   const now = Date.now();
-
-  if (!sharedState._rateLimit) sharedState._rateLimit = &#123;&#125;;
-  const entry = sharedState._rateLimit[ip] || &#123; count: 0, reset: now + WINDOW_MS &#125;;
+  const bucket = sharedState.get("_rateLimit") || &#123;&#125;;
+  const entry = bucket[ip] || &#123; count: 0, reset: now + WINDOW_MS &#125;;
 
   if (now > entry.reset) &#123;
     entry.count = 0;
@@ -126,31 +131,30 @@ globalThis.onRequest = (ctx, flow) => &#123;
   &#125;
 
   entry.count++;
-  sharedState._rateLimit[ip] = entry;
+  bucket[ip] = entry;
+  sharedState.set("_rateLimit", bucket);
 
   if (entry.count > RATE_LIMIT) &#123;
     console.warn(`Rate limit exceeded for $&#123;#36;&#123;ip&#125; ($&#123;#36;&#123;entry.count&#125;/$&#123;#36;&#123;RATE_LIMIT&#125;)`);
-    return &#123;
-      action: "respond",
-      status: 429,
-      headers: [["content-type", "text/plain"]],
-      body: "Too Many Requests",
-    &#125;;
+    flow.tags.push("rate-limited");
+    // 返回 429 请用规则 RateLimit action（见规则指南 §8）
   &#125;
+  return flow;
 &#125;;</code></pre>
 
   <h3>6. 跨钩子上下文传递</h3>
   <p>使用 sharedState 在请求和响应之间传递数据：</p>
   <pre><code>globalThis.onRequest = (ctx, flow) => &#123;
-  sharedState[flow.id] = &#123;
+  sharedState.set(flow.id, &#123;
     startTime: Date.now(),
-    authType: flow.layer.data.request.headers.find(h => h[0] === "authorization")
+    authType: flow.layer.data.request.headers.find(h => h[0].toLowerCase() === "authorization")
       ? "bearer" : "none",
-  &#125;;
+  &#125;);
+  return flow;
 &#125;;
 
 globalThis.onResponse = (ctx, flow) => &#123;
-  const meta = sharedState[flow.id];
+  const meta = sharedState.get(flow.id);
   if (!meta) return;
 
   const duration = Date.now() - meta.startTime;
@@ -158,8 +162,7 @@ globalThis.onResponse = (ctx, flow) => &#123;
     console.warn(`Slow request: $&#123;#36;&#123;flow.layer.data.request.url&#125; ($&#123;#36;&#123;duration&#125;ms, auth=$&#123;#36;&#123;meta.authType&#125;)`);
   &#125;
 
-  // 每条流处理完立即清理
-  delete sharedState[flow.id];
+  sharedState.delete(flow.id);
 &#125;;</code></pre>
 
   <h3>7. 连接 IP 黑名单</h3>
@@ -190,12 +193,8 @@ globalThis.onConnect = (ctx, conn) => &#123;
     &#125;);
 
     if (resp.status !== 200) &#123;
-      return &#123;
-        action: "respond",
-        status: 401,
-        headers: [["content-type", "text/plain"]],
-        body: "Authentication failed",
-      &#125;;
+      flow.tags.push("auth-failed");
+      // 0.5.1：返回 401 / 阻断请配合 MockResponse 或 Drop 规则
     &#125;
   &#125; catch (e) &#123;
     console.error("Auth service unreachable:", e);
@@ -216,13 +215,14 @@ console.error("This should not happen!");    // 永远可见</code></pre>
   // stage 告诉你哪个钩子出错了
   console.error(`[$&#123;#36;&#123;stage&#125;] $&#123;#36;&#123;error&#125;`);
   // 记录详细信息用于排查
-  sharedState._errors = sharedState._errors || [];
-  sharedState._errors.push(&#123;
+  const errors = sharedState.get("_errors") || [];
+  errors.push(&#123;
     flow_id: flow?.id,
     stage,
     message: String(error),
     time: new Date().toISOString(),
   &#125;);
+  sharedState.set("_errors", errors);
 &#125;;</code></pre>
 
   <h3>Prometheus 指标</h3>

@@ -129,15 +129,16 @@ if (resp.status !== 200) &#123;
   <p><code>globalThis.sharedState</code> is a key-value store shared across all hooks within the same engine instance:</p>
   <pre><code>// Store in onRequest
 globalThis.onRequest = (ctx, flow) => &#123;
-  sharedState[flow.id] = &#123; start: Date.now() &#125;;
+  sharedState.set(flow.id, &#123; start: Date.now() &#125;);
+  return flow;
 &#125;;
 
 // Read in onResponse
 globalThis.onResponse = (ctx, flow) => &#123;
-  const meta = sharedState[flow.id];
+  const meta = sharedState.get(flow.id);
   if (meta) &#123;
     console.log(`Flow $&#123;#36;&#123;flow.id&#125; took $&#123;#36;&#123;Date.now() - meta.start&#125;ms`);
-    delete sharedState[flow.id];  // Clean up to prevent leaks
+    sharedState.delete(flow.id);
   &#125;
 &#125;;</code></pre>
 

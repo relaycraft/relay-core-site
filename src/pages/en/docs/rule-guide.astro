@@ -116,6 +116,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     &#123; "type": "AddResponseHeader", "config": &#123; "name": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE" &#125;&#125;
   ]
 &#125;</code></pre>
+  <p><strong>0.5.1 note:</strong> <code>ResponseHeaders</code> changes appear in flow records but are not yet written back to the actual HTTP response in CLI mode.</p>
 
   <h3>6. Response Body Replace</h3>
   <pre><code>&#123;
@@ -205,6 +206,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <h2>Rule-Script Integration</h2>
   <p>RelayCore exclusive — rules and scripts observe each other, enabling logic neither engine can achieve alone.</p>
+  <p><strong>0.5.1 notes:</strong> scripts run before rules in <code>onRequestHeaders</code> — read <code>flow.rule_variables</code> in <code>onRequest</code>. Script <code>&#123; action: "respond" &#125;</code> is not supported yet; use rule MockResponse / Drop instead.</p>
   <h3>Integration Matrix</h3>
   <table>
     <tr><th>Direction</th><th>Mechanism</th><th>1.0</th></tr>
@@ -230,16 +232,17 @@ globalThis.onRequest = (ctx, flow) => &#123;
   const v = flow.rule_variables["api_version"];
   const a = flow.rule_variables["auth_type"];
   if (v === "v1" && a !== "bearer") &#123;
-    return &#123; action: "respond", status: 410,
-      headers: [["content-type", "text/plain"]],
-      body: "Use /api/v2/ with Bearer auth." &#125;;
+    flow.tags.push("deprecated-api");
+    // 410 via MockResponse rule; &#123; action: "respond" &#125; is 1.x roadmap
   &#125;
   if (v === "v2") &#123;
     const key = flow.network.client_ip + ":v2";
-    sharedState._c = sharedState._c || &#123;&#125;;
-    sharedState._c[key] = (sharedState._c[key] || 0) + 1;
-    flow.request.headers.push(["X-Rate-Count", String(sharedState._c[key])]);
+    const counts = sharedState.get("_v2counts") || &#123;&#125;;
+    counts[key] = (counts[key] || 0) + 1;
+    sharedState.set("_v2counts", counts);
+    flow.layer.data.request.headers.push(["X-Rate-Count", String(counts[key])]);
   &#125;
+  return flow;
 &#125;;</code></pre>
 
   <h3>Pattern 2: Rule Tagging → Script Inheritance</h3>
@@ -255,13 +258,14 @@ globalThis.onRequest = (ctx, flow) => &#123;
 // Script
 globalThis.onResponse = (ctx, flow) => &#123;
   if (!flow.matched_rules.includes("tag-slow")) return;
-  if (!flow.response) return;
-  const dur = Date.now() - new Date(flow.startTime).getTime();
-  flow.response.headers.push(["X-Server-Timing", "total;dur=" + dur]);
-  delete sharedState[flow.id];
+  if (flow.layer.type !== "Http" || !flow.layer.data.response) return;
+  const dur = Date.now() - new Date(flow.start_time).getTime();
+  flow.layer.data.response.headers.push(["X-Server-Timing", "total;dur=" + dur]);
+  sharedState.delete(flow.id);
 &#125;;</code></pre>
 
   <h3>Pattern 3: Rule Rate Limit + Script Cache Fallback</h3>
+  <p>Scripts can cache successful responses; returning cached bodies or 429 requires <code>&#123; action: "respond" &#125;</code> (1.x roadmap). In 0.5.1, cache and tag only:</p>
   <pre><code>// Rule
 &#123;"id":"rate-limit","stage":"RequestHeaders","priority":100,
  "filter":&#123;"type":"All"&#125;,
@@ -270,29 +274,35 @@ globalThis.onResponse = (ctx, flow) => &#123;
    &#123;"type":"SetVariable","config":&#123;"name":"limited","value":"1"&#125;&#125;]&#125;
 
 // Script
-sharedState._cache = sharedState._cache || &#123;&#125;;
+function pathname(url) &#123;
+  const start = url.indexOf("://");
+  const slash = start >= 0 ? url.indexOf("/", start + 3) : url.indexOf("/");
+  return (slash >= 0 ? url.slice(slash) : "/").split("?")[0];
+&#125;
 globalThis.onResponse = (ctx, flow) => &#123;
-  if (!flow.response || flow.response.status >= 300) return;
-  sharedState._cache[new URL(flow.request.url).pathname] = &#123;
-    status: flow.response.status, headers: flow.response.headers,
-    body: flow.response.body, cachedAt: Date.now() &#125;;
+  if (flow.layer.type !== "Http" || !flow.layer.data.response) return;
+  const res = flow.layer.data.response;
+  if (res.status >= 300) return;
+  const path = pathname(flow.layer.data.request.url);
+  const cache = sharedState.get("_cache") || &#123;&#125;;
+  cache[path] = &#123; status: res.status, headers: res.headers, body: res.body, cachedAt: Date.now() &#125;;
+  sharedState.set("_cache", cache);
 &#125;;
 globalThis.onRequest = (ctx, flow) => &#123;
-  if (flow.rule_variables["limited"] !== "1") return;
-  const c = sharedState._cache[new URL(flow.request.url).pathname];
-  if (c && Date.now() - c.cachedAt < 300000) &#123;
-    return &#123; action: "respond", status: c.status,
-      headers: [...c.headers, ["X-Cache", "HIT"]],
-      body: c.body?.content || "" &#125;;
-  &#125;
-  return &#123; action: "respond", status: 429,
-    headers: [["content-type", "text/plain"]], body: "Rate limit exceeded" &#125;;
+  if (flow.rule_variables["limited"] !== "1") return flow;
+  const path = pathname(flow.layer.data.request.url);
+  const cache = sharedState.get("_cache") || &#123;&#125;;
+  const c = cache[path];
+  if (c && Date.now() - c.cachedAt < 300000) flow.tags.push("cache-hit");
+  return flow;
 &#125;;</code></pre>
 
   <h3>Pattern 4: Script→Rule (1.x Roadmap)</h3>
   <pre><code>// 1.x: script injects tag for subsequent rules to auto-block
 globalThis.onRequest = (ctx, flow) => &#123;
-  if (atob(flow.request.body?.content||"").includes("DROP TABLE")) &#123;
+  const body = flow.layer.data.request.body;
+  const raw = body ? atob(body.content || "") : "";
+  if (raw.includes("DROP TABLE")) &#123;
     ctx.setTag("attack", "sqli");     // 1.x
     ctx.setVariable("why", "SQLi");   // 1.x
   &#125;
@@ -320,6 +330,7 @@ globalThis.onResponse = (ctx, flow) => &#123;
     <li><b>Action order</b>: Actions execute in array order; terminal actions (MockResponse etc.) prevent subsequent actions from running</li>
     <li><b>MapLocal file access</b>: Requires sandbox_root config; emits deprecation warning without it, will be enforced in 1.1</li>
     <li><b>Large body performance</b>: ResponseBody filter caches the full response; prefer Path filter for large files</li>
+    <li><b>ResponseHeaders not applied to clients</b>: In 0.5.1 CLI, <code>AddResponseHeader</code> updates flow records but not curl/browser responses yet</li>
     <li><b>MapRemote loops</b>: Avoid forwarding traffic back to RelayCore's own proxy port</li>
   </ul>
 </DocsLayout>

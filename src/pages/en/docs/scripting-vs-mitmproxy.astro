@@ -83,7 +83,7 @@ globalThis.onResponse = (ctx, flow) => &#123;
     <li><strong>Headers format</strong>: mitmproxy uses <code>dict</code>, RelayCore uses <code>[key, value][]</code> arrays (preserving duplicate headers)</li>
     <li><strong>Body encoding</strong>: RelayCore body.content is base64 — decode with <code>atob()</code>, modify, then <code>btoa()</code> to write back</li>
     <li><strong>Global state</strong>: mitmproxy Python globals are process-wide; RelayCore sharedState is per-isolate, but same flow = same engine guaranteed</li>
-    <li><strong>Return semantics</strong>: onRequestHeaders/onResponseHeaders return modified flow; onRequest/onResponse can return &#123;action: "respond"&#125; to terminate proxying</li>
+    <li><strong>Return semantics</strong>: onRequestHeaders/onResponseHeaders return modified flow; in 0.5.1 onRequest/onResponse return flow (<code>&#123;action: "respond"&#125;</code> is 1.x — use rules for Mock)</li>
   </ul>
 
   <h2>When to Choose Which</h2>

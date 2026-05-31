@@ -83,7 +83,7 @@ globalThis.onResponse = (ctx, flow) => &#123;
     <li><strong>headers 格式</strong>: mitmproxy 用 <code>dict</code>，RelayCore 用 <code>[key, value][]</code> 数组（保留重复 header）</li>
     <li><strong>body 编码</strong>: RelayCore 的 body.content 是 base64 字符串，需 <code>atob()</code> 解码后处理，修改后 <code>btoa()</code> 写回</li>
     <li><strong>全局状态</strong>: mitmproxy 的 Python 全局变量是进程级共享；RelayCore 的 sharedState 是 per-isolate，但同 flow 保证路同引擎</li>
-    <li><strong>返回语义</strong>: onRequestHeaders/onResponseHeaders 返回修改后的 flow（或不返回）；onRequest/onResponse 可返回 &#123;action: "respond"&#125; 来终止代理</li>
+    <li><strong>返回语义</strong>: onRequestHeaders/onResponseHeaders 返回修改后的 flow；0.5.1 中 onRequest/onResponse 也返回 flow（<code>&#123;action: "respond"&#125;</code> 为 1.x 路线图，Mock 请用规则）</li>
   </ul>
 
   <h2>选型建议</h2>
