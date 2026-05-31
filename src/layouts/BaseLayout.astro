@@ -369,6 +369,10 @@ const alternateLocale = locale === 'en' ? 'zh' : 'en';
     transform: scaleX(1);
   }
 
+  .nav-links a.lang-switch::after {
+    display: none;
+  }
+
   .lang-switch {
     padding: 0.25rem 0.5rem;
     border: 1px solid var(--border-highlight);

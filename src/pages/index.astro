@@ -43,17 +43,17 @@ const apiRequestUrl = 'http://127.0.0.1:8082/api/v1/flows?limit=10';
           <span class="chrome-dot green"></span>
           <span class="chrome-title">relay-core — zsh</span>
         </div>
-        <pre class="terminal-body"><span class="prompt">$</span> <span class="cmd">cargo install relay-core-cli</span>
-<span class="output">  Installing relay-core-cli v0.5.x...</span>
-<span class="output">  Finished release [optimized] target(s) in 42.0s</span>
+        <pre class="terminal-body"><span class="prompt">$</span> <span class="cmd">relay-core-cli --version</span>
+<span class="output">relay-core-cli 0.5.2</span>
 
 <span class="prompt">$</span> <span class="cmd">relay-core-cli ca generate</span>
 <span class="output">CA certificate generated at ~/.relay-core/ca_cert.pem</span>
 
 <span class="prompt">$</span> <span class="cmd">relay-core-cli run --listen 127.0.0.1:8080</span>
-<span class="output">> RelayCore proxy listening on 127.0.0.1:8080</span>
-<span class="output">> CA cert=~/.relay-core/ca_cert.pem key=~/.relay-core/ca_key.pem</span>
-<span class="output">> Use --api-port 8082 for REST + SSE API</span>
+<span class="output">RelayCore proxy started</span>
+<span class="output">  Proxy   127.0.0.1:8080</span>
+<span class="output">  Control http://127.0.0.1:8081/</span>
+<span class="output">  CA      cert=~/.relay-core/ca_cert.pem key=~/.relay-core/ca_key.pem</span>
 <span class="cursor">▋</span></pre>
       </div>
 
@@ -65,7 +65,7 @@ const apiRequestUrl = 'http://127.0.0.1:8082/api/v1/flows?limit=10';
         <p class="hero-subtitle" set:html={t.hero.subtitle.replace('. ', '.<br>')}></p>
         <div class="hero-cta">
           <a href="/docs/getting-started" class="btn btn-primary">{t.hero.getStarted}</a>
-          <a href="https://docs.rs/relay-core-runtime" target="_blank" class="btn btn-secondary">{t.hero.viewDocs}</a>
+          <a href="https://github.com/relaycraft/relay-core" target="_blank" rel="noopener" class="btn btn-secondary">{t.hero.viewGithub}</a>
         </div>
       </div>
     </div>
@@ -274,35 +274,32 @@ const apiRequestUrl = 'http://127.0.0.1:8082/api/v1/flows?limit=10';
 
     <div class="cli-examples">
       <div class="cli-block">
-        <div class="cli-prompt"><TerminalDots /> $ relay-core-cli run</div>
-        <pre class="cli-output">> RelayCore v0.5.x
-> Proxy listening on 127.0.0.1:8080
-> Use --ui for TUI, --api-port 8082 for REST API
-> Press Ctrl+C to stop</pre>
+        <div class="cli-prompt"><TerminalDots /> $ relay-core-cli run --listen 127.0.0.1:8080</div>
+        <pre class="cli-output">RelayCore proxy started
+  Proxy   127.0.0.1:8080
+  Control http://127.0.0.1:8081/
+  TUI     run with --ui for interactive mode
+  CA      cert=~/.relay-core/ca_cert.pem key=~/.relay-core/ca_key.pem</pre>
       </div>
 
       <div class="cli-block">
         <div class="cli-prompt"><TerminalDots /> $ relay-core-cli ca generate</div>
-        <pre class="cli-output">> Generating new CA certificate...
-> CA certificate generated successfully
-> Path: ~/.relay-core/ca_cert.pem</pre>
+        <pre class="cli-output">CA certificate generated at ~/.relay-core/ca_cert.pem</pre>
       </div>
 
       <div class="cli-block">
         <div class="cli-prompt"><TerminalDots /> $ relay-core-cli rules list</div>
-        <pre class="cli-output"> ID       PRIORITY  FILTER                    ACTION    ENABLED
-────────────────────────────────────────────────────────────
- rul_01      100     method:GET host:*.example.com  log       true
- rul_02       90     path:/api/v2/*                intercept  true</pre>
+        <pre class="cli-output">No rules loaded.</pre>
       </div>
 
       <div class="cli-block">
-        <div class="cli-prompt"><TerminalDots /> $ relay-core-cli flows --limit 5</div>
-        <pre class="cli-output"> TIME     METHOD  PATH                    STATUS  DURATION
-───────────────────────────────────────────────────────────
- 10:23:45  GET     /users/relaycraft        200     45ms
- 10:23:42  POST    /repos                  201     120ms
- 10:23:38  GET     /search?q=relay-core     200     89ms</pre>
+        <div class="cli-prompt"><TerminalDots /> $ relay-core-cli metrics</div>
+        <pre class="cli-output">Metric                    | Value
+--------------------------|-----------
+Flows Total               | 128
+Flows In Memory           | 100
+Intercepts Pending        | 0
+Rule Exec Errors          | 0</pre>
       </div>
     </div>
 
@@ -324,12 +321,12 @@ const apiRequestUrl = 'http://127.0.0.1:8082/api/v1/flows?limit=10';
         <span>规则管理</span>
       </div>
       <div class="cmd-item">
-        <code>relay-core-cli flows</code>
-        <span>查询捕获的流量</span>
+        <code>relay-core-cli run --api-port 8082</code>
+        <span>启用 REST API</span>
       </div>
       <div class="cmd-item">
-        <code>relay-core-cli metrics</code>
-        <span>查看运行时指标</span>
+        <code>relay-core-cli flows --host example.com</code>
+        <span>搜索流量（需 --api-port）</span>
       </div>
     </div>
   </section>

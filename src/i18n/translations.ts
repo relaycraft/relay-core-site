@@ -10,7 +10,7 @@ export const translations = {
       title: 'RUST-BASED TRAFFIC INTERCEPTION ENGINE',
       subtitle: 'Zero-copy async runtime. Sub-millisecond overhead. MITM proxy for HTTP/HTTPS/WebSocket with full programmatic control.',
       getStarted: 'Get Started',
-      viewDocs: 'View Docs',
+      viewGithub: 'GitHub',
     },
     features: {
       label: '// CAPABILITIES',
@@ -77,7 +77,7 @@ export const translations = {
       title: '基于 Rust 的流量拦截引擎',
       subtitle: '零拷贝异步运行时，延迟低于 1ms。支持 HTTP/HTTPS/WebSocket 的 MITM 代理，可编程控制流量拦截。',
       getStarted: '开始使用',
-      viewDocs: '查看文档',
+      viewGithub: 'GitHub 仓库',
     },
     features: {
       label: '// 功能特性',
