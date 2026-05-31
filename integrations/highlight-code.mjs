@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseHTML } from 'linkedom';
 import { createHighlighter } from 'shiki';
-import { relayCoreDark, guessLang, langFromClass } from './shiki-theme.mjs';
+import { relayCoreDark, guessLang, langFromClass, normalizeCodeSource } from './shiki-theme.mjs';
 
 const LANGS = [
   'bash',
@@ -39,7 +39,7 @@ async function highlightFile(highlighter, filePath) {
     if (!code) continue;
     if (code.classList.contains('shiki') || code.querySelector('.line')) continue;
 
-    const source = code.textContent ?? '';
+    const source = normalizeCodeSource(code.textContent ?? '');
     if (!source.trim()) continue;
 
     let lang =

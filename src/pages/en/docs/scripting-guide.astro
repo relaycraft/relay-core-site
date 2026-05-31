@@ -10,7 +10,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <h2>Quick Start</h2>
   <pre><code>// script.js — minimal script
 globalThis.onRequest = (ctx, flow) => &#123;
-  console.log(`$&#123;#36;&#123;flow.layer.data.request.method&#125; $&#123;#36;&#123;flow.layer.data.request.url&#125;`);
+  console.log(`$&#123;flow.layer.data.request.method&#125; $&#123;flow.layer.data.request.url&#125;`);
 &#125;;</code></pre>
   <p>Load via HTTP API:</p>
   <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/script \
@@ -33,7 +33,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
   if (flow.layer.data.request.url.includes("/api/")) &#123;
     const existing = flow.layer.data.request.headers.find(h => h[0] === "authorization");
     if (!existing) &#123;
-      flow.layer.data.request.headers.push(["authorization", "Bearer $&#123;#36;&#123;getToken()&#125;"]);
+      flow.layer.data.request.headers.push(["authorization", "Bearer $&#123;getToken()&#125;"]);
     &#125;
   &#125;
   return flow;
@@ -145,7 +145,7 @@ globalThis.onResponse = (ctx, flow) => &#123;
 
   const duration = Date.now() - meta.startTime;
   if (duration > 5000) &#123;
-    console.warn(`Slow request: $&#123;#36;&#123;flow.layer.data.request.url&#125; ($&#123;#36;&#123;duration&#125;ms)`);
+    console.warn(`Slow request: $&#123;flow.layer.data.request.url&#125; ($&#123;duration&#125;ms)`);
   &#125;
   sharedState.delete(flow.id);
 &#125;;</code></pre>
@@ -156,7 +156,7 @@ globalThis.onResponse = (ctx, flow) => &#123;
 globalThis.onConnect = (ctx, conn) => &#123;
   for (const net of BLOCKED_NETS) &#123;
     if (conn.client_ip.startsWith(net)) &#123;
-      console.warn(`Blocked connection from $&#123;#36;&#123;conn.client_ip&#125;`);
+      console.warn(`Blocked connection from $&#123;conn.client_ip&#125;`);
       return &#123; drop: true &#125;;
     &#125;
   &#125;
@@ -193,7 +193,7 @@ console.error("This should not happen!");    // always visible</code></pre>
 
   <h3>Global Error Handler</h3>
   <pre><code>globalThis.onError = (ctx, flow, error, stage) => &#123;
-  console.error(`[$&#123;#36;&#123;stage&#125;] $&#123;#36;&#123;error&#125;`);
+  console.error(`[$&#123;stage&#125;] $&#123;error&#125;`);
   const errors = sharedState.get("_errors") || [];
   errors.push(&#123;
     flow_id: flow?.id, stage,

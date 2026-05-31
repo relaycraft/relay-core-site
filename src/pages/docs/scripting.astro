@@ -137,7 +137,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
 globalThis.onResponse = (ctx, flow) => &#123;
   const meta = sharedState.get(flow.id);
   if (meta) &#123;
-    console.log(`Flow $&#123;#36;&#123;flow.id&#125; took $&#123;#36;&#123;Date.now() - meta.start&#125;ms`);
+    console.log(`Flow $&#123;flow.id&#125; took $&#123;Date.now() - meta.start&#125;ms`);
     sharedState.delete(flow.id);
   &#125;
 &#125;;</code></pre>
@@ -162,20 +162,20 @@ globalThis.onConnect = (ctx, conn) => &#123;
 // 连接统计
 globalThis.onDisconnect = (ctx, conn, stats) => &#123;
   // stats: &#123; duration_ms, flows_count &#125;
-  console.log(`Connection $&#123;#36;&#123;conn.id&#125;: $&#123;#36;&#123;stats.flows_count&#125; flows`);
+  console.log(`Connection $&#123;conn.id&#125;: $&#123;stats.flows_count&#125; flows`);
 &#125;;</code></pre>
 
   <h2>WebSocket 生命周期</h2>
   <pre><code>globalThis.onWebSocketStart = (ctx, flow) => &#123;
-  console.log(`WS opened: $&#123;#36;&#123;flow.layer.data.request.url&#125;`);
+  console.log(`WS opened: $&#123;flow.layer.data.request.url&#125;`);
 &#125;;
 
 globalThis.onWebSocketEnd = (ctx, flow, code, reason) => &#123;
-  console.log(`WS closed: $&#123;#36;&#123;code&#125; $&#123;#36;&#123;reason&#125;`);
+  console.log(`WS closed: $&#123;code&#125; $&#123;reason&#125;`);
 &#125;;
 
 globalThis.onWebSocketError = (ctx, flow, error) => &#123;
-  console.error(`WS error: $&#123;#36;&#123;error&#125;`);
+  console.error(`WS error: $&#123;error&#125;`);
 &#125;;</code></pre>
 
   <h2>规则桥接</h2>
@@ -189,7 +189,7 @@ globalThis.onWebSocketError = (ctx, flow, error) => &#123;
   // 读取规则引擎 SetVariable 设置的变量
   const count = flow.rule_variables["rate_limit_count"];
   if (count && parseInt(count) > 100) &#123;
-    console.warn(`Rate limit exceeded: $&#123;#36;&#123;count&#125;`);
+    console.warn(`Rate limit exceeded: $&#123;count&#125;`);
   &#125;
 &#125;;</code></pre>
 

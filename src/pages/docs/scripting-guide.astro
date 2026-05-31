@@ -10,7 +10,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h2>快速开始</h2>
   <pre><code>// script.js — 最简脚本
 globalThis.onRequest = (ctx, flow) => &#123;
-  console.log(`$&#123;#36;&#123;flow.layer.data.request.method&#125; $&#123;#36;&#123;flow.layer.data.request.url&#125;`);
+  console.log(`$&#123;flow.layer.data.request.method&#125; $&#123;flow.layer.data.request.url&#125;`);
 &#125;;</code></pre>
   <p>通过 HTTP API 加载：</p>
   <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/script \
@@ -34,7 +34,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
   if (flow.layer.data.request.url.includes("/api/")) &#123;
     const existing = flow.layer.data.request.headers.find(h => h[0] === "authorization");
     if (!existing) &#123;
-      flow.layer.data.request.headers.push(["authorization", "Bearer $&#123;#36;&#123;getToken()&#125;"]);
+      flow.layer.data.request.headers.push(["authorization", "Bearer $&#123;getToken()&#125;"]);
     &#125;
   &#125;
   return flow;  // 返回修改后的 flow
@@ -135,7 +135,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
   sharedState.set("_rateLimit", bucket);
 
   if (entry.count > RATE_LIMIT) &#123;
-    console.warn(`Rate limit exceeded for $&#123;#36;&#123;ip&#125; ($&#123;#36;&#123;entry.count&#125;/$&#123;#36;&#123;RATE_LIMIT&#125;)`);
+    console.warn(`Rate limit exceeded for $&#123;ip&#125; ($&#123;entry.count&#125;/$&#123;RATE_LIMIT&#125;)`);
     flow.tags.push("rate-limited");
     // 返回 429 请用规则 RateLimit action（见规则指南 §8）
   &#125;
@@ -159,7 +159,7 @@ globalThis.onResponse = (ctx, flow) => &#123;
 
   const duration = Date.now() - meta.startTime;
   if (duration > 5000) &#123;
-    console.warn(`Slow request: $&#123;#36;&#123;flow.layer.data.request.url&#125; ($&#123;#36;&#123;duration&#125;ms, auth=$&#123;#36;&#123;meta.authType&#125;)`);
+    console.warn(`Slow request: $&#123;flow.layer.data.request.url&#125; ($&#123;duration&#125;ms, auth=$&#123;meta.authType&#125;)`);
   &#125;
 
   sharedState.delete(flow.id);
@@ -172,7 +172,7 @@ globalThis.onResponse = (ctx, flow) => &#123;
 globalThis.onConnect = (ctx, conn) => &#123;
   for (const net of BLOCKED_NETS) &#123;
     if (conn.client_ip.startsWith(net)) &#123;
-      console.warn(`Blocked connection from $&#123;#36;&#123;conn.client_ip&#125;`);
+      console.warn(`Blocked connection from $&#123;conn.client_ip&#125;`);
       return &#123; drop: true &#125;;
     &#125;
   &#125;
@@ -213,7 +213,7 @@ console.error("This should not happen!");    // 永远可见</code></pre>
   <h3>onError 全局捕获</h3>
   <pre><code>globalThis.onError = (ctx, flow, error, stage) => &#123;
   // stage 告诉你哪个钩子出错了
-  console.error(`[$&#123;#36;&#123;stage&#125;] $&#123;#36;&#123;error&#125;`);
+  console.error(`[$&#123;stage&#125;] $&#123;error&#125;`);
   // 记录详细信息用于排查
   const errors = sharedState.get("_errors") || [];
   errors.push(&#123;

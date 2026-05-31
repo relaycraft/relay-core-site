@@ -1,5 +1,11 @@
 /* Shiki syntax highlighting — relaycore.dev dark palette */
 
+.docs-content pre:has(code.shiki) {
+  padding: 1rem 1.125rem;
+  line-height: 1.65;
+  tab-size: 2;
+}
+
 .docs-content pre code.shiki {
   background: none !important;
   border: none;
@@ -11,10 +17,17 @@
 
 .docs-content pre code.shiki .line {
   display: block;
+  min-height: 1.65em;
+  padding: 0 0.125rem;
+  border-radius: 2px;
 }
 
 .docs-content pre code.shiki .line:empty::after {
   content: ' ';
+}
+
+.docs-content pre code.shiki .line:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 /* Fallback when build hook skips a block */
