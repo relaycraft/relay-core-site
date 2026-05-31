@@ -5,5 +5,63 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="Tauri Plugin" description="Use RelayCore in Tauri applications">
   <h1>Tauri Plugin</h1>
 
-  <p>relay-core-tauri is the Tauri v2 plugin for RelayCraft.</p>
+  <p><code>relay-core-tauri</code> is the Tauri v2 plugin used by the RelayCraft desktop app. It embeds the RelayCore runtime (<code>CoreState</code>) inside the application process and exposes proxy lifecycle, flow inspection, and intercept control via Tauri commands.</p>
+
+  <p>This crate targets <strong>RelayCraft and custom Tauri hosts</strong>, not standalone CLI distribution.</p>
+
+  <h2>Where it sits</h2>
+
+  <ul>
+    <li><strong>Data plane</strong>: <code>relay-core-lib</code> capture and MITM</li>
+    <li><strong>Orchestration</strong>: <code>relay-core-runtime</code> <code>CoreState</code></li>
+    <li><strong>Host adapter</strong>: <code>relay-core-tauri</code> mounts CoreState in Tauri and exposes IPC</li>
+  </ul>
+
+  <h2>Register the plugin</h2>
+
+  <pre><code>// src-tauri/src/lib.rs
+relay_core_tauri::init()</code></pre>
+
+  <p>Plugin ID: <code>relay-core-tauri</code>. On setup it creates <code>RelayCoreState</code> (wrapping <code>CoreState</code> and <code>TauriContext</code>) and registers it with Tauri state.</p>
+
+  <h2>Available commands</h2>
+
+  <table>
+    <tr><th>Command</th><th>Description</th></tr>
+    <tr><td><code>start_core_proxy</code></td><td>Start embedded proxy</td></tr>
+    <tr><td><code>stop_core_proxy</code></td><td>Stop proxy</td></tr>
+    <tr><td><code>get_core_status</code></td><td>Runtime status</td></tr>
+    <tr><td><code>get_core_metrics</code></td><td>Runtime metrics</td></tr>
+    <tr><td><code>get_flow_detail</code></td><td>Single flow detail</td></tr>
+    <tr><td><code>get_pending_intercepts</code></td><td>List pending intercepts</td></tr>
+    <tr><td><code>resume_flow</code></td><td>Resume or drop paused traffic</td></tr>
+    <tr><td><code>set_intercept_rule</code></td><td>Set intercept rule</td></tr>
+    <tr><td><code>get_policy</code> / <code>update_policy</code> / <code>patch_policy</code></td><td>Policy read/write</td></tr>
+    <tr><td><code>load_script</code></td><td>Load script</td></tr>
+    <tr><td><code>get_ca_cert_path</code></td><td>CA certificate path</td></tr>
+    <tr><td><code>install_ca_cert</code></td><td>Install CA to system trust store (platform-specific)</td></tr>
+    <tr><td><code>get_recent_audit</code></td><td>Recent audit events</td></tr>
+  </table>
+
+  <h2>Permissions (Tauri v2)</h2>
+
+  <p>The plugin uses Tauri capability permissions. The default set includes <code>allow-start-core-proxy</code>. Other commands must be explicitly allowed in capabilities (e.g. <code>relay-core-tauri:allow-get-flow-detail</code>).</p>
+
+  <h2>CLI / MCP / Tauri</h2>
+
+  <ul>
+    <li><strong>CLI</strong> (<code>relay-core-cli</code>): standalone binary for terminal workflows</li>
+    <li><strong>MCP</strong> (<code>relay-core-probe</code> / <code>@relay-core/mcp</code>): MCP adapter for AI agents</li>
+    <li><strong>Tauri plugin</strong>: embedded in desktop apps, integrated with RelayCraft UI</li>
+  </ul>
+
+  <p>All three share the same runtime capability surface; they differ in host and interaction model.</p>
+
+  <h2>See also</h2>
+
+  <ul>
+    <li><a href="/en/docs/architecture">Architecture</a></li>
+    <li><a href="/en/docs/getting-started">Quick Start</a> (CLI path)</li>
+    <li><a href="/en/docs/mcp">MCP Server</a></li>
+  </ul>
 </DocsLayout>

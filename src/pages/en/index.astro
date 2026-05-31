@@ -26,7 +26,7 @@ const apiSampleJson = `{
   }
 }`;
 
-const apiRequestUrl = 'http://127.0.0.1:3000/api/v1/flows?limit=10';
+const apiRequestUrl = 'http://127.0.0.1:8082/api/v1/flows?limit=10';
 const sourceCmd = 'git clone https://github.com/relaycraft/relay-core && cd relay-core && cargo build --release';
 ---
 
@@ -41,16 +41,16 @@ const sourceCmd = 'git clone https://github.com/relaycraft/relay-core && cd rela
           <span class="chrome-title">relay-core — zsh</span>
         </div>
         <pre class="terminal-body"><span class="prompt">$</span> <span class="cmd">cargo install relay-core-cli</span>
-<span class="output">  Installing relay-core-cli v0.3.5...</span>
-<span class="output">  Finished [debug] target 2.3MB 0.42s</span>
+<span class="output">  Installing relay-core-cli v0.5.x...</span>
+<span class="output">  Finished release [optimized] target(s) in 42.0s</span>
 
-<span class="prompt">$</span> <span class="cmd">relay-core-cli run --port 8080</span>
-<span class="output">> RelayCore v0.3.5 initializing...</span>
-<span class="output">> Loading configuration from ~/.relay-core/config.toml</span>
-<span class="output">> Starting HTTP proxy on 0.0.0.0:8080</span>
-<span class="output">> MCP server listening on :25519</span>
-<span class="output">> REST API available at http://127.0.0.1:3000/api/v1/</span>
-<span class="output">> 10,247 flows captured this session</span>
+<span class="prompt">$</span> <span class="cmd">relay-core-cli ca generate</span>
+<span class="output">CA certificate generated at ~/.relay-core/ca_cert.pem</span>
+
+<span class="prompt">$</span> <span class="cmd">relay-core-cli run --listen 127.0.0.1:8080</span>
+<span class="output">> RelayCore proxy listening on 127.0.0.1:8080</span>
+<span class="output">> CA cert=~/.relay-core/ca_cert.pem key=~/.relay-core/ca_key.pem</span>
+<span class="output">> Use --api-port 8082 for REST + SSE API</span>
 <span class="cursor">▋</span></pre>
       </div>
 
@@ -138,13 +138,13 @@ const sourceCmd = 'git clone https://github.com/relaycraft/relay-core && cd rela
         <span class="crate-name">relay-core-http</span>
         <span class="crate-desc">REST + SSE adapter</span>
       </div>
-      <div class="crate-item beta">
-        <span class="crate-badge">BETA</span>
+      <div class="crate-item public">
+        <span class="crate-badge">GA</span>
         <span class="crate-name">relay-core-probe</span>
         <span class="crate-desc">MCP adapter for AI agents</span>
       </div>
-      <div class="crate-item beta">
-        <span class="crate-badge">BETA</span>
+      <div class="crate-item public">
+        <span class="crate-badge">GA</span>
         <span class="crate-name">relay-core-cli</span>
         <span class="crate-desc">CLI · TUI · embedded HTTP API</span>
       </div>
@@ -276,17 +276,17 @@ const sourceCmd = 'git clone https://github.com/relaycraft/relay-core && cd rela
     <div class="cli-examples">
       <div class="cli-block">
         <div class="cli-prompt"><TerminalDots /> $ relay-core-cli run</div>
-        <pre class="cli-output">> RelayCore v0.3.5
-> Proxy listening on 0.0.0.0:8080
-> Web UI: http://127.0.0.1:8080/ui
+        <pre class="cli-output">> RelayCore v0.5.x
+> Proxy listening on 127.0.0.1:8080
+> Use --ui for TUI, --api-port 8082 for REST API
 > Press Ctrl+C to stop</pre>
       </div>
 
       <div class="cli-block">
-        <div class="cli-prompt"><TerminalDots /> $ relay-core-cli ca init</div>
+        <div class="cli-prompt"><TerminalDots /> $ relay-core-cli ca generate</div>
         <pre class="cli-output">> Generating new CA certificate...
 > CA certificate generated successfully
-> Path: ~/.relay-core/ca.crt</pre>
+> Path: ~/.relay-core/ca_cert.pem</pre>
       </div>
 
       <div class="cli-block">
@@ -317,7 +317,7 @@ const sourceCmd = 'git clone https://github.com/relaycraft/relay-core && cd rela
         <span>Start with TUI interface</span>
       </div>
       <div class="cmd-item">
-        <code>relay-core-cli ca init</code>
+        <code>relay-core-cli ca generate</code>
         <span>CA certificate management</span>
       </div>
       <div class="cmd-item">

@@ -23,10 +23,10 @@ import ArchitectureDiagram from '../../../components/ArchitectureDiagram.astro';
   <h3>relay-core-http (Public)</h3>
   <p>REST + SSE adapter. Exposes CoreState via HTTP with JSON API and Server-Sent Events for real-time updates.</p>
 
-  <h3>relay-core-probe (Beta)</h3>
-  <p>MCP adapter. Exposes tools for AI agents to observe and control the proxy programmatically.</p>
+  <h3>relay-core-probe (GA)</h3>
+  <p>MCP adapter (npm: <code>@relay-core/mcp</code>). Standalone <code>relay-core-probe</code> binary embeds the proxy and exposes MCP tools.</p>
 
-  <h3>relay-core-cli (Beta)</h3>
+  <h3>relay-core-cli (GA)</h3>
   <p>Standalone CLI and TUI. <code>relay-core-cli run</code> starts the proxy plus embedded REST+SSE (<code>--api-port</code>) and a control API.</p>
 
   <h3>relay-core-lib (Internal)</h3>
@@ -52,16 +52,5 @@ import ArchitectureDiagram from '../../../components/ArchitectureDiagram.astro';
 
   <h2>Configuration</h2>
 
-  <p>RelayCore reads configuration from <code>~/.relay-core/config.toml</code>:</p>
-  <pre><code>[proxy]
-port = 8080
-bind_address = "0.0.0.0"
-
-[storage]
-sqlite_path = "~/.relay-core/flows.db"
-max_flows = 10000
-
-[mcp]
-enabled = true
-port = 25519</code></pre>
+  <p>Paths and CA settings use environment variables and CLI flags — see <a href="/en/docs/configuration">Configuration</a>. Default data directory: <code>~/.relay-core</code>.</p>
 </DocsLayout>

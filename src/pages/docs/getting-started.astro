@@ -22,21 +22,26 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>生成 CA 证书</h2>
 
-  <p>要拦截 HTTPS 流量，你需要 CA 证书：</p>
-  <pre><code>relay-core-cli ca init</code></pre>
+  <p>要拦截 HTTPS 流量，需先生成 CA（默认写入 <code>~/.relay-core/</code>）：</p>
+  <pre><code>relay-core-cli ca generate</code></pre>
 
-  <p>然后将其安装到系统：</p>
-  <pre><code># macOS
-sudo security add-trusted-cert ~/.relay-core/ca.crt
+  <p>查看状态：</p>
+  <pre><code>relay-core-cli ca status</code></pre>
 
-# Linux
-sudo cp ~/.relay-core/ca.crt /usr/local/share/ca-certificates/
+  <p>安装到系统信任存储：</p>
+  <pre><code># macOS（推荐）
+relay-core-cli ca install
+
+# Linux（Debian/Ubuntu 示例）
+sudo cp ~/.relay-core/ca_cert.pem /usr/local/share/ca-certificates/relay-core.crt
 sudo update-ca-certificates
 
 # Windows
-# 通过 certmgr.msc 导入</code></pre>
+# 通过 certmgr.msc 导入 ~/.relay-core/ca_cert.pem</code></pre>
 
   <h2>启动代理</h2>
+
+  <p>CA 文件必须已存在；否则 <code>run</code> 会提示先执行 <code>ca generate</code>。</p>
 
   <pre><code># 基本用法
 relay-core-cli run

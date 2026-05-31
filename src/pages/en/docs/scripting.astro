@@ -95,7 +95,7 @@ const txt = relay.json.stringifyPretty(obj);          // 2-space indent</code></
 
   <h3>relay.env(name)</h3>
   <p>Reads whitelisted environment variables. Requires <code>--script-env-allow</code> CLI flag:</p>
-  <pre><code>// CLI: relay-core run --script-env-allow=BACKEND_HOST
+  <pre><code>// CLI: relay-core-cli run --script-env-allow=BACKEND_HOST
 const host = relay.env("BACKEND_HOST");  // "api.example.com"
 const miss = relay.env("SECRET");        // undefined (not whitelisted)</code></pre>
 
@@ -197,7 +197,7 @@ globalThis.onWebSocketError = (ctx, flow, error) => &#123;
 
   <h3>CLI Commands</h3>
   <pre><code># Load a script via HTTP API
-curl -X POST http://127.0.0.1:18082/api/v1/script \
+curl -X POST http://127.0.0.1:8082/api/v1/script \
   -H "Content-Type: application/json" \
   -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'
 
@@ -227,13 +227,9 @@ globalThis.onRequest = (ctx, flow) => &#123;
 // relay-core scripts build → dist/bundle.js (single IIFE file)
 // Load bundle.js directly</code></pre>
 
-  <h3>Configuration</h3>
-  <pre><code># config.toml
-[script]
-enable_fetch = true
-fetch_allow = ["auth.internal", "api.example.com"]
-fetch_timeout_ms = 3000
-fetch_max_concurrency = 8</code></pre>
+  <h3>Script environment</h3>
+  <pre><code># Allow env vars for relay.env() at startup
+relay-core-cli run --script-env-allow API_TOKEN,DEBUG</code></pre>
 
   <h2>Observability</h2>
   <p>Script execution metrics are automatically reported to Prometheus:</p>

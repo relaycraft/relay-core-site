@@ -5,126 +5,53 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="配置" description="RelayCore 配置参考">
   <h1>配置</h1>
 
-  <p>RelayCore 从 <code>~/.relay-core/config.toml</code>（或通过 <code>--config</code> 标志）读取配置。</p>
+  <p>RelayCore 当前以 <strong>CLI 参数 + 环境变量 + 默认数据目录</strong> 为主进行配置。尚未提供统一的 <code>config.toml</code> 加载路径。</p>
 
-  <h2>完整配置参考</h2>
+  <h2>默认数据目录</h2>
 
-  <pre><code>[proxy]
-# 监听地址和端口
-port = 8080
-bind_address = "0.0.0.0"
+  <p>默认目录为 <code>~/.relay-core</code>（可通过 <code>RELAY_DATA_DIR</code> 覆盖）。HTTPS 拦截相关文件：</p>
 
-# 可选的上游代理
-upstream_proxy = "http://parent-proxy:8080"
+  <ul>
+    <li><code>ca_cert.pem</code> — CA 证书</li>
+    <li><code>ca_key.pem</code> — CA 私钥</li>
+    <li><code>ca_cert.json</code> — CA 元数据（持久化加载所需）</li>
+  </ul>
 
-# 透明代理（需要 root）
-transparent = false
-
-# MITM
-mitm_enabled = true
-mitm_ca_path = "~/.relay-core/ca.crt"
-mitm_ca_key_path = "~/.relay-core/ca.key"
-
-[storage]
-# SQLite 数据库路径
-sqlite_path = "~/.relay-core/flows.db"
-
-# 保持在内存中的最大流量数
-max_flows = 10000
-
-# 流量 TTL（小时）
-flow_ttl_hours = 24
-
-# 启用审计日志
-audit_enabled = true
-audit_path = "~/.relay-core/audit.db"
-
-[logging]
-# 日志级别：debug, info, warn, error
-level = "info"
-
-# 日志输出到文件
-log_file = "~/.relay-core/relay-core.log"
-
-# 启用访问日志
-access_log = true
-
-[mcp]
-# 启用 MCP 服务器
-enabled = true
-
-# MCP 监听端口
-port = 25519
-
-# 允许的工具（空 = 全部）
-allowed_tools = []
-
-[scripting]
-# 启用 Deno 脚本
-enabled = true
-
-# Deno 缓存目录
-deno_dir = "~/.relay-core/deno"
-
-# 更改时自动重新加载脚本
-auto_reload = true
-
-[tls]
-# 跳过 TLS 验证（用于调试）
-insecure_skip_verify = false
-
-# 证书缓存大小
-cert_cache_size = 100
-
-# TLS 版本
-min_tls_version = "1.2"
-max_tls_version = "1.3"
-
-[limits]
-# 最大请求体大小（字节）
-max_request_body = 10485760  # 10MB
-
-# 最大响应体大小（字节）
-max_response_body = 10485760  # 10MB
-
-# 连接超时（毫秒）
-connect_timeout = 30000
-
-# 读取超时（毫秒）
-read_timeout = 60000
-
-[ui]
-# 启用内置 Web UI
-enabled = true
-
-# UI 绑定地址
-ui_host = "127.0.0.1"
-
-# UI 端口
-ui_port = 8080</code></pre>
+  <p>使用 <code>relay-core-cli ca generate</code> 生成证书后，<code>relay-core-cli run</code> 会从上述路径读取。证书不存在时 <code>run</code> 会直接失败并提示先生成 CA。</p>
 
   <h2>环境变量</h2>
 
-  <p>环境变量优先于配置文件：</p>
+  <table>
+    <tr><th>变量</th><th>说明</th></tr>
+    <tr><td><code>RELAY_DATA_DIR</code></td><td>数据目录（默认 <code>~/.relay-core</code>）</td></tr>
+    <tr><td><code>RELAY_CA_CERT</code></td><td>CA 证书路径（须与 <code>RELAY_CA_KEY</code> 成对设置）</td></tr>
+    <tr><td><code>RELAY_CA_KEY</code></td><td>CA 私钥路径（须与 <code>RELAY_CA_CERT</code> 成对设置）</td></tr>
+    <tr><td><code>RELAY_LOG</code></td><td>日志过滤级别（如 <code>info</code>、<code>debug</code>）</td></tr>
+    <tr><td><code>RELAY_PORT</code></td><td><code>relay-core-probe</code> 代理端口（默认 8080）</td></tr>
+    <tr><td><code>RELAY_PROBE_TRANSPORT</code></td><td>MCP 传输方式：<code>stdio</code>（默认）或 <code>sse</code></td></tr>
+    <tr><td><code>RELAY_PROBE_PORT</code></td><td>SSE 模式下 MCP 监听端口（默认 3000）</td></tr>
+    <tr><td><code>RELAY_PROBE_BIND</code></td><td>SSE 模式下 MCP 绑定地址（默认 127.0.0.1）</td></tr>
+  </table>
 
-  <pre><code>RELAY_CORE_CONFIG      # 配置文件路径
-RELAY_CORE_PORT         # proxy.port
-RELAY_CORE_BIND        # proxy.bind_address
-RELAY_CORE_LOG_LEVEL   # logging.level
-RELAY_CORE_DATA_DIR    # 数据目录（~/.relay-core）
-RELAY_CORE_MCP_PORT    # mcp.port</code></pre>
+  <p>路径优先级：<strong>CLI 参数 &gt; 环境变量 &gt; 默认数据目录</strong>。</p>
 
-  <h2>CLI 覆盖</h2>
+  <h2>CLI 常用参数（run）</h2>
 
-  <p>CLI 标志覆盖环境变量和配置：</p>
-  <pre><code>relay-core-cli run --port 9090 --log-level debug</code></pre>
+  <pre><code>relay-core-cli run [options]
 
-  <h2>生产环境注意事项</h2>
+  --listen &lt;ADDR&gt;        代理监听地址（默认 127.0.0.1:8080）
+  --ca-cert &lt;PATH&gt;       CA 证书路径（可选，覆盖默认）
+  --ca-key &lt;PATH&gt;        CA 私钥路径（须与 --ca-cert 成对）
+  --api-port &lt;PORT&gt;      启用 REST + SSE HTTP API
+  --rules &lt;PATH&gt;         加载规则文件（JSON/YAML）
+  --script &lt;PATH&gt;        加载 Deno 脚本
+  --ui                   启用 TUI</code></pre>
+
+  <h2>生产环境建议</h2>
 
   <ul>
-    <li>设置 <code>bind_address = "127.0.0.1"</code> 仅限本地访问</li>
-    <li>使用反向代理（nginx）进行 TLS 终止</li>
-    <li>为 <code>log_file</code> 启用日志轮转</li>
-    <li>根据可用内存监控 <code>max_flows</code></li>
+    <li>仅本机使用时绑定 <code>127.0.0.1</code>，避免暴露到局域网</li>
+    <li>启用 <code>--api-port</code> 时配合 <code>--api-token</code> 限制访问</li>
+    <li>团队共享 CA 时统一 <code>RELAY_DATA_DIR</code> 或显式指定 <code>--ca-cert</code> / <code>--ca-key</code></li>
   </ul>
 </DocsLayout>

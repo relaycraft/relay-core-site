@@ -23,10 +23,10 @@ import ArchitectureDiagram from '../../components/ArchitectureDiagram.astro';
   <h3>relay-core-http (公开)</h3>
   <p>REST + SSE 适配器。通过 HTTP 和 JSON API 以及 Server-Sent Events 实时更新暴露 CoreState。</p>
 
-  <h3>relay-core-probe (Beta)</h3>
-  <p>MCP 适配器。为 AI 代理暴露工具，以编程方式观察和控制代理。</p>
+  <h3>relay-core-probe (GA)</h3>
+  <p>MCP 适配器（npm：<code>@relay-core/mcp</code>）。独立进程 <code>relay-core-probe</code> 内嵌代理并通过 MCP 暴露工具。</p>
 
-  <h3>relay-core-cli (Beta)</h3>
+  <h3>relay-core-cli (GA)</h3>
   <p>独立 CLI 与 TUI。<code>relay-core-cli run</code> 会同时启动代理、内嵌 REST+SSE（<code>--api-port</code>）和控制 API。</p>
 
   <h3>relay-core-lib (内部)</h3>
@@ -52,16 +52,5 @@ import ArchitectureDiagram from '../../components/ArchitectureDiagram.astro';
 
   <h2>配置</h2>
 
-  <p>RelayCore 从 <code>~/.relay-core/config.toml</code> 读取配置：</p>
-  <pre><code>[proxy]
-port = 8080
-bind_address = "0.0.0.0"
-
-[storage]
-sqlite_path = "~/.relay-core/flows.db"
-max_flows = 10000
-
-[mcp]
-enabled = true
-port = 25519</code></pre>
+  <p>路径与 CA 通过环境变量和 CLI 参数配置，详见<a href="/docs/configuration">配置</a>。默认数据目录为 <code>~/.relay-core</code>。</p>
 </DocsLayout>

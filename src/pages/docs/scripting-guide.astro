@@ -13,7 +13,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
   console.log(`$&#123;#36;&#123;flow.layer.data.request.method&#125; $&#123;#36;&#123;flow.layer.data.request.url&#125;`);
 &#125;;</code></pre>
   <p>通过 HTTP API 加载：</p>
-  <pre><code>curl -X POST http://127.0.0.1:18082/api/v1/script \
+  <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/script \
   -H "Content-Type: application/json" \
   -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'</code></pre>
 
@@ -227,7 +227,7 @@ console.error("This should not happen!");    // 永远可见</code></pre>
 
   <h3>Prometheus 指标</h3>
   <pre><code># 查看脚本执行指标
-curl http://127.0.0.1:18082/api/v1/metrics/prometheus | grep script_
+curl http://127.0.0.1:8082/api/v1/metrics/prometheus | grep script_
 # 输出：script_hook_duration_us&#123;hook="onRequest"&#125;
 #       script_hook_invocations_total&#123;hook="onRequest"&#125; 12345</code></pre>
 

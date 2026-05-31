@@ -60,13 +60,13 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
 scrape_configs:
   - job_name: "relaycore"
     static_configs:
-      - targets: ["127.0.0.1:18082"]
+      - targets: ["127.0.0.1:8082"]
     metrics_path: "/api/v1/metrics/prometheus"
     scrape_interval: 15s</code></pre>
 
   <h2>健康检查</h2>
   <pre><code># 状态快照
-curl http://127.0.0.1:18082/api/v1/status
+curl http://127.0.0.1:8082/api/v1/status
 
 # 响应示例
 &#123;
@@ -92,10 +92,10 @@ curl http://127.0.0.1:18082/api/v1/status
   </table>
 
   <pre><code># 命令行订阅事件流
-curl -N http://127.0.0.1:18082/api/v1/events
+curl -N http://127.0.0.1:8082/api/v1/events
 
 # JavaScript EventSource
-const es = new EventSource("http://127.0.0.1:18082/api/v1/events");
+const es = new EventSource("http://127.0.0.1:8082/api/v1/events");
 es.addEventListener("flow", (e) => console.log(JSON.parse(e.data)));</code></pre>
 
   <h2>审计系统</h2>
@@ -111,10 +111,10 @@ es.addEventListener("flow", (e) => console.log(JSON.parse(e.data)));</code></pre
   <p>审计参与者标签：<code>runtime</code> / <code>http</code> / <code>tauri</code> / <code>probe</code> / <code>cli</code></p>
 
   <pre><code># 查询最近 50 条审计事件
-curl "http://127.0.0.1:18082/api/v1/audit?limit=50"
+curl "http://127.0.0.1:8082/api/v1/audit?limit=50"
 
 # 按类型过滤
-curl "http://127.0.0.1:18082/api/v1/audit?kind=rule_changed&limit=20"</code></pre>
+curl "http://127.0.0.1:8082/api/v1/audit?kind=rule_changed&limit=20"</code></pre>
 
   <h2>Grafana 集成</h2>
   <p>仓库 <code>benchmarks/grafana/</code> 提供了开箱即用的 Grafana Dashboard JSON。配合 Prometheus 即可搭建监控面板。</p>

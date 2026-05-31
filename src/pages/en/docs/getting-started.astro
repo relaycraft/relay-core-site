@@ -22,21 +22,26 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <h2>Generate CA Certificate</h2>
 
-  <p>For HTTPS interception, you need a CA certificate:</p>
-  <pre><code>relay-core-cli ca init</code></pre>
+  <p>For HTTPS interception, generate a CA first (default: <code>~/.relay-core/</code>):</p>
+  <pre><code>relay-core-cli ca generate</code></pre>
 
-  <p>Then install it system-wide:</p>
-  <pre><code># macOS
-sudo security add-trusted-cert ~/.relay-core/ca.crt
+  <p>Check status:</p>
+  <pre><code>relay-core-cli ca status</code></pre>
 
-# Linux
-sudo cp ~/.relay-core/ca.crt /usr/local/share/ca-certificates/
+  <p>Install to the system trust store:</p>
+  <pre><code># macOS (recommended)
+relay-core-cli ca install
+
+# Linux (Debian/Ubuntu example)
+sudo cp ~/.relay-core/ca_cert.pem /usr/local/share/ca-certificates/relay-core.crt
 sudo update-ca-certificates
 
 # Windows
-# Import via certmgr.msc</code></pre>
+# Import ~/.relay-core/ca_cert.pem via certmgr.msc</code></pre>
 
   <h2>Start the Proxy</h2>
+
+  <p>CA files must exist before <code>run</code>; otherwise the CLI exits with guidance to run <code>ca generate</code>.</p>
 
   <pre><code># Basic usage
 relay-core-cli run

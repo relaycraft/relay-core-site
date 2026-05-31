@@ -5,126 +5,53 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="Configuration" description="RelayCore configuration reference">
   <h1>Configuration</h1>
 
-  <p>RelayCore reads configuration from <code>~/.relay-core/config.toml</code> (or via <code>--config</code> flag).</p>
+  <p>RelayCore is configured primarily through <strong>CLI flags, environment variables, and a default data directory</strong>. There is no unified <code>config.toml</code> loader today.</p>
 
-  <h2>Full Configuration Reference</h2>
+  <h2>Default data directory</h2>
 
-  <pre><code>[proxy]
-# Listen address and port
-port = 8080
-bind_address = "0.0.0.0"
-
-# Optional upstream proxy
-upstream_proxy = "http://parent-proxy:8080"
-
-# Transparent proxy (requires root)
-transparent = false
-
-# MITM
-mitm_enabled = true
-mitm_ca_path = "~/.relay-core/ca.crt"
-mitm_ca_key_path = "~/.relay-core/ca.key"
-
-[storage]
-# SQLite database path
-sqlite_path = "~/.relay-core/flows.db"
-
-# Max flows to keep in memory
-max_flows = 10000
-
-# Flow TTL in hours
-flow_ttl_hours = 24
-
-# Enable audit logging
-audit_enabled = true
-audit_path = "~/.relay-core/audit.db"
-
-[logging]
-# Log level: debug, info, warn, error
-level = "info"
-
-# Log to file
-log_file = "~/.relay-core/relay-core.log"
-
-# Enable access log
-access_log = true
-
-[mcp]
-# Enable MCP server
-enabled = true
-
-# MCP listen port
-port = 25519
-
-# Allowed tools (empty = all)
-allowed_tools = []
-
-[scripting]
-# Enable Deno scripting
-enabled = true
-
-# Deno cache directory
-deno_dir = "~/.relay-core/deno"
-
-# Auto-reload scripts on change
-auto_reload = true
-
-[tls]
-# Skip TLS verification (for debugging)
-insecure_skip_verify = false
-
-# Cert cache size
-cert_cache_size = 100
-
-# TLS versions
-min_tls_version = "1.2"
-max_tls_version = "1.3"
-
-[limits]
-# Max request body size (bytes)
-max_request_body = 10485760  # 10MB
-
-# Max response body size (bytes)
-max_response_body = 10485760  # 10MB
-
-# Connection timeout (ms)
-connect_timeout = 30000
-
-# Read timeout (ms)
-read_timeout = 60000
-
-[ui]
-# Enable built-in web UI
-enabled = true
-
-# UI bind address
-ui_host = "127.0.0.1"
-
-# UI port
-ui_port = 8080</code></pre>
-
-  <h2>Environment Variables</h2>
-
-  <p>Environment variables take precedence over config file:</p>
-
-  <pre><code>RELAY_CORE_CONFIG      # Config file path
-RELAY_CORE_PORT         # proxy.port
-RELAY_CORE_BIND        # proxy.bind_address
-RELAY_CORE_LOG_LEVEL   # logging.level
-RELAY_CORE_DATA_DIR    # Data directory (~/.relay-core)
-RELAY_CORE_MCP_PORT    # mcp.port</code></pre>
-
-  <h2>CLI Overrides</h2>
-
-  <p>CLI flags override both env vars and config:</p>
-  <pre><code>relay-core-cli run --port 9090 --log-level debug</code></pre>
-
-  <h2>Production Considerations</h2>
+  <p>The default directory is <code>~/.relay-core</code> (override with <code>RELAY_DATA_DIR</code>). HTTPS interception files:</p>
 
   <ul>
-    <li>Set <code>bind_address = "127.0.0.1"</code> for local-only access</li>
-    <li>Use a reverse proxy (nginx) for TLS termination</li>
-    <li>Enable log rotation for <code>log_file</code></li>
-    <li>Monitor <code>max_flows</code> based on available memory</li>
+    <li><code>ca_cert.pem</code> — CA certificate</li>
+    <li><code>ca_key.pem</code> — CA private key</li>
+    <li><code>ca_cert.json</code> — CA metadata (required for persistent load)</li>
+  </ul>
+
+  <p>After <code>relay-core-cli ca generate</code>, <code>relay-core-cli run</code> reads from these paths. If CA files are missing, <code>run</code> exits with an actionable error.</p>
+
+  <h2>Environment variables</h2>
+
+  <table>
+    <tr><th>Variable</th><th>Description</th></tr>
+    <tr><td><code>RELAY_DATA_DIR</code></td><td>Data directory (default <code>~/.relay-core</code>)</td></tr>
+    <tr><td><code>RELAY_CA_CERT</code></td><td>CA cert path (must be paired with <code>RELAY_CA_KEY</code>)</td></tr>
+    <tr><td><code>RELAY_CA_KEY</code></td><td>CA key path (must be paired with <code>RELAY_CA_CERT</code>)</td></tr>
+    <tr><td><code>RELAY_LOG</code></td><td>Log filter level (e.g. <code>info</code>, <code>debug</code>)</td></tr>
+    <tr><td><code>RELAY_PORT</code></td><td><code>relay-core-probe</code> proxy port (default 8080)</td></tr>
+    <tr><td><code>RELAY_PROBE_TRANSPORT</code></td><td>MCP transport: <code>stdio</code> (default) or <code>sse</code></td></tr>
+    <tr><td><code>RELAY_PROBE_PORT</code></td><td>MCP listen port in SSE mode (default 3000)</td></tr>
+    <tr><td><code>RELAY_PROBE_BIND</code></td><td>MCP bind address in SSE mode (default 127.0.0.1)</td></tr>
+  </table>
+
+  <p>Path precedence: <strong>CLI args &gt; environment variables &gt; default data directory</strong>.</p>
+
+  <h2>Common CLI flags (run)</h2>
+
+  <pre><code>relay-core-cli run [options]
+
+  --listen &lt;ADDR&gt;        Proxy listen address (default 127.0.0.1:8080)
+  --ca-cert &lt;PATH&gt;       CA certificate path (optional override)
+  --ca-key &lt;PATH&gt;        CA private key path (must pair with --ca-cert)
+  --api-port &lt;PORT&gt;      Enable REST + SSE HTTP API
+  --rules &lt;PATH&gt;         Load rules file (JSON/YAML)
+  --script &lt;PATH&gt;        Load Deno script
+  --ui                   Enable TUI</code></pre>
+
+  <h2>Production notes</h2>
+
+  <ul>
+    <li>Bind to <code>127.0.0.1</code> for local-only use</li>
+    <li>When using <code>--api-port</code>, protect access with <code>--api-token</code></li>
+    <li>For shared team CA, align on <code>RELAY_DATA_DIR</code> or explicit <code>--ca-cert</code> / <code>--ca-key</code></li>
   </ul>
 </DocsLayout>

@@ -12,23 +12,19 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
   <h3>浏览器显示证书不安全</h3>
   <ul>
     <li><b>原因</b>：RelayCore 生成自签名 CA，未被系统信任</li>
-    <li><b>解决</b>：将 CA 证书导入系统信任存储
-      <pre><code># macOS
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.relay-core/ca.crt
+    <li><b>解决</b>：生成并安装 CA
+      <pre><code>relay-core-cli ca generate
+relay-core-cli ca install   # macOS
 
-# Linux (Debian/Ubuntu)
-sudo cp ~/.relay-core/ca.crt /usr/local/share/ca-certificates/relaycore.crt
-sudo update-ca-certificates
-
-# Windows
-certutil -addstore Root %USERPROFILE%.relay-coreca.crt</code></pre>
+# 或手动（示例）
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.relay-core/ca_cert.pem</code></pre>
     </li>
   </ul>
 
   <h3>curl 报 SSL 错误</h3>
   <ul>
-    <li>临时跳过：<code>curl --cacert ~/.relay-core/ca.crt https://example.com</code></li>
-    <li>环境变量：<code>export CURL_CA_BUNDLE=~/.relay-core/ca.crt</code></li>
+    <li>临时跳过：<code>curl --cacert ~/.relay-core/ca_cert.pem https://example.com</code></li>
+    <li>环境变量：<code>export CURL_CA_BUNDLE=~/.relay-core/ca_cert.pem</code></li>
   </ul>
 
   <h3>"Failed to initialize ScriptInterceptor"</h3>
@@ -42,7 +38,7 @@ certutil -addstore Root %USERPROFILE%.relay-coreca.crt</code></pre>
   <h3>代理无法启动（端口被占用）</h3>
   <ul>
     <li>检查端口占用：<code>lsof -i :8080</code> 或 <code>netstat -an | grep 8080</code></li>
-    <li>更换监听端口：<code>relay-core run --listen 127.0.0.1:9090</code></li>
+    <li>更换监听端口：<code>relay-core-cli run --listen 127.0.0.1:9090</code></li>
   </ul>
 
   <h3>客户端连接后无响应</h3>
@@ -50,7 +46,7 @@ certutil -addstore Root %USERPROFILE%.relay-coreca.crt</code></pre>
     <li>确认代理地址和端口正确</li>
     <li>检查系统代理设置（macOS: 系统偏好设置 → 网络 → 高级 → 代理）</li>
     <li>检查是否有安全软件阻止连接</li>
-    <li>查看代理日志：<code>RUST_LOG=info relay-core run</code></li>
+    <li>查看代理日志：<code>RELAY_LOG=info relay-core-cli run</code></li>
   </ul>
 
   <h3>上游请求超时</h3>
@@ -115,7 +111,7 @@ certutil -addstore Root %USERPROFILE%.relay-coreca.crt</code></pre>
     <li>检查规则数量——每条规则在每个匹配的 flow 上都会执行</li>
     <li>检查 ResponseBody filter——会缓存完整响应体</li>
     <li>检查脚本执行时间——<code>script_hook_duration_us</code> 指标</li>
-    <li>关闭不必要的日志：<code>RUST_LOG=warn relay-core run</code></li>
+    <li>关闭不必要的日志：<code>RUST_LOG=warn relay-core-cli run</code></li>
   </ul>
 
   <h3>内存持续增长</h3>
@@ -127,26 +123,26 @@ certutil -addstore Root %USERPROFILE%.relay-coreca.crt</code></pre>
 
   <h2>日志与调试</h2>
   <pre><code># 完整日志
-RUST_LOG=debug relay-core run
+RUST_LOG=debug relay-core-cli run
 
 # 只看脚本
-RUST_LOG=relay_core_script=debug relay-core run
+RUST_LOG=relay_core_script=debug relay-core-cli run
 
 # 只看代理
-RUST_LOG=relay_core_lib=debug relay-core run
+RUST_LOG=relay_core_lib=debug relay-core-cli run
 
 # 查看实时流事件
-curl -N http://127.0.0.1:18082/api/v1/events
+curl -N http://127.0.0.1:8082/api/v1/events
 
 # 查看指标
-curl http://127.0.0.1:18082/api/v1/metrics
-curl http://127.0.0.1:18082/api/v1/metrics/prometheus</code></pre>
+curl http://127.0.0.1:8082/api/v1/metrics
+curl http://127.0.0.1:8082/api/v1/metrics/prometheus</code></pre>
 
   <h2>获取帮助</h2>
   <ul>
-    <li>运行 <code>relay-core --help</code> 查看所有命令</li>
-    <li>运行 <code>relay-core run --help</code> 查看启动参数</li>
-    <li>查看版本：<code>relay-core --version</code></li>
+    <li>运行 <code>relay-core-cli --help</code> 查看所有命令</li>
+    <li>运行 <code>relay-core-cli run --help</code> 查看启动参数</li>
+    <li>查看版本：<code>relay-core-cli --version</code></li>
     <li>GitHub Issues：<a href="https://github.com/relaycraft/relay-core/issues">github.com/relaycraft/relay-core/issues</a></li>
   </ul>
 </DocsLayout>

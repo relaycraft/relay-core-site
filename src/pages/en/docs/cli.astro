@@ -14,31 +14,40 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <pre><code>relay-core-cli run [options]
 
 Options:
-  --port &lt;PORT&gt;          Proxy port (default: 8080)
-  --ui                   Enable TUI interface
-  --config &lt;PATH&gt;        Config file path
-  --verbose              Enable verbose logging</code></pre>
+  -l, --listen &lt;ADDR&gt;     Proxy listen address (default: 127.0.0.1:8080)
+  -c, --control-port &lt;P&gt;  Control API port (default: 8081)
+  --api-port &lt;P&gt;           Enable REST/SSE HTTP API on this port
+  --api-token &lt;TOKEN&gt;      Bearer token for HTTP API auth
+  --api-cors &lt;ORIGINS&gt;     CORS allowed origins
+  --ui                    Enable TUI interface
+  --rules &lt;PATH&gt;          Load rules from file (JSON/YAML)
+  --script &lt;PATH&gt;         Load Deno script
+  --script-watch           Watch script file for hot reload
+  --script-env-allow &lt;K&gt;  Env vars scripts may read (comma-separated)
+  --transparent            Enable transparent proxy mode</code></pre>
 
   <h3>ca</h3>
   <p>Manage CA certificates for HTTPS interception.</p>
   <pre><code>relay-core-cli ca &lt;subcommand&gt;
 
 Subcommands:
-  init                   Generate new CA certificate
-  install                Install CA system-wide
-  status                 Show CA certificate status
-  export &lt;path&gt;          Export CA certificate to file
-  uninstall              Remove installed CA</code></pre>
+  generate               Generate CA cert and key (default ~/.relay-core/)
+  install                Install CA to system trust store (macOS)
+  status                 Show CA paths, existence, and trust status
+  export                 Export CA certificate
+  uninstall              Remove CA from system trust store (macOS)</code></pre>
+
+  <p>Optional paths: <code>--ca-cert</code> and <code>--ca-key</code> must be provided as a pair; or use <code>RELAY_CA_CERT</code> / <code>RELAY_CA_KEY</code>.</p>
 
   <h3>rules</h3>
   <p>Manage interception rules.</p>
   <pre><code>relay-core-cli rules &lt;subcommand&gt;
 
 Subcommands:
-  list                   List all rules
-  validate &lt;file&gt;        Validate rule file
-  export                 Export rules to YAML
-  import &lt;file&gt;          Import rules from YAML</code></pre>
+  validate &lt;file&gt;        Validate rule file format
+  print &lt;file&gt;           Print rules (JSON/YAML)
+  test &lt;file&gt; --flow F   Test rules against a sample flow
+  list --api-url &lt;URL&gt;   List active rules from a running proxy</code></pre>
 
   <h3>flows</h3>
   <p>Query captured flows.</p>
@@ -95,35 +104,12 @@ method:POST OR method:PUT
 # Negate
 NOT method:OPTIONS</code></pre>
 
-  <h2>Configuration File</h2>
+  <h2>Environment variables</h2>
 
-  <p>Create <code>~/.relay-core/config.toml</code>:</p>
-  <pre><code>[proxy]
-port = 8080
-bind_address = "0.0.0.0"
-upstream_proxy = "http://parent-proxy:8080"  # Optional
+  <pre><code>RELAY_LOG            # Log level (e.g. info, debug)
+RELAY_DATA_DIR       # Data directory (default ~/.relay-core)
+RELAY_CA_CERT        # CA cert path (pair with RELAY_CA_KEY)
+RELAY_CA_KEY         # CA key path</code></pre>
 
-[storage]
-sqlite_path = "~/.relay-core/flows.db"
-max_flows = 10000
-flow_ttl_hours = 24
-
-[logging]
-level = "info"  # debug, info, warn, error
-access_log = true
-
-[mcp]
-enabled = true
-port = 25519
-
-[tls]
-insecure_skip_verify = false
-cert_cache_size = 100</code></pre>
-
-  <h2>Environment Variables</h2>
-
-  <pre><code>RELAY_CORE_CONFIG      # Config file path
-RELAY_CORE_PORT         # Proxy port
-RELAY_CORE_LOG_LEVEL    # Logging level
-RELAY_CORE_DATA_DIR     # Data directory (default: ~/.relay-core)</code></pre>
+  <p>See <a href="/en/docs/configuration">Configuration</a> for the full list.</p>
 </DocsLayout>

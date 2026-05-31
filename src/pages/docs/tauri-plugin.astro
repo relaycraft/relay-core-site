@@ -5,5 +5,63 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="Tauri 插件" description="在 Tauri 应用中使用 RelayCore">
   <h1>Tauri 插件</h1>
 
-  <p>relay-core-tauri 是 RelayCraft 的 Tauri v2 插件。</p>
+  <p><code>relay-core-tauri</code> 是 RelayCraft 桌面端的 Tauri v2 插件，在应用进程内嵌入 RelayCore 运行时（<code>CoreState</code>），通过 Tauri command 暴露代理生命周期、流量查询与拦截控制。</p>
+
+  <p>该 crate 面向 <strong>RelayCraft 桌面应用及自建 Tauri 宿主</strong>，不是独立 CLI 分发形态。</p>
+
+  <h2>架构位置</h2>
+
+  <ul>
+    <li><strong>数据面</strong>：<code>relay-core-lib</code> 捕获与 MITM</li>
+    <li><strong>编排层</strong>：<code>relay-core-runtime</code> 的 <code>CoreState</code></li>
+    <li><strong>宿主适配</strong>：<code>relay-core-tauri</code> 将 CoreState 挂载到 Tauri 应用并暴露 IPC</li>
+  </ul>
+
+  <h2>注册插件</h2>
+
+  <pre><code>// src-tauri/src/lib.rs
+relay_core_tauri::init()</code></pre>
+
+  <p>插件 ID 为 <code>relay-core-tauri</code>。初始化时会创建 <code>RelayCoreState</code>（内含 <code>CoreState</code> 与 <code>TauriContext</code>）并注册到 Tauri 状态管理。</p>
+
+  <h2>可用 Commands</h2>
+
+  <table>
+    <tr><th>Command</th><th>说明</th></tr>
+    <tr><td><code>start_core_proxy</code></td><td>启动嵌入式代理</td></tr>
+    <tr><td><code>stop_core_proxy</code></td><td>停止代理</td></tr>
+    <tr><td><code>get_core_status</code></td><td>查询运行状态</td></tr>
+    <tr><td><code>get_core_metrics</code></td><td>获取运行时指标</td></tr>
+    <tr><td><code>get_flow_detail</code></td><td>获取单条 Flow 详情</td></tr>
+    <tr><td><code>get_pending_intercepts</code></td><td>列出待处理拦截</td></tr>
+    <tr><td><code>resume_flow</code></td><td>恢复或丢弃已暂停流量</td></tr>
+    <tr><td><code>set_intercept_rule</code></td><td>设置拦截规则</td></tr>
+    <tr><td><code>get_policy</code> / <code>update_policy</code> / <code>patch_policy</code></td><td>策略读写</td></tr>
+    <tr><td><code>load_script</code></td><td>加载脚本</td></tr>
+    <tr><td><code>get_ca_cert_path</code></td><td>获取 CA 证书路径</td></tr>
+    <tr><td><code>install_ca_cert</code></td><td>安装 CA 到系统信任存储（平台相关）</td></tr>
+    <tr><td><code>get_recent_audit</code></td><td>获取最近审计事件</td></tr>
+  </table>
+
+  <h2>权限（Tauri v2）</h2>
+
+  <p>插件使用 Tauri capability 权限模型。默认权限集包含 <code>allow-start-core-proxy</code>。其余 command 需按需在 <code>capabilities</code> 中显式允许（如 <code>relay-core-tauri:allow-get-flow-detail</code>）。</p>
+
+  <h2>与 CLI / MCP 的关系</h2>
+
+  <ul>
+    <li><strong>CLI</strong>（<code>relay-core-cli</code>）：独立二进制，适合终端调试</li>
+    <li><strong>MCP</strong>（<code>relay-core-probe</code> / <code>@relay-core/mcp</code>）：面向 AI Agent 的 MCP 适配器</li>
+    <li><strong>Tauri 插件</strong>：面向桌面应用内嵌，与 RelayCraft UI 深度集成</li>
+  </ul>
+
+  <p>三者共享同一套 runtime 能力面，差异在宿主与交互方式。</p>
+
+  <h2>相关文档</h2>
+
+  <ul>
+    <li><a href="/docs/architecture">架构</a></li>
+    <li><a href="/docs/getting-started">快速开始</a>（CLI 路径）</li>
+    <li><a href="/docs/mcp">MCP 服务器</a></li>
+  </ul>
 </DocsLayout>

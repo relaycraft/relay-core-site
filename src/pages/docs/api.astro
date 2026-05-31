@@ -5,7 +5,15 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="HTTP API" description="RelayCore REST API 参考">
   <h1>HTTP API</h1>
 
-  <p>REST API 在代理运行时位于 <code>http://127.0.0.1:3000/api/v1/</code>。</p>
+  <p>REST API 需通过 <code>relay-core-cli run --api-port 8082</code> 启用，默认基址为 <code>http://127.0.0.1:8082/api/v1/</code>。可选 <code>--api-token</code> 启用 Bearer 认证。</p>
+
+  <h2>版本与状态</h2>
+
+  <h3>GET /api/v1/version</h3>
+  <p>服务器与 API 版本信息。</p>
+
+  <h3>GET /api/v1/status</h3>
+  <p>运行时生命周期快照（代理状态、流量计数等）。</p>
 
   <h2>流量</h2>
 
@@ -14,44 +22,35 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <div class="endpoint">
     <span class="method method-get">GET</span>
-    <span>/api/v1/flows?limit=10&amp;offset=0&amp;filter=method:GET</span>
+    <span>/api/v1/flows?method=GET&amp;host=api.example.com&amp;limit=10&amp;offset=0</span>
   </div>
 
   <p><strong>查询参数：</strong></p>
   <ul>
-    <li><code>limit</code> — 返回的流量数量（默认：50）</li>
+    <li><code>host</code>、<code>path</code>、<code>path_contains</code>、<code>method</code></li>
+    <li><code>status_min</code>、<code>status_max</code>、<code>has_error</code>、<code>is_websocket</code></li>
+    <li><code>limit</code> — 返回条数（默认 50，最大 200）</li>
     <li><code>offset</code> — 分页偏移</li>
-    <li><code>filter</code> — 过滤表达式（例如 <code>method:GET host:*.example.com</code>）</li>
   </ul>
 
   <pre><code>&#123;
-  "flows": [
-    &#123;
-      "id": "fld_01HX5K9P3Q8Y2Z7",
-      "timestamp": "2024-01-15T10:23:45.123Z",
-      "method": "GET",
-      "url": "https://api.example.com/users",
-      "host": "api.example.com",
-      "path": "/users",
-      "status": 200,
-      "duration_ms": 42,
-      "size": 1847
-    &#125;
-  ],
-  "pagination": &#123;
-    "total": 12847,
-    "returned": 10,
-    "offset": 0
-  &#125;
+  "items": [&#123; "id": "fld_...", "method": "GET", "path": "/users", "status": 200 &#125;],
+  "returned": 10,
+  "limit": 50,
+  "offset": 0
 &#125;</code></pre>
 
   <h3>GET /api/v1/flows/:id</h3>
-  <p>获取详细的流量信息，包括请求头和请求体。</p>
+  <p>获取完整 Flow JSON（含请求/响应头与 body）。</p>
 
-  <div class="endpoint">
-    <span class="method method-get">GET</span>
-    <span>/api/v1/flows/fld_01HX5K9P3Q8Y2Z7</span>
-  </div>
+  <h3>POST /api/v1/flows/:id/replay</h3>
+  <p>重放指定流量。</p>
+
+  <h3>GET /api/v1/flows/:id/har</h3>
+  <p>导出单条 HAR entry。</p>
+
+  <h3>GET /api/v1/flows/export/har</h3>
+  <p>批量导出 HAR log（支持相同查询参数）。</p>
 
   <h2>规则</h2>
 
@@ -94,32 +93,24 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <span>/api/v1/rules/rul_01HX5K9P3Q8Y2Z7</span>
   </div>
 
+  <h3>POST /api/v1/mock</h3>
+  <p>快速创建 MockResponse 规则。</p>
+
   <h2>拦截</h2>
 
   <h3>POST /api/v1/intercepts</h3>
-  <p>创建拦截断点。</p>
-
-  <div class="endpoint">
-    <span class="method method-post">POST</span>
-    <span>/api/v1/intercepts</span>
-  </div>
+  <p>创建一次性拦截断点。</p>
 
   <pre><code>&#123;
-  "filter": &#123;
-    "method": "POST",
-    "host": "api.example.com"
-  &#125;,
-  "pause_at": "request"
+  "url_pattern": "api.example.com",
+  "phase": "request"
 &#125;</code></pre>
 
-  <h3>POST /api/v1/intercepts/resolve</h3>
-  <p>解决待处理的拦截（继续、修改或丢弃）。</p>
+  <h3>GET /api/v1/intercepts</h3>
+  <p>列出待处理的拦截。</p>
 
-  <pre><code>&#123;
-  "flow_id": "fld_01HX5K9P3Q8Y2Z7",
-  "action": "resume",
-  "modifications": &#123;&#125;
-&#125;</code></pre>
+  <h3>POST /api/v1/intercepts/:key/resume</h3>
+  <p>继续被拦截的流量（可选 body 携带修改）。</p>
 
   <h2>事件</h2>
 

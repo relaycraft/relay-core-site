@@ -33,13 +33,13 @@ npm install -g @relay-core/cli
 ### 生成 CA 证书
 
 ```bash
-relay-core-cli ca init
+relay-core-cli ca generate
 ```
 
 ### 启动代理
 
 ```bash
-relay-core-cli run --port 8080
+relay-core-cli run --listen 127.0.0.1:8080
 ```
 
 ## 文档

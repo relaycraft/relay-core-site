@@ -31,11 +31,13 @@ Options:
   <pre><code>relay-core-cli ca &lt;subcommand&gt;
 
 Subcommands:
-  init                   生成新的 CA 证书
-  install                将 CA 安装到系统信任存储
-  status                 显示 CA 证书状态
-  export &lt;path&gt;          导出 CA 证书到文件
-  uninstall              移除已安装的 CA</code></pre>
+  generate               生成 CA 证书与私钥（默认 ~/.relay-core/）
+  install                将 CA 安装到系统信任存储（macOS）
+  status                 显示 CA 路径、存在性与信任状态
+  export                 导出 CA 证书
+  uninstall              从系统信任存储移除 CA（macOS）</code></pre>
+
+  <p>可选路径：<code>--ca-cert</code> 与 <code>--ca-key</code> 须成对提供；亦可通过 <code>RELAY_CA_CERT</code> / <code>RELAY_CA_KEY</code> 设置。</p>
 
   <h3>rules</h3>
   <p>管理拦截规则。</p>
@@ -106,35 +108,12 @@ method:POST OR method:PUT
 # 取反
 NOT method:OPTIONS</code></pre>
 
-  <h2>配置文件</h2>
-
-  <p>创建 <code>~/.relay-core/config.toml</code>：</p>
-  <pre><code>[proxy]
-port = 8080
-bind_address = "0.0.0.0"
-upstream_proxy = "http://parent-proxy:8080"  # 可选
-
-[storage]
-sqlite_path = "~/.relay-core/flows.db"
-max_flows = 10000
-flow_ttl_hours = 24
-
-[logging]
-level = "info"  # debug, info, warn, error
-access_log = true
-
-[mcp]
-enabled = true
-port = 25519
-
-[tls]
-insecure_skip_verify = false
-cert_cache_size = 100</code></pre>
-
   <h2>环境变量</h2>
 
-  <pre><code>RELAY_CORE_CONFIG      # 配置文件路径
-RELAY_CORE_PORT         # 代理端口
-RELAY_CORE_LOG_LEVEL    # 日志级别
-RELAY_CORE_DATA_DIR     # 数据目录（默认：~/.relay-core）</code></pre>
+  <pre><code>RELAY_LOG            # 日志级别（如 info、debug）
+RELAY_DATA_DIR       # 数据目录（默认 ~/.relay-core）
+RELAY_CA_CERT        # CA 证书路径（须与 RELAY_CA_KEY 成对）
+RELAY_CA_KEY         # CA 私钥路径</code></pre>
+
+  <p>完整说明见 <a href="/docs/configuration">配置</a>。</p>
 </DocsLayout>

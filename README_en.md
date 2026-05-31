@@ -33,13 +33,13 @@ npm install -g @relay-core/cli
 ### Generate CA Certificate
 
 ```bash
-relay-core-cli ca init
+relay-core-cli ca generate
 ```
 
 ### Start Proxy
 
 ```bash
-relay-core-cli run --port 8080
+relay-core-cli run --listen 127.0.0.1:8080
 ```
 
 ## Documentation

@@ -55,13 +55,13 @@ import DocsLayout from "../../../layouts/DocsLayout.astro";
 scrape_configs:
   - job_name: "relaycore"
     static_configs:
-      - targets: ["127.0.0.1:18082"]
+      - targets: ["127.0.0.1:8082"]
     metrics_path: "/api/v1/metrics/prometheus"
     scrape_interval: 15s</code></pre>
 
   <h2>Health Check</h2>
   <pre><code># Status snapshot
-curl http://127.0.0.1:18082/api/v1/status
+curl http://127.0.0.1:8082/api/v1/status
 
 # Response
 &#123;
@@ -87,10 +87,10 @@ curl http://127.0.0.1:18082/api/v1/status
   </table>
 
   <pre><code># Subscribe via curl
-curl -N http://127.0.0.1:18082/api/v1/events
+curl -N http://127.0.0.1:8082/api/v1/events
 
 # JavaScript EventSource
-const es = new EventSource("http://127.0.0.1:18082/api/v1/events");
+const es = new EventSource("http://127.0.0.1:8082/api/v1/events");
 es.addEventListener("flow", (e) => console.log(JSON.parse(e.data)));</code></pre>
 
   <h2>Audit System</h2>
@@ -106,10 +106,10 @@ es.addEventListener("flow", (e) => console.log(JSON.parse(e.data)));</code></pre
   <p>Audit actors: <code>runtime</code> / <code>http</code> / <code>tauri</code> / <code>probe</code> / <code>cli</code></p>
 
   <pre><code># Query recent 50 audit events
-curl "http://127.0.0.1:18082/api/v1/audit?limit=50"
+curl "http://127.0.0.1:8082/api/v1/audit?limit=50"
 
 # Filter by type
-curl "http://127.0.0.1:18082/api/v1/audit?kind=rule_changed&limit=20"</code></pre>
+curl "http://127.0.0.1:8082/api/v1/audit?kind=rule_changed&limit=20"</code></pre>
 
   <h2>Grafana Integration</h2>
   <p>The <code>benchmarks/grafana/</code> directory contains a ready-to-use Grafana Dashboard JSON. Pair with Prometheus for a complete monitoring panel.</p>

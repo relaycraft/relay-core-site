@@ -217,13 +217,13 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>管理规则</h2>
   <pre><code># 列出当前活跃规则（GET 返回规则数组）
-curl http://127.0.0.1:18082/api/v1/rules
+curl http://127.0.0.1:8082/api/v1/rules
 
 # CLI 查看活跃规则
 relay-core-cli rules list
 
 # PUT 添加/更新规则
-curl -X PUT http://127.0.0.1:18082/api/v1/rules \
+curl -X PUT http://127.0.0.1:8082/api/v1/rules \
   -H "Content-Type: application/json" \
   -d '&#123;"id":"r1","name":"log-api","active":true,"stage":"RequestHeaders",
        "priority":10,"termination":"Continue",

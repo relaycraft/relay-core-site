@@ -95,7 +95,7 @@ const txt = relay.json.stringifyPretty(obj);          // 2 空格缩进</code></
 
   <h3>relay.env(name)</h3>
   <p>读取白名单内的环境变量，需 CLI 参数 <code>--script-env-allow</code> 显式声明：</p>
-  <pre><code>// CLI: relay-core run --script-env-allow=BACKEND_HOST
+  <pre><code>// CLI: relay-core-cli run --script-env-allow=BACKEND_HOST
 const host = relay.env("BACKEND_HOST");  // "api.example.com"
 const miss = relay.env("SECRET");        // undefined（未在白名单）</code></pre>
 
@@ -197,7 +197,7 @@ globalThis.onWebSocketError = (ctx, flow, error) => &#123;
 
   <h3>CLI 命令</h3>
   <pre><code># 通过 HTTP API 加载脚本
-curl -X POST http://127.0.0.1:18082/api/v1/script \
+curl -X POST http://127.0.0.1:8082/api/v1/script \
   -H "Content-Type: application/json" \
   -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'
 
@@ -227,13 +227,9 @@ globalThis.onRequest = (ctx, flow) => &#123;
 // relay-core scripts build → dist/bundle.js（单文件 IIFE）
 // 直接加载 bundle.js 即可</code></pre>
 
-  <h3>配置</h3>
-  <pre><code># config.toml
-[script]
-enable_fetch = true
-fetch_allow = ["auth.internal", "api.example.com"]
-fetch_timeout_ms = 3000
-fetch_max_concurrency = 8</code></pre>
+  <h3>脚本环境变量</h3>
+  <pre><code># 启动时允许脚本读取的环境变量
+relay-core-cli run --script-env-allow API_TOKEN,DEBUG</code></pre>
 
   <h2>可观测性</h2>
   <p>脚本执行指标自动上报到 Prometheus：</p>
