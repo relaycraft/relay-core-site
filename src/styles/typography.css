@@ -1,11 +1,16 @@
 /*
- * Cross-platform typography
- * - UI / prose: system sans + native CJK (Segoe UI + 微软雅黑 on Windows)
- * - Code / terminal: JetBrains Mono + Cascadia / Consolas
+ * Typography tiers (Vercel-style sans + mono pairing, self-hosted Geist)
+ *
+ * T1 Brand   — hero, section titles, nav (EN mono / ZH sans)
+ * T2 Chrome  — labels, badges, metrics, logo
+ * T3 Prose   — body copy, descriptions, docs paragraphs
+ * T4 Code    — terminal, pre, path, install commands
  */
 
 :root {
   --font-sans:
+    'Geist Variable',
+    'Geist',
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
@@ -18,6 +23,8 @@
     sans-serif;
 
   --font-mono:
+    'Geist Mono Variable',
+    'Geist Mono',
     'JetBrains Mono',
     'Cascadia Mono',
     'Cascadia Code',
@@ -27,7 +34,6 @@
     Menlo,
     Consolas,
     'Liberation Mono',
-    'Courier New',
     monospace;
 }
 
@@ -54,25 +60,69 @@ body {
   }
 }
 
-h1, h2, h3, h4 {
-  font-family: var(--font-sans);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.35;
-}
-
-:lang(zh) h1,
-:lang(zh) h2,
-:lang(zh) h3,
-:lang(zh) h4 {
-  letter-spacing: 0.01em;
-}
-
-p, li, dd, dt, blockquote, figcaption {
+/* ── T3 Prose ── */
+p,
+li,
+dd,
+dt,
+blockquote,
+figcaption,
+.hero-subtitle,
+.feature-desc,
+.footer-tagline,
+.docs-content :is(p, li, td, th) {
   line-height: 1.75;
 }
 
-/* ── Monospace surfaces (terminal / code aesthetic) ── */
+/* ── T1 Brand (English: mono display; Chinese: sans for glyph quality) ── */
+:lang(en) .hero-title,
+:lang(en) .title-line,
+:lang(en) .section-title,
+:lang(en) .feature-title,
+:lang(en) .nav-links a,
+:lang(en) .btn,
+:lang(en) .docs-content h1,
+:lang(en) .docs-content h2 {
+  font-family: var(--font-mono);
+}
+
+:lang(zh) .hero-title,
+:lang(zh) .title-line,
+:lang(zh) .section-title,
+:lang(zh) .feature-title,
+:lang(zh) .nav-links a,
+:lang(zh) .btn,
+:lang(zh) .docs-content h1,
+:lang(zh) .docs-content h2,
+:lang(zh) .sidebar-heading {
+  font-family: var(--font-sans);
+}
+
+:lang(en) .title-line {
+  letter-spacing: -0.03em;
+}
+
+:lang(zh) .title-line,
+:lang(zh) .section-title,
+:lang(zh) .docs-content h1,
+:lang(zh) .docs-content h2 {
+  letter-spacing: 0.02em;
+}
+
+:lang(en) .section-title,
+:lang(en) .docs-content h1 {
+  letter-spacing: -0.02em;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* ── T2 Chrome + T4 Code (always mono) ── */
 .font-mono,
 code,
 pre,
@@ -82,7 +132,7 @@ samp,
 .logo-mark,
 .logo-text,
 .section-label,
-.sidebar-heading,
+:lang(en) .sidebar-heading,
 .terminal-chrome,
 .terminal-body,
 .cli-prompt,
@@ -104,6 +154,14 @@ samp,
   font-family: var(--font-mono);
 }
 
+:lang(zh) .metric-label {
+  font-family: var(--font-sans);
+}
+
+:lang(en) .metric-label {
+  font-family: var(--font-mono);
+}
+
 pre,
 code,
 .terminal-body,
@@ -113,6 +171,10 @@ code,
 .code-block {
   font-variant-ligatures: none;
   font-feature-settings: 'liga' 0, 'calt' 0;
+}
+
+.metric-value {
+  font-variant-numeric: tabular-nums;
 }
 
 @supports (-webkit-appearance: none) and (font: -apple-system-body) {

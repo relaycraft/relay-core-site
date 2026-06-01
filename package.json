@@ -8,6 +8,9 @@
     "preview": "astro preview"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource-variable/geist-mono": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "astro": "^4.16.19",
     "linkedom": "^0.18.12",
     "shiki": "^4.1.0"
