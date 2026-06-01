@@ -1,4 +1,5 @@
 ---
+import '../styles/typography.css';
 import '../styles/shared.css';
 import '../styles/code-highlight.css';
 import { translations, getLocaleFromUrl, getAlternateUrl } from '../i18n/translations';
@@ -30,7 +31,10 @@ const alternateLocale = locale === 'en' ? 'zh' : 'en';
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <header class="site-header">
@@ -186,8 +190,6 @@ const alternateLocale = locale === 'en' ? 'zh' : 'en';
     --warning: #ff9500;
     --error: #ff3366;
 
-    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Consolas', monospace;
-
     --space-xs: 0.25rem;
     --space-sm: 0.5rem;
     --space-md: 1rem;
@@ -205,21 +207,6 @@ const alternateLocale = locale === 'en' ? 'zh' : 'en';
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-  }
-
-  html {
-    font-size: 14px;
-    scroll-behavior: smooth;
-  }
-
-  body {
-    font-family: var(--font-mono);
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    min-height: 100vh;
   }
 
   body::before {
@@ -267,11 +254,6 @@ const alternateLocale = locale === 'en' ? 'zh' : 'en';
 
   a:hover {
     color: var(--accent-secondary);
-  }
-
-  h1, h2, h3, h4 {
-    font-weight: 600;
-    letter-spacing: -0.02em;
   }
 
   .section {

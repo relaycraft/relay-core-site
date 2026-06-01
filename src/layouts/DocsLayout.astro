@@ -177,7 +177,6 @@ function isActive(href: string) {
     gap: var(--space-sm);
     width: fit-content;
     padding: var(--space-sm) var(--space-md);
-    font-family: var(--font-mono);
     font-size: 0.8125rem;
     color: var(--text-secondary);
     background: var(--bg-secondary);
@@ -268,14 +267,18 @@ function isActive(href: string) {
   .docs-content :global(h1) {
     font-size: 2.25rem;
     font-weight: 700;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.02em;
     margin-bottom: var(--space-lg);
     color: var(--text-primary);
-    line-height: 1.2;
+    line-height: 1.25;
     background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-primary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  :global(:lang(zh)) .docs-content h1 {
+    letter-spacing: 0.02em;
   }
 
   .docs-content :global(h2) {
@@ -326,8 +329,7 @@ function isActive(href: string) {
   }
 
   .docs-content :global(code) {
-    font-family: var(--font-mono);
-    font-size: 0.85em;
+    font-size: 0.875em;
     background: var(--bg-tertiary);
     color: var(--accent-primary);
     padding: 0.15em 0.4em;
@@ -336,7 +338,6 @@ function isActive(href: string) {
   }
 
   .docs-content :global(pre) {
-    font-family: var(--font-mono);
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 6px;

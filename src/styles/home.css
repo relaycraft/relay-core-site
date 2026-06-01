@@ -116,7 +116,6 @@
   display: inline-flex;
   align-items: center;
   padding: var(--space-sm) var(--space-lg);
-  font-family: var(--font-mono);
   font-size: 0.875rem;
   font-weight: 500;
   border: 1px solid transparent;
@@ -476,7 +475,6 @@
 .path {
   min-width: 0;
   color: var(--text-primary);
-  font-family: var(--font-mono);
   font-size: 0.8125rem;
 }
 
