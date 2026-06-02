@@ -1,0 +1,4 @@
+# pnpm 11+ project settings (single-package site; not a monorepo workspace)
+allowBuilds:
+  esbuild: true
+  sharp: true

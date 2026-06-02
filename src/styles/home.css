@@ -203,17 +203,16 @@
   border-radius: 6px;
 }
 
+.architecture-diagram :global(.architecture-svg),
 .architecture-diagram img {
   max-width: 100%;
   height: auto;
 }
 
-.ascii-diagram {
-  font-size: 0.6875rem;
-  line-height: 1.4;
-  color: var(--text-secondary);
-  white-space: pre;
-  margin: 0;
+.architecture-diagram :global(.diagram-wrapper) {
+  padding: 0;
+  background: transparent;
+  border: none;
 }
 
 .crates-grid {

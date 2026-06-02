@@ -2,6 +2,7 @@
   "name": "relay-core-site",
   "type": "module",
   "version": "1.0.0",
+  "packageManager": "pnpm@10.12.4",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -12,5 +13,8 @@
     "astro": "^4.16.19",
     "linkedom": "^0.18.12",
     "shiki": "^4.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp"]
   }
 }

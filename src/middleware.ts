@@ -19,8 +19,8 @@ export const onRequest: MiddlewareHandler = async (context, next) => {
 
   const body = await response.text();
   const out = highlightHtml(highlighter, body);
-  if (out === body) return response;
 
+  // Body was consumed by .text(); never return the original Response (stream locked).
   return new Response(out, {
     status: response.status,
     statusText: response.statusText,
