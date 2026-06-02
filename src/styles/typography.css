@@ -1,7 +1,7 @@
 /*
- * Typography tiers (Vercel-style sans + mono pairing, self-hosted Geist)
+ * Typography tiers (0xProto + Geist)
  *
- * T1 Brand   — hero, section titles, nav (EN mono / ZH sans)
+ * T1 Brand   — hero, section titles, nav, btn, docs headings (EN: 0xProto / ZH: Geist)
  * T2 Chrome  — labels, badges, metrics, logo
  * T3 Prose   — body copy, descriptions, docs paragraphs
  * T4 Code    — terminal, pre, path, install commands
@@ -23,8 +23,7 @@
     sans-serif;
 
   --font-mono:
-    'Geist Mono Variable',
-    'Geist Mono',
+    '0xProto',
     'JetBrains Mono',
     'Cascadia Mono',
     'Cascadia Code',
@@ -35,6 +34,14 @@
     Consolas,
     'Liberation Mono',
     monospace;
+
+  --phosphor-glow:
+    0 0 4px var(--accent-glow),
+    0 0 14px rgba(0, 212, 255, 0.22);
+
+  --phosphor-glow-hover:
+    0 0 12px var(--accent-glow),
+    0 0 28px rgba(0, 212, 255, 0.35);
 }
 
 html {
@@ -74,7 +81,7 @@ figcaption,
   line-height: 1.75;
 }
 
-/* ── T1 Brand (English: mono display; Chinese: sans for glyph quality) ── */
+/* ── T1 Brand (EN: 0xProto + phosphor glow; ZH: Geist + softer glow) ── */
 :lang(en) .hero-title,
 :lang(en) .title-line,
 :lang(en) .section-title,
@@ -84,6 +91,8 @@ figcaption,
 :lang(en) .docs-content h1,
 :lang(en) .docs-content h2 {
   font-family: var(--font-mono);
+  text-shadow: var(--phosphor-glow);
+  transition: text-shadow 200ms ease;
 }
 
 :lang(zh) .hero-title,
@@ -96,10 +105,17 @@ figcaption,
 :lang(zh) .docs-content h2,
 :lang(zh) .sidebar-heading {
   font-family: var(--font-sans);
+  text-shadow: 0 0 6px var(--accent-glow);
+  transition: text-shadow 200ms ease;
 }
 
-:lang(en) .title-line {
-  letter-spacing: -0.03em;
+/* Hover: intensify glow on big display elements. Nav-links and btn have their own hover treatments. */
+:lang(en) .hero-title:hover,
+:lang(en) .title-line:hover,
+:lang(en) .section-title:hover,
+:lang(en) .feature-title:hover,
+:lang(en) .docs-content h1:hover {
+  text-shadow: var(--phosphor-glow-hover);
 }
 
 :lang(zh) .title-line,
@@ -107,11 +123,6 @@ figcaption,
 :lang(zh) .docs-content h1,
 :lang(zh) .docs-content h2 {
   letter-spacing: 0.02em;
-}
-
-:lang(en) .section-title,
-:lang(en) .docs-content h1 {
-  letter-spacing: -0.02em;
 }
 
 h1,

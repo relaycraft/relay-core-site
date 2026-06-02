@@ -1,7 +1,25 @@
-/* Self-hosted via npm — no Google Fonts CDN */
-@import '@fontsource-variable/geist/wght.css';
-@import '@fontsource-variable/geist-mono/wght.css';
-@import '@fontsource/jetbrains-mono/latin-400.css';
-@import '@fontsource/jetbrains-mono/latin-500.css';
-@import '@fontsource/jetbrains-mono/latin-600.css';
-@import '@fontsource/jetbrains-mono/latin-700.css';
+/* Self-hosted via npm + manual woff2 — no Google Fonts CDN */
+@import '@fontsource-variable/geist/index.css';
+
+/* 0xProto — self-hosted (fontsource has no package). Modern retro-pixel mono. */
+@font-face {
+  font-family: '0xProto';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/0xProto-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: '0xProto';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/0xProto-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: '0xProto';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/0xProto-Italic.woff2') format('woff2');
+}
