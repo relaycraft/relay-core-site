@@ -10,6 +10,11 @@ pnpm-error.log*
 dist/
 .astro/
 
+# Wrangler
+.wrangler/
+.dev.vars*
+worker-configuration.d.ts
+
 # Environment variables
 .env
 .env.local
