@@ -5,12 +5,18 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "11",
     "@fontsource-variable/geist": "^5.2.9",
     "astro": "^4.16.19",
     "linkedom": "^0.18.12",
     "shiki": "^4.1.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.97.0"
   }
 }
