@@ -83,6 +83,30 @@ async function highlightFileOnDisk(highlighter, filePath) {
   if (out !== html) fs.writeFileSync(filePath, out);
 }
 
+function htmlFileToLoc(site, distDir, filePath) {
+  const rel = path.relative(distDir, filePath).replace(/\\/g, '/');
+  if (rel === '404.html') return null;
+  if (rel === 'index.html') return `${site}/`;
+  const pathname = rel.endsWith('/index.html')
+    ? `/${rel.slice(0, -'index.html'.length)}`
+    : `/${rel.replace(/\.html$/, '')}/`;
+  return `${site}${pathname}`;
+}
+
+function writeSitemap(distDir, site = 'https://relaycore.dev') {
+  const urls = walkHtmlFiles(distDir)
+    .map((filePath) => htmlFileToLoc(site, distDir, filePath))
+    .filter(Boolean)
+    .sort();
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map((loc) => `  <url><loc>${loc}</loc></url>`).join('\n')}
+</urlset>`;
+
+  fs.writeFileSync(path.join(distDir, 'sitemap-index.xml'), xml);
+}
+
 export default function highlightCodeIntegration() {
   return {
     name: 'relaycore-highlight-code',
@@ -114,6 +138,7 @@ export default function highlightCodeIntegration() {
 
         const files = walkHtmlFiles(distDir);
         await Promise.all(files.map((f) => highlightFileOnDisk(highlighter, f)));
+        writeSitemap(distDir);
       },
     },
   };

@@ -1,0 +1,55 @@
+---
+import { getLocaleFromUrl, getAlternateUrl } from '../i18n/translations';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+}
+
+const { title, description, ogImage } = Astro.props;
+
+const locale = getLocaleFromUrl(Astro.url);
+const alternatePath = getAlternateUrl(Astro.url);
+const alternateLocale = locale === 'en' ? 'zh-CN' : 'en';
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const alternateURL = new URL(alternatePath, Astro.site);
+const xDefaultURL = locale === 'en' ? alternateURL : canonicalURL;
+const socialImage = new URL(ogImage ?? '/og.svg', Astro.site);
+
+const cfBeaconToken = import.meta.env.PUBLIC_CF_BEACON_TOKEN;
+---
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content={description} />
+<link rel="canonical" href={canonicalURL} />
+<link rel="alternate" hreflang={alternateLocale} href={alternateURL} />
+<link rel="alternate" hreflang="x-default" href={xDefaultURL} />
+<title>{title}</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="RelayCore" />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonicalURL} />
+<meta property="og:image" content={socialImage} />
+<meta property="og:locale" content={locale === 'en' ? 'en_US' : 'zh_CN'} />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={socialImage} />
+
+{
+  cfBeaconToken && (
+    <script
+      is:inline
+      defer
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon={`{"token":"${cfBeaconToken}"}`}
+    />
+  )
+}

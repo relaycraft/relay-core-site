@@ -3,33 +3,30 @@ import '../styles/fonts.css';
 import '../styles/typography.css';
 import '../styles/shared.css';
 import '../styles/code-highlight.css';
+import SeoHead from '../components/SeoHead.astro';
 import { translations, getLocaleFromUrl, getAlternateUrl } from '../i18n/translations';
 
 interface Props {
   title: string;
   description?: string;
+  ogImage?: string;
 }
 
 const {
   title,
   description = 'High-performance Rust traffic interception engine for HTTP/HTTPS/WebSocket capture, inspection, and modification.',
+  ogImage,
 } = Astro.props;
 
 const locale = getLocaleFromUrl(Astro.url);
 const t = translations[locale];
 const alternateUrl = getAlternateUrl(Astro.url);
-const alternateLocale = locale === 'en' ? 'zh' : 'en';
 ---
 
 <!doctype html>
 <html lang={locale}>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content={description} />
-    <link rel="alternate" hreflang={alternateLocale} href={alternateUrl} />
-    <title>{title}</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <SeoHead title={title} description={description} ogImage={ogImage} />
   </head>
   <body>
     <header class="site-header">
