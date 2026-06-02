@@ -106,7 +106,15 @@ export function guessLang(text) {
       /* mixed JSON-ish docs */
     }
   }
-  if (t.includes('globalThis.') || t.includes('=>') || t.includes('const ') || t.includes('import ')) {
+  // TypeScript / JavaScript: explicit const/import/arrow, OR shape-style object
+  // literals with typed fields like `id: string,` that are common in API docs.
+  if (
+    t.includes('globalThis.') ||
+    t.includes('=>') ||
+    t.includes('const ') ||
+    t.includes('import ') ||
+    /^\s*\w+\s*:\s*(string|number|boolean|any|unknown)\b/m.test(t)
+  ) {
     return 'javascript';
   }
   if (t.includes('pub fn ') || t.includes('#[cfg_attr')) return 'rust';

@@ -29,8 +29,9 @@ function walkHtmlFiles(dir) {
   return out;
 }
 
-async function highlightFile(highlighter, filePath) {
-  const html = fs.readFileSync(filePath, 'utf8');
+/** Apply shiki to a single HTML string. Returns the modified string (or the
+ *  original if nothing changed). Mutates nothing on disk. */
+export function highlightHtml(highlighter, html) {
   const { document } = parseHTML(html);
   let changed = false;
 
@@ -65,18 +66,45 @@ async function highlightFile(highlighter, filePath) {
       code.removeAttribute('style');
     }
     code.innerHTML = shikiCode.innerHTML;
+    // shiki puts the 'shiki' class on the <pre>, not the <code>; the site CSS
+    // targets `code.shiki`, so explicitly mark the <code> too. Without this,
+    // every `.docs-content pre code.shiki { ... }` rule in code-highlight.css
+    // misses and the block falls back to the unstyled `:not(.shiki)` path.
+    code.classList.add('shiki');
     changed = true;
   }
 
-  if (changed) {
-    fs.writeFileSync(filePath, document.toString());
-  }
+  return changed ? document.toString() : html;
+}
+
+async function highlightFileOnDisk(highlighter, filePath) {
+  const html = fs.readFileSync(filePath, 'utf8');
+  const out = highlightHtml(highlighter, html);
+  if (out !== html) fs.writeFileSync(filePath, out);
 }
 
 export default function highlightCodeIntegration() {
   return {
     name: 'relaycore-highlight-code',
     hooks: {
+      'astro:server:setup': async ({ server, logger }) => {
+        // Dev preview only — production is handled by astro:build:done below.
+        if (process.env.NODE_ENV === 'production') return;
+
+        const highlighter = await createHighlighter({
+          themes: [relayCoreDark],
+          langs: LANGS,
+        });
+
+        // Expose the highlighter on the server so the Astro middleware
+        // (src/middleware.ts) can call it per request without rebuilding.
+        // Dev-only; build never touches this.
+        server.middlewares.use((_req, _res, next) => {
+          globalThis.__relaycoreShiki = highlighter;
+          next();
+        });
+      },
+
       'astro:build:done': async ({ dir }) => {
         const distDir = fileURLToPath(dir);
         const highlighter = await createHighlighter({
@@ -85,7 +113,7 @@ export default function highlightCodeIntegration() {
         });
 
         const files = walkHtmlFiles(distDir);
-        await Promise.all(files.map((f) => highlightFile(highlighter, f)));
+        await Promise.all(files.map((f) => highlightFileOnDisk(highlighter, f)));
       },
     },
   };

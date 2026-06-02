@@ -1,9 +1,12 @@
 /* Shiki syntax highlighting — relaycore.dev dark palette */
 
 .docs-content pre:has(code.shiki) {
-  padding: 1rem 1.125rem;
-  line-height: 1.65;
+  padding: 0.875rem 1.125rem;
+  line-height: 1.2;
   tab-size: 2;
+  /* Firefox: thin scrollbar that doesn't visually compete with code */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-highlight) transparent;
 }
 
 .docs-content pre code.shiki {
@@ -17,7 +20,6 @@
 
 .docs-content pre code.shiki .line {
   display: block;
-  min-height: 1.65em;
   padding: 0 0.125rem;
   border-radius: 2px;
 }
@@ -30,7 +32,27 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+/* WebKit/Chromium: thin overlay-style scrollbar that fades in on hover.
+ * Stays out of the way during reading; the cyan tint on hover ties back
+ * to the site's accent without being noisy. */
+.docs-content pre::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.docs-content pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+.docs-content pre::-webkit-scrollbar-thumb {
+  background: var(--border-highlight);
+  border-radius: 3px;
+}
+.docs-content pre:hover::-webkit-scrollbar-thumb {
+  background: var(--accent-primary);
+  opacity: 0.5;
+}
+
 /* Fallback when build hook skips a block */
 .docs-content pre code:not(.shiki) {
   color: var(--text-secondary);
 }
+
