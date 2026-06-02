@@ -2,6 +2,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "relay-core-site",
   "compatibility_date": "2026-06-02",
-  // Static Astro output — do not set `main` / @astrojs/cloudflare hybrid (breaks build).
-  "pages_build_output_dir": "./dist"
+  // Static Astro build output — required when deploy uses `wrangler deploy`.
+  "assets": {
+    "directory": "./dist"
+  }
 }
