@@ -5,20 +5,25 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="HTTP API" description="RelayCore REST API 参考">
   <h1>HTTP API</h1>
 
-  <p>REST API 需通过 <code>relay-core-cli run --api-port 8082</code> 启用，默认基址为 <code>http://127.0.0.1:8082/api/v1/</code>。可选 <code>--api-token</code> 启用 Bearer 认证。</p>
+  <p>REST + SSE API 需通过 <code>relay-core-cli run --api-port 8082</code> 启用，默认基址 <code>http://127.0.0.1:8082/api/v1/</code>。使用 <code>--api-token &lt;T&gt;</code> 启用 <code>Authorization: Bearer &lt;T&gt;</code> 认证，使用 <code>--api-cors &lt;origins&gt;</code> 允许浏览器跨域访问。仅当显式设置 <code>--api-cors</code> 时才会下发 CORS 头，否则严格同源。</p>
 
-  <h2>版本与状态</h2>
+  <h2 id="version-status">版本与状态</h2>
 
   <h3>GET /api/v1/version</h3>
-  <p>服务器与 API 版本信息。</p>
+  <p>引擎版本、API 版本与已注册的能力名称列表。</p>
+  <pre><code>&#123;
+  "engine_version": "0.6.0",
+  "api_version": "1",
+  "capabilities": ["flows", "rules", "intercepts", "mock", "metrics", "status", "events", "scripts"]
+&#125;</code></pre>
 
   <h3>GET /api/v1/status</h3>
-  <p>运行时生命周期快照（代理状态、流量计数等）。</p>
+  <p>运行时生命周期快照——运行时长、当前规则数、未决拦截数等。</p>
 
-  <h2>流量</h2>
+  <h2 id="flows">流量</h2>
 
   <h3>GET /api/v1/flows</h3>
-  <p>搜索和分页捕获的流量。</p>
+  <p>搜索与分页已捕获流量。所有参数均可选。</p>
 
   <div class="endpoint">
     <span class="method method-get">GET</span>
@@ -27,9 +32,11 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <p><strong>查询参数：</strong></p>
   <ul>
-    <li><code>host</code>、<code>path</code>、<code>path_contains</code>、<code>method</code></li>
-    <li><code>status_min</code>、<code>status_max</code>、<code>has_error</code>、<code>is_websocket</code></li>
-    <li><code>limit</code> — 返回条数（默认 50，最大 200）</li>
+    <li><code>host</code>、<code>path</code>、<code>path_contains</code>、<code>method</code> — 子串匹配</li>
+    <li><code>status_min</code>、<code>status_max</code> — 状态码区间</li>
+    <li><code>has_error</code> — 仅含错误的流量</li>
+    <li><code>is_websocket</code> — 仅 WebSocket 流量</li>
+    <li><code>limit</code> — 返回条数（默认 50，范围 1–200）</li>
     <li><code>offset</code> — 分页偏移</li>
   </ul>
 
@@ -40,22 +47,24 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   "offset": 0
 &#125;</code></pre>
 
+  <p>在响应离开服务器前会应用 redaction 策略：敏感 query 参数与 header 会被掩码，确保即使观察到敏感信息也不会外泄。</p>
+
   <h3>GET /api/v1/flows/:id</h3>
-  <p>获取完整 Flow JSON（含请求/响应头与 body）。</p>
+  <p>返回完整 Flow JSON（含 header 与 body）。同样应用 redaction。</p>
 
   <h3>POST /api/v1/flows/:id/replay</h3>
-  <p>重放指定流量。</p>
+  <p>重放已捕获流量。请求体可携带修改参数。<code>?accept_invalid_certs=true</code> 在重放时跳过 TLS 校验（仅限调试）。</p>
 
   <h3>GET /api/v1/flows/:id/har</h3>
-  <p>导出单条 HAR entry。</p>
+  <p>将单条流量导出为 HAR 1.2 entry。</p>
 
   <h3>GET /api/v1/flows/export/har</h3>
-  <p>批量导出 HAR log（支持相同查询参数）。</p>
+  <p>批量 HAR 导出，支持与 <code>GET /api/v1/flows</code> 相同的查询参数。</p>
 
-  <h2>规则</h2>
+  <h2 id="rules">规则</h2>
 
   <h3>GET /api/v1/rules</h3>
-  <p>列出所有拦截规则。</p>
+  <p>列出所有拦截规则。每条返回完整 <code>Rule</code> 对象（id、name、priority、stage、filter、actions、enabled）。</p>
 
   <div class="endpoint">
     <span class="method method-get">GET</span>
@@ -63,7 +72,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   </div>
 
   <h3>PUT /api/v1/rules</h3>
-  <p>创建或更新规则。</p>
+  <p>按 <code>id</code> 创建或覆盖规则。</p>
 
   <div class="endpoint">
     <span class="method method-put">PUT</span>
@@ -94,40 +103,82 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   </div>
 
   <h3>POST /api/v1/mock</h3>
-  <p>快速创建 MockResponse 规则。</p>
+  <p>快速创建 <code>MockResponse</code> 规则。Body 字段：<code>url_pattern</code>、<code>status</code>、<code>body</code>、<code>content_type</code>。</p>
 
-  <h2>拦截</h2>
+  <h2 id="intercepts">拦截</h2>
 
   <h3>POST /api/v1/intercepts</h3>
   <p>创建一次性拦截断点。</p>
-
   <pre><code>&#123;
   "url_pattern": "api.example.com",
   "phase": "request"
 &#125;</code></pre>
+  <p>响应中包含生成的 <code>rule_id</code>，后续以此引用该拦截。</p>
 
   <h3>GET /api/v1/intercepts</h3>
-  <p>列出待处理的拦截。</p>
+  <p>列出待处理拦截（HTTP 与 WebSocket 一起）。</p>
 
   <h3>POST /api/v1/intercepts/:key/resume</h3>
-  <p>继续被拦截的流量（可选 body 携带修改）。</p>
+  <p>继续被拦截的流量。Body 支持 <code>action</code>（<code>continue</code> 或 <code>drop</code>）以及任何 <code>FlowModification</code> 字段：<code>method</code>、<code>url</code>、<code>request_headers</code>、<code>request_body</code>、<code>status_code</code>、<code>response_headers</code>、<code>response_body</code>、<code>message_content</code>。</p>
 
-  <h2>事件</h2>
+  <h2 id="policy">策略与脱敏</h2>
+
+  <h3>GET /api/v1/policy</h3>
+  <p>返回当前 <code>ProxyPolicy</code>，包含 <code>redaction</code> 块以及（若已配置）<code>upstream</code> 块。Upstream <code>auth.password</code> 会被掩码为 <code>***</code>。</p>
+
+  <h3>PATCH /api/v1/policy</h3>
+  <p>应用部分更新。两个顶层 key 均可省略：</p>
+  <pre><code>&#123;
+  "redaction": &#123;
+    "enabled": true,
+    "redact_bodies": true,
+    "sensitive_header_names": ["authorization", "x-api-key", "cookie"],
+    "sensitive_query_keys": ["token", "api_key", "password"]
+  &#125;,
+  "upstream": &#123;
+    "proxy_url": "http://corp-proxy.internal:8080",
+    "bypass_hosts": ["*.internal", "127.0.0.1"],
+    "fail_open": false
+  &#125;
+&#125;</code></pre>
+
+  <p>默认敏感 header 名：<code>authorization</code>、<code>proxy-authorization</code>、<code>cookie</code>、<code>set-cookie</code>、<code>x-api-key</code>、<code>x-auth-token</code>。</p>
+  <p>默认敏感 query key：<code>token</code>、<code>access_token</code>、<code>refresh_token</code>、<code>api_key</code>、<code>apikey</code>、<code>password</code>、<code>secret</code>。</p>
+
+  <p>Redaction 作用于 HTTP 请求/响应、WebSocket 握手、每条 WebSocket 消息、流量摘要、搜索结果以及 SSE 事件流。运行时切换 <code>upstream.proxy_url</code> 会返回 <code>409 Conflict</code>，需要重启代理才能生效。</p>
+
+  <h2 id="script">脚本</h2>
+
+  <h3>POST /api/v1/script</h3>
+  <p>热加载脚本到运行中的引擎。</p>
+  <pre><code>&#123; "script": "// deno-fmt-ignore\nexport default &#123; onRequest(ctx) &#123; /* ... */ &#125; &#125;" &#125;</code></pre>
+
+  <h2 id="events">事件</h2>
 
   <h3>GET /api/v1/events</h3>
-  <p>用于实时更新的 Server-Sent Events 流。</p>
+  <p>实时更新的 Server-Sent Events 流。</p>
 
   <div class="endpoint">
     <span class="method method-get">GET</span>
     <span>/api/v1/events</span>
   </div>
 
-  <p>事件类型：<code>flow::new</code>、<code>flow::update</code>、<code>intercept::pending</code>、<code>rule::matched</code></p>
+  <p>事件类型：</p>
+  <ul>
+    <li><code>flow</code> — 新流量或流量更新（data 字段为完整 Flow JSON）</li>
+    <li><code>ws-message</code> — 新 WebSocket 消息</li>
+    <li><code>http-body</code> — body 片段可用，data 字段为 <code>&#123; "flow_id": "..." &#125;</code>，需通过 <code>GET /api/v1/flows/:id</code> 获取完整 body</li>
+    <li><code>body-budget-exceeded</code> — body 预算耗尽，后续 body 不再发送</li>
+    <li><code>audit</code> — 控制平面变更（规则变更、拦截解决、脚本重载、策略更新）</li>
+    <li><code>audit-lagged</code> — 审计通道丢事件，服务器重新同步</li>
+    <li><code>lagged</code> — 流量/事件通道丢事件，TUI 重新同步</li>
+    <li><code>lifecycle</code> — 代理启动/停止/重载</li>
+  </ul>
 
-  <h2>指标</h2>
+  <h2 id="metrics">指标</h2>
 
   <h3>GET /api/v1/metrics</h3>
-  <p>JSON 指标快照。</p>
+  <p>JSON 指标快照。字段同 <code>relay-core-cli metrics</code>（见 <a href="/docs/cli#metrics">CLI 参考</a>）。</p>
 
   <h3>GET /api/v1/metrics/prometheus</h3>
   <p>Prometheus 文本格式指标。</p>
@@ -143,13 +194,25 @@ relay_core_request_duration_ms_bucket&#123;le="5"&#125; 12500
 relay_core_request_duration_ms_bucket&#123;le="10"&#125; 12800
 relay_core_request_duration_ms_bucket&#123;le="+Inf"&#125; 12847</code></pre>
 
-  <h2>审计</h2>
+  <p>脚本引擎指标按 hook 维度发射：<code>relay_core_script_hook_duration_us&#123;hook&#125;</code>、<code>relay_core_script_hook_invocations_total&#123;hook&#125;</code>、<code>relay_core_script_hook_errors_total&#123;hook&#125;</code>，另有 <code>relay_core_script_env_access_total</code>、<code>relay_core_script_fetch_total</code> 与 <code>relay_core_script_fetch_rejected_total</code>。</p>
+
+  <h2 id="audit">审计</h2>
 
   <h3>GET /api/v1/audit</h3>
   <p>查询控制平面变更审计日志。</p>
 
   <div class="endpoint">
     <span class="method method-get">GET</span>
-    <span>/api/v1/audit?since=2024-01-15T00:00:00Z</span>
+    <span>/api/v1/audit?since_ms=1705276800000&amp;actor=http&amp;kind=policy_updated</span>
   </div>
+
+  <p><strong>查询参数：</strong></p>
+  <ul>
+    <li><code>since_ms</code>、<code>until_ms</code> — 毫秒时间戳；任一可省略</li>
+    <li><code>actor</code> — <code>runtime</code>、<code>http</code>、<code>tauri</code>、<code>probe</code>、<code>cli</code></li>
+    <li><code>kind</code> — <code>rule_changed</code>、<code>intercept_resolved</code>、<code>script_reloaded</code>、<code>policy_updated</code></li>
+    <li><code>outcome</code> — <code>success</code> 或 <code>failure</code></li>
+  </ul>
+
+  <p>响应为 <code>AuditEvent</code> 数组，每条记录谁在何时做了何种变更，以及变更前/后的差异。</p>
 </DocsLayout>

@@ -5,20 +5,25 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="HTTP API" description="RelayCore REST API reference">
   <h1>HTTP API</h1>
 
-  <p>Enable the REST API with <code>relay-core-cli run --api-port 8082</code>. Default base URL: <code>http://127.0.0.1:8082/api/v1/</code>. Optional <code>--api-token</code> enables Bearer auth.</p>
+  <p>Enable the REST + SSE API with <code>relay-core-cli run --api-port 8082</code>. Default base URL: <code>http://127.0.0.1:8082/api/v1/</code>. Add <code>--api-token &lt;T&gt;</code> to require <code>Authorization: Bearer &lt;T&gt;</code> on every request, and <code>--api-cors &lt;origins&gt;</code> to allow browser clients. CORS is only emitted when <code>--api-cors</code> is set; the server is otherwise strict.</p>
 
-  <h2>Version &amp; Status</h2>
+  <h2 id="version-status">Version &amp; Status</h2>
 
   <h3>GET /api/v1/version</h3>
-  <p>Server and API version info.</p>
+  <p>Engine version, API version, and a list of registered capability names.</p>
+  <pre><code>&#123;
+  "engine_version": "0.6.0",
+  "api_version": "1",
+  "capabilities": ["flows", "rules", "intercepts", "mock", "metrics", "status", "events", "scripts"]
+&#125;</code></pre>
 
   <h3>GET /api/v1/status</h3>
-  <p>Runtime lifecycle snapshot.</p>
+  <p>Runtime lifecycle snapshot — uptime, current rules count, intercepts pending, etc.</p>
 
-  <h2>Flows</h2>
+  <h2 id="flows">Flows</h2>
 
   <h3>GET /api/v1/flows</h3>
-  <p>Search and paginate captured flows.</p>
+  <p>Search and paginate captured flows. All parameters are optional.</p>
 
   <div class="endpoint">
     <span class="method method-get">GET</span>
@@ -27,10 +32,12 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <p><strong>Query Parameters:</strong></p>
   <ul>
-    <li><code>host</code>, <code>path</code>, <code>path_contains</code>, <code>method</code></li>
-    <li><code>status_min</code>, <code>status_max</code>, <code>has_error</code>, <code>is_websocket</code></li>
-    <li><code>limit</code> — Page size (default 50, max 200)</li>
-    <li><code>offset</code> — Pagination offset</li>
+    <li><code>host</code>, <code>path</code>, <code>path_contains</code>, <code>method</code> — substring matches</li>
+    <li><code>status_min</code>, <code>status_max</code> — status code range</li>
+    <li><code>has_error</code> — only flows with errors</li>
+    <li><code>is_websocket</code> — only WebSocket flows</li>
+    <li><code>limit</code> — page size, default 50, clamped to 1–200</li>
+    <li><code>offset</code> — pagination offset</li>
   </ul>
 
   <pre><code>&#123;
@@ -40,22 +47,24 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   "offset": 0
 &#125;</code></pre>
 
+  <p>Redaction is applied to URLs (sensitive query keys) and headers before the response leaves the server, so secrets never appear in the result even if they were observed in traffic.</p>
+
   <h3>GET /api/v1/flows/:id</h3>
-  <p>Full Flow JSON including headers and bodies.</p>
+  <p>Full Flow JSON including headers and bodies. The same redaction rules apply.</p>
 
   <h3>POST /api/v1/flows/:id/replay</h3>
-  <p>Replay a captured flow.</p>
+  <p>Replay a captured flow against the live network. Send a JSON body with optional modifications. <code>?accept_invalid_certs=true</code> skips TLS verification for the replay (debug only).</p>
 
   <h3>GET /api/v1/flows/:id/har</h3>
-  <p>Export a single HAR entry.</p>
+  <p>Export a single flow as a HAR 1.2 entry.</p>
 
   <h3>GET /api/v1/flows/export/har</h3>
-  <p>Batch HAR export (same query params as search).</p>
+  <p>Batch HAR export. Accepts the same query parameters as <code>GET /api/v1/flows</code>.</p>
 
-  <h2>Rules</h2>
+  <h2 id="rules">Rules</h2>
 
   <h3>GET /api/v1/rules</h3>
-  <p>List all interception rules.</p>
+  <p>List all interception rules. Each entry contains the full <code>Rule</code> object (id, name, priority, stage, filter, actions, enabled).</p>
 
   <div class="endpoint">
     <span class="method method-get">GET</span>
@@ -63,7 +72,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   </div>
 
   <h3>PUT /api/v1/rules</h3>
-  <p>Create or update a rule.</p>
+  <p>Create or replace a rule by <code>id</code>.</p>
 
   <div class="endpoint">
     <span class="method method-put">PUT</span>
@@ -94,40 +103,82 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   </div>
 
   <h3>POST /api/v1/mock</h3>
-  <p>Quickly create a MockResponse rule.</p>
+  <p>Quickly create a <code>MockResponse</code> rule. Body fields: <code>url_pattern</code>, <code>status</code>, <code>body</code>, <code>content_type</code>.</p>
 
-  <h2>Intercepts</h2>
+  <h2 id="intercepts">Intercepts</h2>
 
   <h3>POST /api/v1/intercepts</h3>
   <p>Create a one-shot intercept breakpoint.</p>
-
   <pre><code>&#123;
   "url_pattern": "api.example.com",
   "phase": "request"
 &#125;</code></pre>
+  <p>The response includes the generated <code>rule_id</code> used to refer to the intercept.</p>
 
   <h3>GET /api/v1/intercepts</h3>
-  <p>List pending intercepts.</p>
+  <p>List pending intercepts (both HTTP and WebSocket).</p>
 
   <h3>POST /api/v1/intercepts/:key/resume</h3>
-  <p>Resume an intercepted flow (optional modification body).</p>
+  <p>Resume an intercepted flow. Body accepts <code>action</code> (<code>continue</code> or <code>drop</code>) and any <code>FlowModification</code> fields to apply before forwarding: <code>method</code>, <code>url</code>, <code>request_headers</code>, <code>request_body</code>, <code>status_code</code>, <code>response_headers</code>, <code>response_body</code>, <code>message_content</code>.</p>
 
-  <h2>Events</h2>
+  <h2 id="policy">Policy &amp; Redaction</h2>
+
+  <h3>GET /api/v1/policy</h3>
+  <p>Return the current <code>ProxyPolicy</code>, including the <code>redaction</code> block and (if configured) the <code>upstream</code> block. The <code>password</code> field of an upstream <code>auth</code> is masked as <code>***</code>.</p>
+
+  <h3>PATCH /api/v1/policy</h3>
+  <p>Apply a partial update. Both top-level keys are optional:</p>
+  <pre><code>&#123;
+  "redaction": &#123;
+    "enabled": true,
+    "redact_bodies": true,
+    "sensitive_header_names": ["authorization", "x-api-key", "cookie"],
+    "sensitive_query_keys": ["token", "api_key", "password"]
+  &#125;,
+  "upstream": &#123;
+    "proxy_url": "http://corp-proxy.internal:8080",
+    "bypass_hosts": ["*.internal", "127.0.0.1"],
+    "fail_open": false
+  &#125;
+&#125;</code></pre>
+
+  <p>Default sensitive header names: <code>authorization</code>, <code>proxy-authorization</code>, <code>cookie</code>, <code>set-cookie</code>, <code>x-api-key</code>, <code>x-auth-token</code>.</p>
+  <p>Default sensitive query keys: <code>token</code>, <code>access_token</code>, <code>refresh_token</code>, <code>api_key</code>, <code>apikey</code>, <code>password</code>, <code>secret</code>.</p>
+
+  <p>Redaction is applied to the HTTP request/response, the WebSocket handshake, every WebSocket message, flow summaries, search results, and the SSE event stream. Changing <code>upstream.proxy_url</code> at runtime returns <code>409 Conflict</code> — restart the proxy to apply it.</p>
+
+  <h2 id="script">Scripting</h2>
+
+  <h3>POST /api/v1/script</h3>
+  <p>Hot-load a script into the running engine.</p>
+  <pre><code>&#123; "script": "// deno-fmt-ignore\nexport default &#123; onRequest(ctx) &#123; /* ... */ &#125; &#125;" &#125;</code></pre>
+
+  <h2 id="events">Events</h2>
 
   <h3>GET /api/v1/events</h3>
-  <p>Server-Sent Events stream for real-time updates.</p>
+  <p>Server-Sent Events stream of live updates.</p>
 
   <div class="endpoint">
     <span class="method method-get">GET</span>
     <span>/api/v1/events</span>
   </div>
 
-  <p>Event types: <code>flow::new</code>, <code>flow::update</code>, <code>intercept::pending</code>, <code>rule::matched</code></p>
+  <p>Event types:</p>
+  <ul>
+    <li><code>flow</code> — new or updated flow (full Flow JSON in the data field)</li>
+    <li><code>ws-message</code> — new WebSocket message</li>
+    <li><code>http-body</code> — body chunk available; the data field is <code>&#123; "flow_id": "..." &#125;</code>, fetch the body via <code>GET /api/v1/flows/:id</code></li>
+    <li><code>body-budget-exceeded</code> — body cap reached, no further body will be sent</li>
+    <li><code>audit</code> — control-plane mutation (rule change, intercept resolved, script reloaded, policy updated)</li>
+    <li><code>audit-lagged</code> — audit channel dropped events, server resyncs</li>
+    <li><code>lagged</code> — flow / events channel dropped events, TUI resyncs</li>
+    <li><code>lifecycle</code> — proxy start / stop / reload</li>
+  </ul>
 
-  <h2>Metrics</h2>
+  <h2 id="metrics">Metrics</h2>
 
   <h3>GET /api/v1/metrics</h3>
-  <p>JSON metrics snapshot.</p>
+  <p>JSON metrics snapshot. Same fields as <code>relay-core-cli metrics</code> (see <a href="/en/docs/cli#metrics">CLI reference</a>).</p>
 
   <h3>GET /api/v1/metrics/prometheus</h3>
   <p>Prometheus text format metrics.</p>
@@ -143,13 +194,25 @@ relay_core_request_duration_ms_bucket&#123;le="5"&#125; 12500
 relay_core_request_duration_ms_bucket&#123;le="10"&#125; 12800
 relay_core_request_duration_ms_bucket&#123;le="+Inf"&#125; 12847</code></pre>
 
-  <h2>Audit</h2>
+  <p>Script-engine metrics are emitted per hook: <code>relay_core_script_hook_duration_us&#123;hook&#125;</code>, <code>relay_core_script_hook_invocations_total&#123;hook&#125;</code>, <code>relay_core_script_hook_errors_total&#123;hook&#125;</code>, plus <code>relay_core_script_env_access_total</code>, <code>relay_core_script_fetch_total</code>, and <code>relay_core_script_fetch_rejected_total</code>.</p>
+
+  <h2 id="audit">Audit</h2>
 
   <h3>GET /api/v1/audit</h3>
-  <p>Query control-plane mutation audit log.</p>
+  <p>Query the control-plane mutation audit log.</p>
 
   <div class="endpoint">
     <span class="method method-get">GET</span>
-    <span>/api/v1/audit?since=2024-01-15T00:00:00Z</span>
+    <span>/api/v1/audit?since_ms=1705276800000&amp;actor=http&amp;kind=policy_updated</span>
   </div>
+
+  <p><strong>Query Parameters:</strong></p>
+  <ul>
+    <li><code>since_ms</code>, <code>until_ms</code> — epoch milliseconds; either may be omitted</li>
+    <li><code>actor</code> — <code>runtime</code>, <code>http</code>, <code>tauri</code>, <code>probe</code>, or <code>cli</code></li>
+    <li><code>kind</code> — <code>rule_changed</code>, <code>intercept_resolved</code>, <code>script_reloaded</code>, <code>policy_updated</code></li>
+    <li><code>outcome</code> — <code>success</code> or <code>failure</code></li>
+  </ul>
+
+  <p>The response is a JSON array of <code>AuditEvent</code> entries. Each event records who made the change, when, and the relevant before/after diff for mutations.</p>
 </DocsLayout>

@@ -1,0 +1,88 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Upstream Proxy" description="Chaining RelayCore behind a parent proxy">
+  <h1>Upstream Proxy</h1>
+
+  <p>RelayCore can route every outbound request through a parent (upstream) proxy. This is the standard way to put RelayCore behind a corporate proxy, a TLS-inspecting middlebox, or a VPN concentrator without changing any client configuration.</p>
+
+  <h2>Quick start</h2>
+
+  <pre><code># Plain HTTP upstream
+relay-core-cli run --upstream http://corp-proxy.internal:8080
+
+# HTTPS upstream (TLS to the proxy itself)
+relay-core-cli run --upstream https://secure-proxy.internal:8443
+
+# Upstream with HTTP Basic auth
+relay-core-cli run \
+  --upstream http://corp-proxy.internal:8080 \
+  --upstream-auth-user alice
+
+# Allow direct fallback if the upstream is unreachable
+relay-core-cli run --upstream http://corp-proxy.internal:8080 --upstream-fail-open</code></pre>
+
+  <p>The Basic auth password is <strong>never</strong> accepted on the command line. Set it in the environment so it does not appear in process listings or shell history:</p>
+
+  <pre><code>export RELAYCORE_UPSTREAM_PASSWORD='s3cret'
+relay-core-cli run --upstream http://corp-proxy.internal:8080 --upstream-auth-user alice</code></pre>
+
+  <h2>Flags</h2>
+
+  <table>
+    <tr><th>Flag</th><th>Description</th></tr>
+    <tr><td><code>--upstream &lt;URL&gt;</code></td><td>Upstream proxy URL. <code>http://...</code> speaks plain HTTP CONNECT; <code>https://...</code> wraps the proxy connection in TLS first.</td></tr>
+    <tr><td><code>--upstream-auth-user &lt;USER&gt;</code></td><td>Username for HTTP Basic auth. The password is read from <code>RELAYCORE_UPSTREAM_PASSWORD</code>; setting only the user is an error.</td></tr>
+    <tr><td><code>--upstream-bypass &lt;LIST&gt;</code></td><td>Comma-separated host patterns to bypass the upstream and go direct. Supports <code>cidr:10.0.0.0/8</code>, IP literals (<code>127.0.0.1</code>, <code>::1</code>), and glob hostnames (<code>*.internal</code>).</td></tr>
+    <tr><td><code>--upstream-fail-open</code></td><td>If the upstream is unreachable, transparently fall back to a direct connection. Off by default (fail-closed), which is safer for captive portals and corporate policies.</td></tr>
+  </table>
+
+  <h2>Bypass syntax</h2>
+
+  <p><code>--upstream-bypass</code> accepts three pattern kinds, mixed freely in the comma list:</p>
+
+  <pre><code>--upstream-bypass "127.0.0.1,::1,localhost,*.internal,cidr:10.0.0.0/8,cidr:192.168.0.0/16"</code></pre>
+
+  <table>
+    <tr><th>Pattern</th><th>Matches</th></tr>
+    <tr><td><code>127.0.0.1</code></td><td>Literal IPv4 / IPv6 address</td></tr>
+    <tr><td><code>localhost</code></td><td>Literal hostname (case-insensitive)</td></tr>
+    <tr><td><code>*.internal</code></td><td>Glob — matches any subdomain of <code>internal</code></td></tr>
+    <tr><td><code>cidr:10.0.0.0/8</code></td><td>CIDR block (IPv4 or IPv6)</td></tr>
+  </table>
+
+  <p>In transparent proxy mode the original destination IP is checked against the bypass list as well, so loopback and RFC1918 traffic to local services stays local even when the upstream is up.</p>
+
+  <h2>HTTP vs HTTPS upstream</h2>
+
+  <p>When the upstream URL starts with <code>https://</code>, RelayCore performs a full TLS handshake to the proxy before sending <code>CONNECT</code>. The upstream's certificate is validated against the system trust store (or your custom CA bundle). For environments with a private CA, install that CA in the OS trust store or use a transparent deployment that does not require TLS to the proxy.</p>
+
+  <h2>Mutating at runtime</h2>
+
+  <p>Upstream is part of the <code>ProxyPolicy</code> and can be inspected and patched through the REST API:</p>
+
+  <pre><code># Read the current policy
+curl -s http://127.0.0.1:8082/api/v1/policy
+
+# Update only the upstream section
+curl -s -X PATCH http://127.0.0.1:8082/api/v1/policy \
+  -H 'Content-Type: application/json' \
+  -d '&#123;
+    "upstream": &#123;
+      "proxy_url": "http://corp-proxy.internal:8080",
+      "bypass_hosts": ["*.internal", "127.0.0.1"],
+      "fail_open": false
+    &#125;
+  &#125;'</code></pre>
+
+  <p><strong>Note:</strong> changing the upstream returns <code>409 Conflict</code> at runtime because the existing connections are already pinned to the old path. Restart the proxy to apply a new upstream URL.</p>
+
+  <h2>Security notes</h2>
+
+  <ul>
+    <li>The <code>password</code> field is wrapped in <code>secrecy::SecretString</code>. The <code>Debug</code> impl, the <code>GET /api/v1/policy</code> response, and the JSON serializer all mask it as <code>***</code>.</li>
+    <li>Use <code>--upstream-fail-open=false</code> (the default) when the upstream is enforcing policy — silently going direct would defeat the point.</li>
+    <li>Audit events of policy changes are written to <code>/api/v1/audit</code> with <code>kind=policy_updated</code> and the actor that performed the change.</li>
+  </ul>
+</DocsLayout>

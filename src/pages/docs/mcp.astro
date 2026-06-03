@@ -26,6 +26,20 @@ npx @relay-core/cli ca install   # macOS 可自动安装；其他平台见 ca st
 
   <p><code>@relay-core/mcp</code> 会启动 <code>relay-core-probe</code>：默认 stdio 传输，同时在本机 <code>127.0.0.1:8080</code> 运行代理。请将浏览器/系统代理指向该地址。</p>
 
+  <h2>probe CLI 参数</h2>
+
+  <p>probe 二进制支持以下参数与环境变量：</p>
+
+  <table>
+    <tr><th>参数</th><th>环境变量</th><th>默认值</th><th>说明</th></tr>
+    <tr><td><code>--port &lt;P&gt;</code></td><td><code>RELAY_PORT</code></td><td><code>8080</code></td><td>内嵌代理监听端口</td></tr>
+    <tr><td><code>--ca-cert &lt;PATH&gt;</code></td><td><code>RELAY_CA_CERT</code></td><td>数据目录</td><td>HTTPS 拦截 CA 证书</td></tr>
+    <tr><td><code>--ca-key &lt;PATH&gt;</code></td><td><code>RELAY_CA_KEY</code></td><td>数据目录</td><td>CA 私钥</td></tr>
+    <tr><td><code>--transport &lt;MODE&gt;</code></td><td><code>RELAY_PROBE_TRANSPORT</code></td><td><code>stdio</code></td><td><code>stdio</code> 或 <code>sse</code></td></tr>
+    <tr><td><code>--probe-port &lt;P&gt;</code></td><td><code>RELAY_PROBE_PORT</code></td><td><code>3000</code></td><td>SSE 监听端口（仅 transport=sse）</td></tr>
+    <tr><td><code>--probe-bind &lt;ADDR&gt;</code></td><td><code>RELAY_PROBE_BIND</code></td><td><code>127.0.0.1</code></td><td>SSE 绑定地址</td></tr>
+  </table>
+
   <h2>工具</h2>
 
   <h3>观察</h3>
@@ -67,13 +81,24 @@ npx @relay-core/cli ca install   # macOS 可自动安装；其他平台见 ca st
 &#125;</code></pre>
 
   <div class="endpoint">
+    <span class="method method-post">get_pending_intercepts</span>
+  </div>
+  <p>列出当前待处理的拦截（HTTP 与 WebSocket）。</p>
+
+  <div class="endpoint">
     <span class="method method-post">resume_flow</span>
   </div>
   <p>恢复暂停的流量。</p>
   <pre><code>&#123;
   "flow_id": "fld_01HX5K9P3Q8Y2Z7",
-  "action": "resume"  # 或 "drop"
+  "action": "resume",  // 或 "drop"
+  "modifications": &#123;
+    "status_code": 418,
+    "response_body": "I'm a teapot"
+  &#125;
 &#125;</code></pre>
+
+  <h3>规则</h3>
 
   <div class="endpoint">
     <span class="method method-post">set_rule</span>
@@ -91,6 +116,27 @@ npx @relay-core/cli ca install   # macOS 可自动安装；其他平台见 ca st
   <p>删除规则。</p>
   <pre><code>&#123;
   "rule_id": "rul_01HX5K9P3Q8Y2Z7"
+&#125;</code></pre>
+
+  <div class="endpoint">
+    <span class="method method-post">mock_url</span>
+  </div>
+  <p>创建一次性 <code>MockResponse</code> 规则。</p>
+  <pre><code>&#123;
+  "url_pattern": "api.example.com/v1/health",
+  "status": 200,
+  "body": "&#123;\"ok\":true&#125;",
+  "content_type": "application/json"
+&#125;</code></pre>
+
+  <h3>脚本</h3>
+
+  <div class="endpoint">
+    <span class="method method-post">set_script</span>
+  </div>
+  <p>热加载 Deno 脚本到运行中的引擎。</p>
+  <pre><code>&#123;
+  "script": "// deno-fmt-ignore\nexport default &#123; onRequest(ctx) &#123; /* ... */ &#125; &#125;"
 &#125;</code></pre>
 
   <h3>分析</h3>
@@ -120,12 +166,23 @@ npx @relay-core/cli ca install   # macOS 可自动安装；其他平台见 ca st
   <div class="endpoint">
     <span class="method method-post">get_policy</span>
   </div>
-  <p>获取当前拦截策略。</p>
+  <p>获取当前拦截策略，包含 redaction 块。</p>
 
   <div class="endpoint">
     <span class="method method-post">update_policy</span>
   </div>
-  <p>更新拦截策略。</p>
+  <p>完整替换策略。</p>
+
+  <div class="endpoint">
+    <span class="method method-post">patch_policy</span>
+  </div>
+  <p>局部更新策略——只修改提供的字段。Body 形态与 REST API 一致：<code>&#123; redaction?, upstream? &#125;</code>。</p>
+  <pre><code>&#123;
+  "redaction": &#123;
+    "enabled": true,
+    "redact_bodies": true
+  &#125;
+&#125;</code></pre>
 
   <h2>资源</h2>
 

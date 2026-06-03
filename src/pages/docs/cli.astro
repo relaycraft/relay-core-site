@@ -5,115 +5,174 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="CLI 参考" description="RelayCore 命令行接口">
   <h1>CLI 参考</h1>
 
-  <p><code>relay-core-cli</code> 二进制文件提供了功能完整的命令行界面，用于运行代理和管理流量、规则和证书。</p>
+  <p><code>relay-core-cli</code> 提供功能完整的命令行界面，用于运行代理、检查流量、管理规则、脚本与证书。完整参数请运行 <code>relay-core-cli --help</code> 或 <code>relay-core-cli &lt;command&gt; --help</code>。</p>
 
-  <h2>命令</h2>
-
-  <h3>run</h3>
+  <h2 id="run">run</h2>
   <p>启动代理服务器。</p>
   <pre><code>relay-core-cli run [options]
 
-Options:
-  -l, --listen &lt;ADDR&gt;     代理监听地址（默认：127.0.0.1:8080）
-  -c, --control-port &lt;P&gt;  控制 API 端口（默认：8081）
-  --api-port &lt;P&gt;           启用 REST/SSE HTTP API 端口
-  --api-token &lt;TOKEN&gt;      HTTP API Bearer 认证令牌
-  --api-cors &lt;ORIGINS&gt;     CORS 允许的源
-  --ui                    启用 TUI 交互界面
-  --rules &lt;PATH&gt;          从文件加载规则（JSON/YAML）
-  --script &lt;PATH&gt;         加载 Deno 脚本
-  --script-watch           监听脚本文件变更自动重载
-  --script-env-allow &lt;K&gt;  允许脚本访问的环境变量（逗号分隔）
-  --transparent            启用透明代理模式</code></pre>
+监听与生命周期：
+  -l, --listen &lt;ADDR&gt;           代理监听地址（默认 127.0.0.1:8080）
+  -c, --control-port &lt;PORT&gt;     控制 API 端口（默认 8081）
+      --udp-tproxy-port &lt;PORT&gt;   启用 UDP TPROXY（仅 Linux）
+      --transparent               启用透明代理模式（macOS PF / Linux TPROXY）
 
-  <h3>ca</h3>
-  <p>管理用于 HTTPS 拦截的 CA 证书。</p>
+TLS 拦截：
+      --ca-cert &lt;PATH&gt;           CA 证书路径
+      --ca-key &lt;PATH&gt;            CA 私钥路径（须与 --ca-cert 成对）
+
+规则与脚本：
+      --rules &lt;PATH&gt;             从文件加载规则（JSON / YAML）
+      --script &lt;PATH&gt;            加载 Deno 脚本文件
+      --script-watch              监听脚本变更自动重载
+      --script-env-allow &lt;LIST&gt;  脚本可读取的环境变量名（逗号分隔）
+
+TUI：
+      --ui                        启用 TUI 交互界面
+      --theme &lt;NAME&gt;             TUI 配色：relay、slate、high-contrast
+                                  （覆盖 RELAY_CORE_TUI_THEME 与 config）
+
+控制台输出（非 TUI）：
+      --output &lt;FORMAT&gt;          table、json、jsonl（默认 table）
+      --save-stream &lt;PATH&gt;       将所有流量以 JSONL 追加到该文件
+
+REST / SSE HTTP API：
+      --api-port &lt;PORT&gt;          启用 REST + SSE API
+      --api-bind &lt;ADDR&gt;          绑定地址（默认 127.0.0.1）
+      --api-token &lt;TOKEN&gt;        HTTP API Bearer 认证令牌
+      --api-cors &lt;ORIGINS&gt;       CORS 允许源（逗号分隔）
+
+上游代理：
+      --upstream &lt;URL&gt;           上级代理 URL（http:// 或 https://）
+      --upstream-auth-user &lt;U&gt;   上级代理 Basic 认证用户名
+                                  （密码：RELAYCORE_UPSTREAM_PASSWORD 环境变量）
+      --upstream-bypass &lt;LIST&gt;   绕过上级的主机列表
+      --upstream-fail-open        上级不可达时回落到直连</code></pre>
+
+  <p>交互界面详见 <a href="/docs/tui">TUI</a>，串接代理详见 <a href="/docs/upstream-proxy">上游代理</a>，环境变量与数据目录布局见 <a href="/docs/configuration">配置</a>。</p>
+
+  <h2 id="ca">ca</h2>
+  <p>管理 HTTPS 拦截所用 CA 证书。可选路径 <code>--ca-cert</code> / <code>--ca-key</code> 可由 <code>RELAY_CA_CERT</code> / <code>RELAY_CA_KEY</code> 替代；二者须成对提供。</p>
   <pre><code>relay-core-cli ca &lt;subcommand&gt;
 
-Subcommands:
-  generate               生成 CA 证书与私钥（默认 ~/.relay-core/）
-  install                将 CA 安装到系统信任存储（macOS）
-  status                 显示 CA 路径、存在性与信任状态
-  export                 导出 CA 证书
-  uninstall              从系统信任存储移除 CA（macOS）</code></pre>
+子命令：
+  generate [--force]            生成 CA 证书与私钥（默认 ~/.relay-core/）
+  install                       将 CA 安装到系统信任库（macOS）
+  uninstall                     从系统信任库移除 CA（macOS）
+  status                        显示 CA 路径、存在性与信任状态
+  export [-o PATH] [--der]      导出 CA 证书
+                                --der 输出 Windows .cer 适用的二进制格式</code></pre>
 
-  <p>可选路径：<code>--ca-cert</code> 与 <code>--ca-key</code> 须成对提供；亦可通过 <code>RELAY_CA_CERT</code> / <code>RELAY_CA_KEY</code> 设置。</p>
+  <p>macOS 下 <code>ca install</code> 会先清理旧的 <code>RelayCraft CA</code> 条目再写入新指纹。<code>ca status</code> 通过 SHA-1 比对本地证书与钥匙串，不一致时会报告。</p>
 
-  <h3>rules</h3>
+  <h2 id="rules">rules</h2>
   <p>管理拦截规则。</p>
   <pre><code>relay-core-cli rules &lt;subcommand&gt;
 
-Subcommands:
-  validate &lt;file&gt;        验证规则文件格式
-  print &lt;file&gt;           打印规则文件（JSON/YAML）
-  test &lt;file&gt; --flow F   用样本流测试规则匹配
-  list --api-url &lt;URL&gt;   列出当前运行代理中的活跃规则</code></pre>
+子命令：
+  validate &lt;file&gt;              校验规则文件（JSON / YAML）
+  print &lt;file&gt; [--format F]     以规范化格式打印（json | yaml，默认 yaml）
+  test &lt;file&gt; --flow &lt;flow.json&gt;
+                                用样本流量测试规则
+  list [--api-url &lt;URL&gt;]       通过 HTTP API 列出运行中代理的规则
+                                （默认 http://127.0.0.1:18082）</code></pre>
 
-  <h3>flows</h3>
-  <p>查询捕获的流量（需要代理运行并启用 --api-port）。</p>
-  <pre><code>relay-core-cli flows [options]
-
-Options:
-  --api-url &lt;URL&gt;        API 地址（默认：http://127.0.0.1:8082）
-  --host &lt;HOST&gt;          按主机名过滤
-  --path &lt;PATH&gt;          按路径过滤
-  --method &lt;METHOD&gt;      按 HTTP 方法过滤
-  --status-min &lt;N&gt;       最小状态码
-  --status-max &lt;N&gt;       最大状态码
-  --filter &lt;EXPR&gt;        过滤表达式（如 host:api method:POST）
-  --format &lt;json|table&gt;  输出格式</code></pre>
-
-  <h3>metrics</h3>
-  <p>显示运行时指标。</p>
-  <pre><code>relay-core-cli metrics [options]
-
-Options:
-  --proxy-url &lt;URL&gt;      代理地址（默认：http://127.0.0.1:8080）
-  --output &lt;table|json&gt;  输出格式（默认：table）</code></pre>
-
-  <h3>scripts</h3>
-  <p>管理用于请求/响应修改的 Deno 脚本。</p>
+  <h2 id="scripts">scripts</h2>
+  <p>管理基于 Deno 的请求/响应修改脚本。</p>
   <pre><code>relay-core-cli scripts &lt;subcommand&gt;
 
-Subcommands:
-  list                     列出已加载的脚本
-  load &lt;path&gt;              加载脚本
-  unload &lt;name&gt;            卸载脚本</code></pre>
+子命令：
+  validate &lt;file&gt;              将脚本加载到 Deno 引擎以检查语法
+  run-once &lt;file&gt; --flow &lt;f&gt;   对样本流量 JSON 单次执行脚本
+  init [dir]                    初始化 esbuild + tsconfig 项目（默认 .）
+  build [entry] [-o OUT]        打包入口脚本（默认 src/index.ts -&gt; dist/bundle.js）
+  dev [entry] [-o OUT]          esbuild --watch 模式，用于本地开发</code></pre>
 
-  <h2>过滤表达式</h2>
+  <p><code>init</code> 子命令会创建入门用的 <code>src/index.ts</code> 与 <code>tsconfig.json</code>。<code>build</code> / <code>dev</code> 使用 <a href="https://esbuild.github.io" target="_blank" rel="noopener">esbuild</a> 打成单文件 bundle，再由 <code>--script</code> 加载。</p>
 
-  <p>使用表达式语法过滤流量：</p>
+  <h2 id="flows">flows</h2>
+  <p>查看已捕获流量。不带任何参数时连接控制 WebSocket 打印实时流；只要带上了 <code>--filter</code> / <code>--host</code> / <code>--path</code> / <code>--method</code> / <code>--status-min</code> / <code>--status-max</code> / <code>--has-error</code> / <code>--websocket</code> / <code>--limit</code> 中的任一参数即进入 REST 搜索模式。</p>
+  <pre><code>relay-core-cli flows [options]
 
-  <pre><code># 按方法
-method:GET
-method:POST
+连接：
+      --control-url &lt;URL&gt;       实时流使用的控制 API（默认 http://127.0.0.1:8081）
+      --api-url &lt;URL&gt;           搜索模式使用的 REST API（默认 http://127.0.0.1:8082）
 
-# 按主机（支持通配符）
-host:example.com
-host:*.example.com
+搜索条件（需要代理启用 --api-port）：
+      --host &lt;HOST&gt;             主机名子串匹配
+      --path &lt;PATH&gt;             路径子串匹配
+      --method &lt;METHOD&gt;         HTTP 方法（GET、POST、...）
+      --status-min &lt;N&gt;          最小状态码
+      --status-max &lt;N&gt;          最大状态码
+      --has-error                仅含错误的流量
+      --websocket                仅 WebSocket 流量
+      --filter &lt;EXPR&gt;           过滤表达式（见下方语法）
+      --limit &lt;N&gt;               最大条数（1-200，默认 50）
 
-# 按路径
-path:/api/users
-path:/api/v2/*
+输出：
+      --output &lt;FORMAT&gt;         table、json、jsonl（默认 table）</code></pre>
 
-# 按状态码
-status:200
-status:[200 TO 299]
-status:[400 TO 499]
+  <p>过滤表达式语法同 <a href="/docs/tui#filter-expression-syntax">TUI 过滤栏</a>，例如 <code>host:api method:POST status:&gt;=400</code>。</p>
 
-# 使用 AND/OR 组合
-method:GET AND host:*.example.com
-method:POST OR method:PUT
+  <h2 id="intercept">intercept</h2>
+  <p>在不停机的情况下暂停或恢复拦截。调用旧版控制 API。</p>
+  <pre><code>relay-core-cli intercept &lt;subcommand&gt; [--control-url &lt;URL&gt;]
 
-# 取反
-NOT method:OPTIONS</code></pre>
+子命令：
+  pause                         停止接受新的拦截决策
+  resume                        恢复拦截
 
-  <h2>环境变量</h2>
+--control-url 默认 http://127.0.0.1:8081。</code></pre>
 
-  <pre><code>RELAY_LOG            # 日志级别（如 info、debug）
-RELAY_DATA_DIR       # 数据目录（默认 ~/.relay-core）
-RELAY_CA_CERT        # CA 证书路径（须与 RELAY_CA_KEY 成对）
-RELAY_CA_KEY         # CA 私钥路径</code></pre>
+  <h2 id="metrics">metrics</h2>
+  <p>查看运行时指标。代理通过 HTTP 在 <code>--proxy-url</code> 暴露指标端点（默认 <code>http://127.0.0.1:8080</code>）。</p>
+  <pre><code>relay-core-cli metrics [options]
 
-  <p>完整说明见 <a href="/docs/configuration">配置</a>。</p>
+      --proxy-url &lt;URL&gt;         代理指标端点（默认 http://127.0.0.1:8080）
+      --output &lt;FORMAT&gt;         table、json（默认 table）
+
+输出指标包括：流量总数 / 内存中 / 已丢弃、未决拦截数、WebSocket 未决消息数、
+最旧拦截 / WS 消息年龄、规则执行错误、审计事件总数与失败数，以及流量与
+审计事件通道的 lagged 计数。</code></pre>
+
+  <p>Prometheus 文本格式请使用 HTTP API 端点 <code>GET /api/v1/metrics/prometheus</code>（见 <a href="/docs/api#metrics">HTTP API</a>）。</p>
+
+  <h2 id="analyze">analyze</h2>
+  <p>对流量 dump（来自 <code>--save-stream</code>）或 HAR 导出进行离线分析。</p>
+  <pre><code>relay-core-cli analyze --file &lt;PATH&gt; [options]
+
+      --file &lt;PATH&gt;             JSONL 流量 dump 或 HAR 文件路径
+      --format &lt;FORMAT&gt;         jsonl（默认）或 har
+      --output &lt;FORMAT&gt;         table（默认）或 json
+      --top-n &lt;N&gt;               显示前 N 个最慢请求（默认 10）
+
+输出主机直方图、方法直方图、状态直方图、前 N 个最慢请求、按错误聚类的分组。</code></pre>
+
+  <h2 id="proxy">proxy</h2>
+  <p>在 macOS（PF）或 Linux（TPROXY）上管理透明代理。仅在启用 <code>transparent-macos</code> / <code>transparent-linux</code> 特性时编译。</p>
+  <pre><code>relay-core-cli proxy &lt;subcommand&gt;
+
+子命令：
+  generate [--port P] [--interface I] [-o OUT]
+                                将 PF / TPROXY 配置写入 OUT（默认 stdout）
+  load --port P [--interface I] 激活规则（需要 sudo）
+  unload                        关闭规则（需要 sudo）
+  status                        显示当前规则</code></pre>
+
+  <h2 id="env">环境变量</h2>
+  <pre><code>RELAY_LOG                       日志过滤（如 info、debug、trace）
+RELAY_DATA_DIR                  数据目录（默认 ~/.relay-core）
+RELAY_CA_CERT                   CA 证书路径（与 RELAY_CA_KEY 成对）
+RELAY_CA_KEY                    CA 私钥路径（与 RELAY_CA_CERT 成对）
+RELAY_CORE_TUI_THEME            TUI 主题（relay、slate、high-contrast），
+                                在 --theme 缺省时使用
+RELAYCORE_UPSTREAM_PASSWORD     上级代理 Basic 认证密码
+                                （与 --upstream-auth-user 配合使用）
+RELAY_PORT                      relay-core-probe 代理端口（默认 8080）
+RELAY_CA_CERT / RELAY_CA_KEY    relay-core-probe CA 路径
+RELAY_PROBE_TRANSPORT           MCP 传输方式：stdio（默认）| sse
+RELAY_PROBE_PORT                MCP SSE 监听端口（默认 3000）
+RELAY_PROBE_BIND                MCP SSE 绑定地址（默认 127.0.0.1）</code></pre>
+
+  <p>完整的数据目录布局与参数优先级见 <a href="/docs/configuration">配置</a>。</p>
 </DocsLayout>

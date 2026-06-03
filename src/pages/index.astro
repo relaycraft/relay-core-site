@@ -138,12 +138,12 @@ const apiRequestUrl = 'http://127.0.0.1:8082/api/v1/flows?limit=10';
         <span class="crate-desc">REST + SSE 适配器</span>
       </div>
       <div class="crate-item public">
-        <span class="crate-badge">GA</span>
+        <span class="crate-badge">PUBLIC</span>
         <span class="crate-name">relay-core-probe</span>
         <span class="crate-desc">AI 代理 MCP 适配器</span>
       </div>
       <div class="crate-item public">
-        <span class="crate-badge">GA</span>
+        <span class="crate-badge">PUBLIC</span>
         <span class="crate-name">relay-core-cli</span>
         <span class="crate-desc">CLI · TUI · 内嵌 HTTP API</span>
       </div>
@@ -323,6 +323,14 @@ Rule Exec Errors          | 0</pre>
       <div class="cmd-item">
         <code>relay-core-cli run --api-port 8082</code>
         <span>启用 REST API</span>
+      </div>
+      <div class="cmd-item">
+        <code>relay-core-cli run --upstream http://corp-proxy:8080</code>
+        <span>串接上级代理</span>
+      </div>
+      <div class="cmd-item">
+        <code>relay-core-cli analyze --file flows.jsonl</code>
+        <span>离线分析流量 dump</span>
       </div>
       <div class="cmd-item">
         <code>relay-core-cli flows --host example.com</code>

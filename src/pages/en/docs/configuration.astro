@@ -24,9 +24,11 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <table>
     <tr><th>Variable</th><th>Description</th></tr>
     <tr><td><code>RELAY_DATA_DIR</code></td><td>Data directory (default <code>~/.relay-core</code>)</td></tr>
-    <tr><td><code>RELAY_CA_CERT</code></td><td>CA cert path (must be paired with <code>RELAY_CA_KEY</code>)</td></tr>
+    <tr><td><code>RELAY_CA_CERT</code></td><td>CA cert path (must be paired with <code>RELAY_CA_KEY</code>); applies to <code>relay-core-cli</code> and <code>relay-core-probe</code></td></tr>
     <tr><td><code>RELAY_CA_KEY</code></td><td>CA key path (must be paired with <code>RELAY_CA_CERT</code>)</td></tr>
-    <tr><td><code>RELAY_LOG</code></td><td>Log filter level (e.g. <code>info</code>, <code>debug</code>)</td></tr>
+    <tr><td><code>RELAY_LOG</code></td><td>Log filter level (e.g. <code>info</code>, <code>debug</code>, <code>trace</code>)</td></tr>
+    <tr><td><code>RELAY_CORE_TUI_THEME</code></td><td>TUI color preset when <code>--theme</code> is omitted (<code>relay</code>, <code>slate</code>, <code>high-contrast</code>). See <a href="/en/docs/tui#themes">TUI themes</a>.</td></tr>
+    <tr><td><code>RELAYCORE_UPSTREAM_PASSWORD</code></td><td>Upstream proxy HTTP Basic auth password. Paired with <code>--upstream-auth-user</code>. Never pass the password via CLI — it would land in shell history. See <a href="/en/docs/upstream-proxy">Upstream Proxy</a>.</td></tr>
     <tr><td><code>RELAY_PORT</code></td><td><code>relay-core-probe</code> proxy port (default 8080)</td></tr>
     <tr><td><code>RELAY_PROBE_TRANSPORT</code></td><td>MCP transport: <code>stdio</code> (default) or <code>sse</code></td></tr>
     <tr><td><code>RELAY_PROBE_PORT</code></td><td>MCP listen port in SSE mode (default 3000)</td></tr>
@@ -34,6 +36,16 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   </table>
 
   <p>Path precedence: <strong>CLI args &gt; environment variables &gt; default data directory</strong>.</p>
+
+  <h2>TUI config file</h2>
+
+  <p>The TUI reads a small TOML file at <code>~/.relay-core/config.toml</code> to set persistent preferences. The only key currently consumed is the TUI theme:</p>
+
+  <pre><code># ~/.relay-core/config.toml
+[tui]
+theme = "high-contrast"   # relay | slate | high-contrast</code></pre>
+
+  <p>Resolution order for the TUI theme: <code>--theme</code> flag &gt; <code>RELAY_CORE_TUI_THEME</code> env &gt; <code>[tui].theme</code> in this file &gt; default (<code>relay</code>).</p>
 
   <h2>Common CLI flags (run)</h2>
 
@@ -43,9 +55,14 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   --ca-cert &lt;PATH&gt;       CA certificate path (optional override)
   --ca-key &lt;PATH&gt;        CA private key path (must pair with --ca-cert)
   --api-port &lt;PORT&gt;      Enable REST + SSE HTTP API
+  --api-token &lt;TOKEN&gt;    Bearer auth for the HTTP API
   --rules &lt;PATH&gt;         Load rules file (JSON/YAML)
   --script &lt;PATH&gt;        Load Deno script
-  --ui                   Enable TUI</code></pre>
+  --script-env-allow      Comma-separated env var names scripts may read
+  --ui                   Enable TUI
+  --theme &lt;NAME&gt;         TUI color preset
+  --upstream &lt;URL&gt;       Route all traffic through a parent proxy
+  --save-stream &lt;PATH&gt;   Append every flow as JSONL to disk</code></pre>
 
   <h2>Production notes</h2>
 

@@ -139,12 +139,12 @@ const sourceCmd = 'git clone https://github.com/relaycraft/relay-core && cd rela
         <span class="crate-desc">REST + SSE adapter</span>
       </div>
       <div class="crate-item public">
-        <span class="crate-badge">GA</span>
+        <span class="crate-badge">PUBLIC</span>
         <span class="crate-name">relay-core-probe</span>
         <span class="crate-desc">MCP adapter for AI agents</span>
       </div>
       <div class="crate-item public">
-        <span class="crate-badge">GA</span>
+        <span class="crate-badge">PUBLIC</span>
         <span class="crate-name">relay-core-cli</span>
         <span class="crate-desc">CLI · TUI · embedded HTTP API</span>
       </div>
@@ -324,6 +324,14 @@ Rule Exec Errors          | 0</pre>
       <div class="cmd-item">
         <code>relay-core-cli run --api-port 8082</code>
         <span>Enable REST API</span>
+      </div>
+      <div class="cmd-item">
+        <code>relay-core-cli run --upstream http://corp-proxy:8080</code>
+        <span>Chain through a parent proxy</span>
+      </div>
+      <div class="cmd-item">
+        <code>relay-core-cli analyze --file flows.jsonl</code>
+        <span>Offline analysis of flow dumps</span>
       </div>
       <div class="cmd-item">
         <code>relay-core-cli flows --host example.com</code>

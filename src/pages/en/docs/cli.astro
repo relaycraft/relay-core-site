@@ -5,111 +5,174 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="CLI Reference" description="RelayCore command line interface">
   <h1>CLI Reference</h1>
 
-  <p>The <code>relay-core-cli</code> binary provides a full-featured command-line interface for running the proxy and managing flows, rules, and certificates.</p>
+  <p>The <code>relay-core-cli</code> binary provides a full-featured command-line interface for running the proxy, inspecting traffic, and managing rules, scripts, and certificates. For the full schema run <code>relay-core-cli --help</code> or <code>relay-core-cli &lt;command&gt; --help</code>.</p>
 
-  <h2>Commands</h2>
-
-  <h3>run</h3>
+  <h2 id="run">run</h2>
   <p>Start the proxy server.</p>
   <pre><code>relay-core-cli run [options]
 
-Options:
-  -l, --listen &lt;ADDR&gt;     Proxy listen address (default: 127.0.0.1:8080)
-  -c, --control-port &lt;P&gt;  Control API port (default: 8081)
-  --api-port &lt;P&gt;           Enable REST/SSE HTTP API on this port
-  --api-token &lt;TOKEN&gt;      Bearer token for HTTP API auth
-  --api-cors &lt;ORIGINS&gt;     CORS allowed origins
-  --ui                    Enable TUI interface
-  --rules &lt;PATH&gt;          Load rules from file (JSON/YAML)
-  --script &lt;PATH&gt;         Load Deno script
-  --script-watch           Watch script file for hot reload
-  --script-env-allow &lt;K&gt;  Env vars scripts may read (comma-separated)
-  --transparent            Enable transparent proxy mode</code></pre>
+Listen &amp; lifecycle:
+  -l, --listen &lt;ADDR&gt;           Proxy listen address (default 127.0.0.1:8080)
+  -c, --control-port &lt;PORT&gt;     Control API port (default 8081)
+      --udp-tproxy-port &lt;PORT&gt;   Enable UDP TPROXY on this port (Linux only)
+      --transparent               Enable transparent proxy mode (macOS PF / Linux TPROXY)
 
-  <h3>ca</h3>
-  <p>Manage CA certificates for HTTPS interception.</p>
+TLS interception:
+      --ca-cert &lt;PATH&gt;           CA certificate path
+      --ca-key &lt;PATH&gt;            CA private key path (pair with --ca-cert)
+
+Rules &amp; scripts:
+      --rules &lt;PATH&gt;             Load rules from file (JSON / YAML)
+      --script &lt;PATH&gt;            Load Deno script file
+      --script-watch              Watch script file for hot reload
+      --script-env-allow &lt;LIST&gt;  Comma-separated env var names scripts may read
+
+TUI:
+      --ui                        Enable interactive TUI mode
+      --theme &lt;NAME&gt;             TUI color preset: relay, slate, high-contrast
+                                  (overrides RELAY_CORE_TUI_THEME and config)
+
+Console output (non-TUI):
+      --output &lt;FORMAT&gt;          table, json, jsonl (default table)
+      --save-stream &lt;PATH&gt;       Append every flow as JSONL to this file
+
+REST / SSE HTTP API:
+      --api-port &lt;PORT&gt;          Enable REST + SSE API on this port
+      --api-bind &lt;ADDR&gt;          Bind address (default 127.0.0.1)
+      --api-token &lt;TOKEN&gt;        Bearer token for HTTP API auth
+      --api-cors &lt;ORIGINS&gt;       CORS allowed origins (comma-separated)
+
+Upstream proxy:
+      --upstream &lt;URL&gt;           Parent proxy URL (http:// or https://)
+      --upstream-auth-user &lt;U&gt;   Username for upstream Basic auth
+                                  (password: RELAYCORE_UPSTREAM_PASSWORD env)
+      --upstream-bypass &lt;LIST&gt;   Hosts to bypass upstream
+      --upstream-fail-open        Fall back to direct if upstream unreachable</code></pre>
+
+  <p>See <a href="/en/docs/tui">TUI</a> for the interactive terminal UI, <a href="/en/docs/upstream-proxy">Upstream Proxy</a> for chained proxying, and <a href="/en/docs/configuration">Configuration</a> for environment variables and data directory layout.</p>
+
+  <h2 id="ca">ca</h2>
+  <p>Manage CA certificates for HTTPS interception. Optional paths <code>--ca-cert</code> / <code>--ca-key</code> can be replaced by <code>RELAY_CA_CERT</code> / <code>RELAY_CA_KEY</code>; the pair must be supplied together.</p>
   <pre><code>relay-core-cli ca &lt;subcommand&gt;
 
 Subcommands:
-  generate               Generate CA cert and key (default ~/.relay-core/)
-  install                Install CA to system trust store (macOS)
-  status                 Show CA paths, existence, and trust status
-  export                 Export CA certificate
-  uninstall              Remove CA from system trust store (macOS)</code></pre>
+  generate [--force]            Generate CA cert and key (default ~/.relay-core/)
+  install                       Install CA to system trust store (macOS)
+  uninstall                     Remove CA from system trust store (macOS)
+  status                        Show CA paths, existence, and trust status
+  export [-o PATH] [--der]      Export CA certificate
+                                --der produces a binary .cer for Windows import</code></pre>
 
-  <p>Optional paths: <code>--ca-cert</code> and <code>--ca-key</code> must be provided as a pair; or use <code>RELAY_CA_CERT</code> / <code>RELAY_CA_KEY</code>.</p>
+  <p>On macOS, <code>ca install</code> cleans up stale <code>RelayCraft CA</code> entries before adding the new fingerprint. <code>ca status</code> compares the local certificate against the keychain by SHA-1 and reports a mismatch if they diverge.</p>
 
-  <h3>rules</h3>
+  <h2 id="rules">rules</h2>
   <p>Manage interception rules.</p>
   <pre><code>relay-core-cli rules &lt;subcommand&gt;
 
 Subcommands:
-  validate &lt;file&gt;        Validate rule file format
-  print &lt;file&gt;           Print rules (JSON/YAML)
-  test &lt;file&gt; --flow F   Test rules against a sample flow
-  list --api-url &lt;URL&gt;   List active rules from a running proxy</code></pre>
+  validate &lt;file&gt;              Validate a rules file (JSON / YAML)
+  print &lt;file&gt; [--format F]     Print rules in normalized form (json | yaml, default yaml)
+  test &lt;file&gt; --flow &lt;flow.json&gt;
+                                Run a sample flow through the rule set
+  list [--api-url &lt;URL&gt;]       List rules from a running proxy via the HTTP API
+                                (default http://127.0.0.1:18082)</code></pre>
 
-  <h3>flows</h3>
-  <p>Query captured flows.</p>
-  <pre><code>relay-core-cli flows [options]
-
-Options:
-  --filter &lt;EXPR&gt;       Filter expression
-  --limit &lt;N&gt;            Max results (default: 50)
-  --offset &lt;N&gt;           Pagination offset
-  --format &lt;json|table&gt;  Output format</code></pre>
-
-  <h3>metrics</h3>
-  <p>Display runtime metrics.</p>
-  <pre><code>relay-core-cli metrics [options]
-
-Options:
-  --format &lt;json|prometheus&gt;  Output format (default: table)
-  --reset                     Reset counters after display</code></pre>
-
-  <h3>scripts</h3>
-  <p>Manage Deno scripts for request/response modification.</p>
+  <h2 id="scripts">scripts</h2>
+  <p>Manage Deno-based request/response modification scripts.</p>
   <pre><code>relay-core-cli scripts &lt;subcommand&gt;
 
 Subcommands:
-  list                     List loaded scripts
-  load &lt;path&gt;              Load a script
-  unload &lt;name&gt;            Unload a script</code></pre>
+  validate &lt;file&gt;              Load a script into the Deno engine to check syntax
+  run-once &lt;file&gt; --flow &lt;f&gt;   Execute the script once against a sample flow JSON
+  init [dir]                    Scaffold an esbuild + tsconfig project (default .)
+  build [entry] [-o OUT]        Bundle the entry script (default src/index.ts -&gt; dist/bundle.js)
+  dev [entry] [-o OUT]          esbuild --watch mode for local development</code></pre>
 
-  <h2>Filter Expressions</h2>
+  <p>The <code>init</code> subcommand creates a starter <code>src/index.ts</code> and <code>tsconfig.json</code>. <code>build</code> / <code>dev</code> use <a href="https://esbuild.github.io" target="_blank" rel="noopener">esbuild</a> to produce a single bundle that <code>--script</code> can load.</p>
 
-  <p>Filter flows using expressive filter syntax:</p>
+  <h2 id="flows">flows</h2>
+  <p>Inspect captured traffic. Without flags, <code>flows</code> connects to the control WebSocket and prints a live stream. With any of <code>--filter</code> / <code>--host</code> / <code>--path</code> / <code>--method</code> / <code>--status-min</code> / <code>--status-max</code> / <code>--has-error</code> / <code>--websocket</code> / <code>--limit</code> it queries the REST API.</p>
+  <pre><code>relay-core-cli flows [options]
 
-  <pre><code># By method
-method:GET
-method:POST
+Connection:
+      --control-url &lt;URL&gt;       Control API for live stream (default http://127.0.0.1:8081)
+      --api-url &lt;URL&gt;           REST API for search mode (default http://127.0.0.1:8082)
 
-# By host (supports wildcards)
-host:example.com
-host:*.example.com
+Search filters (require --api-port on the running proxy):
+      --host &lt;HOST&gt;             Substring match on host
+      --path &lt;PATH&gt;             Substring match on path
+      --method &lt;METHOD&gt;         HTTP method (GET, POST, ...)
+      --status-min &lt;N&gt;          Minimum status code
+      --status-max &lt;N&gt;          Maximum status code
+      --has-error                Only flows with errors
+      --websocket                Only WebSocket flows
+      --filter &lt;EXPR&gt;           Filter expression (see syntax below)
+      --limit &lt;N&gt;               Max results (1-200, default 50)
 
-# By path
-path:/api/users
-path:/api/v2/*
+Output:
+      --output &lt;FORMAT&gt;         table, json, jsonl (default table)</code></pre>
 
-# By status code
-status:200
-status:[200 TO 299]
-status:[400 TO 499]
+  <h2 id="intercept">intercept</h2>
+  <p>Pause or resume live interception without restarting the proxy. Posts to the legacy control API.</p>
+  <pre><code>relay-core-cli intercept &lt;subcommand&gt; [--control-url &lt;URL&gt;]
 
-# Combine with AND/OR
-method:GET AND host:*.example.com
-method:POST OR method:PUT
+Subcommands:
+  pause                         Stop accepting new intercept decisions
+  resume                        Resume interception
 
-# Negate
-NOT method:OPTIONS</code></pre>
+Default --control-url is http://127.0.0.1:8081.</code></pre>
 
-  <h2>Environment variables</h2>
+  <h2 id="metrics">metrics</h2>
+  <p>Display runtime metrics. The proxy is queried over HTTP at <code>--proxy-url</code> (default <code>http://127.0.0.1:8080</code>).</p>
+  <pre><code>relay-core-cli metrics [options]
 
-  <pre><code>RELAY_LOG            # Log level (e.g. info, debug)
-RELAY_DATA_DIR       # Data directory (default ~/.relay-core)
-RELAY_CA_CERT        # CA cert path (pair with RELAY_CA_KEY)
-RELAY_CA_KEY         # CA key path</code></pre>
+      --proxy-url &lt;URL&gt;         Proxy metrics endpoint (default http://127.0.0.1:8080)
+      --output &lt;FORMAT&gt;         table, json (default table)
 
-  <p>See <a href="/en/docs/configuration">Configuration</a> for the full list.</p>
+Reported metrics include flows total / in memory / dropped, intercepts pending,
+WebSocket pending messages, oldest intercept / WS message age, rule execution
+errors, audit event totals and failures, and the lagged counters for both
+flow and audit event channels.</code></pre>
+
+  <p>For a Prometheus-formatted scrape, use the HTTP API endpoint <code>GET /api/v1/metrics/prometheus</code> (see <a href="/en/docs/api#metrics">HTTP API</a>).</p>
+
+  <h2 id="analyze">analyze</h2>
+  <p>Offline analysis of a flow dump (from <code>--save-stream</code>) or a HAR export.</p>
+  <pre><code>relay-core-cli analyze --file &lt;PATH&gt; [options]
+
+      --file &lt;PATH&gt;             Path to JSONL flow dump or HAR file
+      --format &lt;FORMAT&gt;         jsonl (default) or har
+      --output &lt;FORMAT&gt;         table (default) or json
+      --top-n &lt;N&gt;               Number of slow requests to show (default 10)
+
+Prints a host histogram, method histogram, status histogram, top-N slowest
+requests, and clustered error groups.</code></pre>
+
+  <h2 id="proxy">proxy</h2>
+  <p>Manage transparent proxy on macOS (PF) or Linux (TPROXY). Compiled only with the <code>transparent-macos</code> or <code>transparent-linux</code> features.</p>
+  <pre><code>relay-core-cli proxy &lt;subcommand&gt;
+
+Subcommands:
+  generate [--port P] [--interface I] [-o OUT]
+                                Write PF / TPROXY config to OUT (default stdout)
+  load --port P [--interface I] Activate the rules (requires sudo)
+  unload                        Deactivate the rules (requires sudo)
+  status                        Show current rules</code></pre>
+
+  <h2 id="env">Environment variables</h2>
+  <pre><code>RELAY_LOG                       Log filter (e.g. info, debug, trace)
+RELAY_DATA_DIR                  Data directory (default ~/.relay-core)
+RELAY_CA_CERT                   CA cert path (pair with RELAY_CA_KEY)
+RELAY_CA_KEY                    CA key path (pair with RELAY_CA_CERT)
+RELAY_CORE_TUI_THEME            TUI preset when --theme is omitted
+                                (relay, slate, high-contrast)
+RELAYCORE_UPSTREAM_PASSWORD     Upstream proxy Basic auth password
+                                (used with --upstream-auth-user)
+RELAY_PORT                      relay-core-probe proxy port (default 8080)
+RELAY_CA_CERT / RELAY_CA_KEY    relay-core-probe CA paths
+RELAY_PROBE_TRANSPORT           MCP transport: stdio (default) | sse
+RELAY_PROBE_PORT                MCP SSE listen port (default 3000)
+RELAY_PROBE_BIND                MCP SSE bind address (default 127.0.0.1)</code></pre>
+
+  <p>See <a href="/en/docs/configuration">Configuration</a> for the full data directory layout and path precedence.</p>
 </DocsLayout>

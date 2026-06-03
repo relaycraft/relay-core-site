@@ -26,6 +26,20 @@ npx @relay-core/cli ca install   # macOS helper; see ca status on other platform
 
   <p><code>@relay-core/mcp</code> launches <code>relay-core-probe</code> with stdio transport by default and a local proxy on <code>127.0.0.1:8080</code>. Point your browser or system proxy there.</p>
 
+  <h2>probe CLI flags</h2>
+
+  <p>The probe binary accepts a small set of flags and env vars:</p>
+
+  <table>
+    <tr><th>Flag</th><th>Env</th><th>Default</th><th>Description</th></tr>
+    <tr><td><code>--port &lt;P&gt;</code></td><td><code>RELAY_PORT</code></td><td><code>8080</code></td><td>Embedded proxy listen port</td></tr>
+    <tr><td><code>--ca-cert &lt;PATH&gt;</code></td><td><code>RELAY_CA_CERT</code></td><td>data dir</td><td>CA certificate for HTTPS interception</td></tr>
+    <tr><td><code>--ca-key &lt;PATH&gt;</code></td><td><code>RELAY_CA_KEY</code></td><td>data dir</td><td>CA private key</td></tr>
+    <tr><td><code>--transport &lt;MODE&gt;</code></td><td><code>RELAY_PROBE_TRANSPORT</code></td><td><code>stdio</code></td><td><code>stdio</code> or <code>sse</code></td></tr>
+    <tr><td><code>--probe-port &lt;P&gt;</code></td><td><code>RELAY_PROBE_PORT</code></td><td><code>3000</code></td><td>SSE listen port (only when transport=sse)</td></tr>
+    <tr><td><code>--probe-bind &lt;ADDR&gt;</code></td><td><code>RELAY_PROBE_BIND</code></td><td><code>127.0.0.1</code></td><td>SSE bind address</td></tr>
+  </table>
+
   <h2>Tools</h2>
 
   <h3>Observe</h3>
@@ -67,13 +81,24 @@ npx @relay-core/cli ca install   # macOS helper; see ca status on other platform
 &#125;</code></pre>
 
   <div class="endpoint">
+    <span class="method method-post">get_pending_intercepts</span>
+  </div>
+  <p>List the currently pending intercepts (HTTP and WebSocket).</p>
+
+  <div class="endpoint">
     <span class="method method-post">resume_flow</span>
   </div>
   <p>Resume a paused flow.</p>
   <pre><code>&#123;
   "flow_id": "fld_01HX5K9P3Q8Y2Z7",
-  "action": "resume"  # or "drop"
+  "action": "resume",  // or "drop"
+  "modifications": &#123;
+    "status_code": 418,
+    "response_body": "I'm a teapot"
+  &#125;
 &#125;</code></pre>
+
+  <h3>Rules</h3>
 
   <div class="endpoint">
     <span class="method method-post">set_rule</span>
@@ -91,6 +116,27 @@ npx @relay-core/cli ca install   # macOS helper; see ca status on other platform
   <p>Delete a rule.</p>
   <pre><code>&#123;
   "rule_id": "rul_01HX5K9P3Q8Y2Z7"
+&#125;</code></pre>
+
+  <div class="endpoint">
+    <span class="method method-post">mock_url</span>
+  </div>
+  <p>Create a one-off <code>MockResponse</code> rule.</p>
+  <pre><code>&#123;
+  "url_pattern": "api.example.com/v1/health",
+  "status": 200,
+  "body": "&#123;\"ok\":true&#125;",
+  "content_type": "application/json"
+&#125;</code></pre>
+
+  <h3>Scripting</h3>
+
+  <div class="endpoint">
+    <span class="method method-post">set_script</span>
+  </div>
+  <p>Hot-load a Deno script into the running engine.</p>
+  <pre><code>&#123;
+  "script": "// deno-fmt-ignore\nexport default &#123; onRequest(ctx) &#123; /* ... */ &#125; &#125;"
 &#125;</code></pre>
 
   <h3>Analyze</h3>
@@ -120,12 +166,23 @@ npx @relay-core/cli ca install   # macOS helper; see ca status on other platform
   <div class="endpoint">
     <span class="method method-post">get_policy</span>
   </div>
-  <p>Get current interception policy.</p>
+  <p>Get current interception policy, including the redaction block.</p>
 
   <div class="endpoint">
     <span class="method method-post">update_policy</span>
   </div>
-  <p>Update interception policy.</p>
+  <p>Replace the entire policy.</p>
+
+  <div class="endpoint">
+    <span class="method method-post">patch_policy</span>
+  </div>
+  <p>Apply a partial update — only the supplied keys are touched. Accepts the same <code>&#123; redaction?, upstream? &#125;</code> shape as the REST API.</p>
+  <pre><code>&#123;
+  "redaction": &#123;
+    "enabled": true,
+    "redact_bodies": true
+  &#125;
+&#125;</code></pre>
 
   <h2>Resources</h2>
 

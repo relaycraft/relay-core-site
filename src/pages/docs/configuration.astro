@@ -24,9 +24,11 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <table>
     <tr><th>变量</th><th>说明</th></tr>
     <tr><td><code>RELAY_DATA_DIR</code></td><td>数据目录（默认 <code>~/.relay-core</code>）</td></tr>
-    <tr><td><code>RELAY_CA_CERT</code></td><td>CA 证书路径（须与 <code>RELAY_CA_KEY</code> 成对设置）</td></tr>
-    <tr><td><code>RELAY_CA_KEY</code></td><td>CA 私钥路径（须与 <code>RELAY_CA_CERT</code> 成对设置）</td></tr>
-    <tr><td><code>RELAY_LOG</code></td><td>日志过滤级别（如 <code>info</code>、<code>debug</code>）</td></tr>
+    <tr><td><code>RELAY_CA_CERT</code></td><td>CA 证书路径（须与 <code>RELAY_CA_KEY</code> 成对）；同时作用于 <code>relay-core-cli</code> 与 <code>relay-core-probe</code></td></tr>
+    <tr><td><code>RELAY_CA_KEY</code></td><td>CA 私钥路径（须与 <code>RELAY_CA_CERT</code> 成对）</td></tr>
+    <tr><td><code>RELAY_LOG</code></td><td>日志过滤级别（如 <code>info</code>、<code>debug</code>、<code>trace</code>）</td></tr>
+    <tr><td><code>RELAY_CORE_TUI_THEME</code></td><td><code>--theme</code> 缺省时的 TUI 配色（<code>relay</code>、<code>slate</code>、<code>high-contrast</code>）。见 <a href="/docs/tui#themes">TUI 主题</a>。</td></tr>
+    <tr><td><code>RELAYCORE_UPSTREAM_PASSWORD</code></td><td>上游代理 HTTP Basic 认证密码，与 <code>--upstream-auth-user</code> 配合。绝不要通过命令行参数传入密码（会进入 shell 历史）。见 <a href="/docs/upstream-proxy">上游代理</a>。</td></tr>
     <tr><td><code>RELAY_PORT</code></td><td><code>relay-core-probe</code> 代理端口（默认 8080）</td></tr>
     <tr><td><code>RELAY_PROBE_TRANSPORT</code></td><td>MCP 传输方式：<code>stdio</code>（默认）或 <code>sse</code></td></tr>
     <tr><td><code>RELAY_PROBE_PORT</code></td><td>SSE 模式下 MCP 监听端口（默认 3000）</td></tr>
@@ -34,6 +36,16 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   </table>
 
   <p>路径优先级：<strong>CLI 参数 &gt; 环境变量 &gt; 默认数据目录</strong>。</p>
+
+  <h2>TUI 配置文件</h2>
+
+  <p>TUI 读取 <code>~/.relay-core/config.toml</code> 以持久化偏好设置。目前仅消费 TUI 主题一项：</p>
+
+  <pre><code># ~/.relay-core/config.toml
+[tui]
+theme = "high-contrast"   # relay | slate | high-contrast</code></pre>
+
+  <p>TUI 主题解析顺序：<code>--theme</code> 参数 &gt; <code>RELAY_CORE_TUI_THEME</code> 环境变量 &gt; 本文件 <code>[tui].theme</code> &gt; 默认（<code>relay</code>）。</p>
 
   <h2>CLI 常用参数（run）</h2>
 
@@ -43,9 +55,14 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   --ca-cert &lt;PATH&gt;       CA 证书路径（可选，覆盖默认）
   --ca-key &lt;PATH&gt;        CA 私钥路径（须与 --ca-cert 成对）
   --api-port &lt;PORT&gt;      启用 REST + SSE HTTP API
+  --api-token &lt;TOKEN&gt;    HTTP API Bearer 认证
   --rules &lt;PATH&gt;         加载规则文件（JSON/YAML）
   --script &lt;PATH&gt;        加载 Deno 脚本
-  --ui                   启用 TUI</code></pre>
+  --script-env-allow      脚本可读取的环境变量名（逗号分隔）
+  --ui                   启用 TUI
+  --theme &lt;NAME&gt;         TUI 配色
+  --upstream &lt;URL&gt;       将所有流量路由到上级代理
+  --save-stream &lt;PATH&gt;   将每条流量以 JSONL 追加到磁盘</code></pre>
 
   <h2>生产环境建议</h2>
 

@@ -1,0 +1,208 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="TUI 交互界面" description="RelayCore 交互式终端界面">
+  <h1>交互式终端界面（TUI）</h1>
+
+  <p>RelayCore 自带功能完整的终端 UI，可实时检查流量。基于 <a href="https://github.com/ratatui/ratatui" target="_blank" rel="noopener">ratatui</a> 构建，使用体验类似 Shell 里的轻量级 Charles / Proxyman。</p>
+
+  <h2>启动</h2>
+
+  <pre><code>relay-core-cli run --ui
+# 可选：与 REST/SSE API 搭配使用，启用四面板布局
+relay-core-cli run --ui --api-port 8082</code></pre>
+
+  <p>启用 <code>--ui</code> 后 TUI 会接管终端，代理进程本身仍在同一进程中运行，无需启动额外服务。</p>
+
+  <h2>布局</h2>
+
+  <p>TUI 会根据终端宽度自适应：</p>
+
+  <table>
+    <tr><th>宽度</th><th>布局</th><th>面板</th></tr>
+    <tr>
+      <td>≥ 120 列</td>
+      <td>四面板（需 <code>--api-port</code>）</td>
+      <td>流量列表 · 详情 · 当前规则 · 待处理拦截</td>
+    </tr>
+    <tr>
+      <td>80–119 列</td>
+      <td>两面板</td>
+      <td>流量列表 · 详情（水平分屏，比例随宽度变化）</td>
+    </tr>
+    <tr>
+      <td>&lt; 80 列</td>
+      <td>单面板（<code>Tab</code> 切换）</td>
+      <td>全屏显示流量列表 <em>或</em> 详情</td>
+    </tr>
+  </table>
+
+  <p>只有当 TUI 能连上 REST/SSE API（<code>--api-port</code> 已启用且可达）时才会出现四面板布局。脱离 API 时回退为本地两面板视图，规则与拦截面板不可见。</p>
+
+  <h2>快捷键</h2>
+
+  <h3>全局</h3>
+
+  <table>
+    <tr><th>按键</th><th>动作</th></tr>
+    <tr><td><code>q</code></td><td>退出 TUI（代理在后台继续运行，SIGINT 时结束）</td></tr>
+    <tr><td><code>?</code></td><td>切换应用内帮助浮层</td></tr>
+    <tr><td><code>Esc</code></td><td>返回流量列表 / 关闭浮层</td></tr>
+    <tr><td><code>Tab</code></td><td>循环切换活动区域（列表 → 详情 → 规则 → 列表）</td></tr>
+    <tr><td><code>1</code> / <code>2</code> / <code>3</code> / <code>4</code></td><td>跳转到详情选项卡：概览 · 请求 · 响应 · 消息</td></tr>
+    <tr><td><code>y</code></td><td>将当前选中的 HTTP 流量复制为 cURL 命令</td></tr>
+    <tr><td><code>Ctrl+C</code></td><td>强制结束进程</td></tr>
+  </table>
+
+  <h3>流量列表（默认焦点）</h3>
+
+  <table>
+    <tr><th>按键</th><th>动作</th></tr>
+    <tr><td><code>j</code> / <code>↓</code></td><td>下一行</td></tr>
+    <tr><td><code>k</code> / <code>↑</code></td><td>上一行</td></tr>
+    <tr><td><code>g</code></td><td>跳到最新（顶部）并重新启用自动滚动</td></tr>
+    <tr><td><code>G</code> / <code>End</code></td><td>跳到最旧（底部）</td></tr>
+    <tr><td><code>Enter</code> / <code>l</code> / <code>→</code></td><td>聚焦详情面板</td></tr>
+    <tr><td><code>d</code></td><td>从本地列表中删除当前选中流量</td></tr>
+    <tr><td><code>c</code></td><td>清空整个流量列表（不影响代理）</td></tr>
+    <tr><td><code>p</code></td><td>暂停/恢复捕获。暂停时新流量计入待处理计数，不进列表。</td></tr>
+    <tr><td><code>r</code></td><td>聚焦规则面板（仅 API 模式）</td></tr>
+    <tr><td><code>/</code></td><td>打开过滤栏</td></tr>
+  </table>
+
+  <h3>流量详情</h3>
+
+  <table>
+    <tr><th>按键</th><th>动作</th></tr>
+    <tr><td><code>j</code> / <code>k</code> 或 <code>↓</code> / <code>↑</code></td><td>逐行滚动</td></tr>
+    <tr><td><code>Ctrl+d</code> / <code>PageDown</code></td><td>向下滚动 10 行</td></tr>
+    <tr><td><code>Ctrl+u</code> / <code>PageUp</code></td><td>向上滚动 10 行</td></tr>
+    <tr><td><code>g</code> / <code>Home</code></td><td>滚到顶部</td></tr>
+    <tr><td><code>G</code> / <code>End</code></td><td>滚到底部</td></tr>
+    <tr><td><code>Tab</code></td><td>循环切换详情选项卡（概览 → 请求 → 响应 → 消息 → 概览）</td></tr>
+    <tr><td><code>h</code> / <code>←</code> / <code>Esc</code></td><td>返回流量列表</td></tr>
+  </table>
+
+  <h3>过滤栏</h3>
+
+  <p>在流量列表中按 <code>/</code> 开始过滤，<code>Enter</code> 或 <code>Esc</code> 提交/关闭。语法见下方的<a href="#filter-expression-syntax">过滤表达式语法</a>。</p>
+
+  <h2>状态栏</h2>
+
+  <p>底部一行始终显示运行状态：</p>
+
+  <ul>
+    <li>实时请求速率（5 秒滑动窗口，req/s）</li>
+    <li>启动以来累计捕获的流量数</li>
+    <li>当前活动区域指示（LIST / DETAIL / RULES）</li>
+    <li>运行时长 <code>hh:mm:ss</code></li>
+    <li>捕获暂停或自动滚动关闭时的待处理计数</li>
+  </ul>
+
+  <h2>鼠标支持</h2>
+
+  <p>已启用鼠标捕获。可使用滚轮滚动列表，点击切换行或面板焦点。</p>
+
+  <h2 id="filter-expression-syntax">过滤表达式语法</h2>
+
+  <p>TUI 过滤栏与 <code>relay-core-cli flows --filter</code> 共享同一解析器。Token 以空格分隔，隐式 AND 组合；裸 token 在 URL 与 method 上做大小写不敏感的子串匹配。</p>
+
+  <pre><code># 主机名子串匹配
+host:api
+host:api.example.com
+
+# 路径子串匹配
+path:/v1/users
+path:/graphql
+
+# HTTP 方法（大小写不敏感）
+method:GET
+method:POST
+
+# 状态码（精确、区间、比较）
+status:404
+status:400-499
+status:>=500
+status:&lt;300
+
+# 流级别标志
+err         # 任意 has_error==true 的流（别名 error）
+ws          # WebSocket 流（别名 websocket）
+
+# 裸文本子串匹配（针对 URL + method 拼接）
+health
+users</code></pre>
+
+  <p>多个 token 隐式 AND，例如 <code>host:api method:POST status:&gt;=400</code> 只显示对 <code>api</code> 主机失败的 POST 请求。</p>
+
+  <h2>详情选项卡</h2>
+
+  <ul>
+    <li><strong>概览 (Overview)</strong> — 方法、URL、状态、耗时、大小、主机、远端地址、命中的规则、错误信息</li>
+    <li><strong>请求 (Request)</strong> — 起始行、请求头、请求体（受 <code>max_body_size</code> 限制）</li>
+    <li><strong>响应 (Response)</strong> — 状态行、响应头、响应体</li>
+    <li><strong>消息 (Messages)</strong> — WebSocket 消息日志（opcode、方向、大小、base64 内容）。普通 HTTP 此页为空。</li>
+  </ul>
+
+  <h2>复制为 cURL</h2>
+
+  <p>在任意 HTTP/WebSocket 流量上按 <code>y</code>，即可将一条可移植的 POSIX shell cURL 命令复制到剪贴板。Header 值使用单引号转义；body 使用 <code>--data-binary</code> 写入。macOS 需要 <code>pbcopy</code>，Linux 需要 <code>wl-copy</code> / <code>xclip</code>；未找到时仍会构造命令并通过 toast 提示剪贴板不可用。</p>
+
+  <h2 id="themes">主题</h2>
+
+  <p>TUI 内置三种配色方案。默认 <code>relay</code> 与 <code>relaycore.dev</code> 品牌色一致（近黑底 + 青色强调）。</p>
+
+  <table>
+    <tr><th>主题 ID</th><th>别名</th><th>说明</th></tr>
+    <tr><td><code>relay</code></td><td><code>brand</code>、<code>default</code></td><td>relaycore.dev 品牌色 — 近黑底 + 青色强调（默认）</td></tr>
+    <tr><td><code>slate</code></td><td><code>legacy</code></td><td>Tokyo Night 风格 slate 背景 + 琥珀色焦点</td></tr>
+    <tr><td><code>high-contrast</code></td><td><code>hc</code>、<code>high_contrast</code>、<code>highcontrast</code></td><td>更亮的强调色与边框，适合对比度低的终端</td></tr>
+  </table>
+
+  <h3>解析优先级</h3>
+
+  <p>主题按以下顺序解析（优先级从高到低）：</p>
+
+  <ol>
+    <li><code>--theme &lt;name&gt;</code> CLI 参数</li>
+    <li><code>RELAY_CORE_TUI_THEME</code> 环境变量（clap 已将其绑定到 <code>--theme</code>）</li>
+    <li><code>~/.relay-core/config.toml</code> 中的 <code>[tui].theme</code></li>
+    <li>默认值 <code>relay</code></li>
+  </ol>
+
+  <pre><code># 临时覆盖
+relay-core-cli run --ui --theme slate
+
+# 持久化到本机
+cat &gt;&gt; ~/.relay-core/config.toml &lt;&lt;'EOF'
+[tui]
+theme = "high-contrast"
+EOF
+
+# 环境变量覆盖（如 CI 场景）
+RELAY_CORE_TUI_THEME=slate relay-core-cli run --ui</code></pre>
+
+  <h3>颜色语义</h3>
+
+  <ul>
+    <li><strong>HTTP 方法</strong>：GET = 绿，POST = 橙，PUT = 青，DELETE = 红，PATCH = 蓝绿，HEAD = 紫，OPTIONS = 灰，WS = 青</li>
+    <li><strong>状态码</strong>：2xx = 绿，3xx = 橙，4xx/5xx = 红，在途 = 暗色斜体</li>
+    <li><strong>耗时</strong>：&lt; 100 ms = 绿，&lt; 500 ms = 暗，≥ 500 ms = 红</li>
+    <li><strong>主机</strong>：8 色调色板，基于主机名哈希确定</li>
+  </ul>
+
+  <p>主题名大小写不敏感。未知名称会报错并列出可选值。</p>
+
+  <h2>捕获暂停与待处理计数</h2>
+
+  <p>按 <code>p</code> 切换"暂停"模式。代理继续运行，TUI 仍持续跟踪新的流量更新，但列表被冻结，每次新事件都计入待处理计数。再按 <code>p</code> 恢复，清空待处理计数并重新跟随实时流量。</p>
+
+  <h2>使用提示</h2>
+
+  <ul>
+    <li>多按 <code>g</code> 重新启用自动滚动——使用 <code>j</code>/<code>k</code> 手动滚动时会暂时关闭自动滚动，便于在持续流量中查看某一行。</li>
+    <li>TUI 仅在内存中保留最近 1,000 条流量。可结合 <code>--save-stream &lt;PATH&gt;</code> 将所有流量以 JSONL 形式落盘，供 <a href="/docs/cli#analyze">离线分析</a>。</li>
+    <li>搭配 <code>--api-port</code> 可让 <code>relay-core-cli flows</code> 等下游工具共享同一代理实例。</li>
+  </ul>
+</DocsLayout>

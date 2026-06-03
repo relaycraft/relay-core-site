@@ -1,0 +1,208 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="TUI" description="Interactive Terminal UI for RelayCore">
+  <h1>Interactive Terminal UI (TUI)</h1>
+
+  <p>RelayCore ships a full-featured terminal UI for inspecting traffic in real time. It is built on <a href="https://github.com/ratatui/ratatui" target="_blank" rel="noopener">ratatui</a> and behaves like a lightweight Charles/Proxyman for your shell.</p>
+
+  <h2>Launching</h2>
+
+  <pre><code>relay-core-cli run --ui
+# optionally pair with the REST/SSE API for the four-panel layout
+relay-core-cli run --ui --api-port 8082</code></pre>
+
+  <p>When <code>--ui</code> is enabled the TUI takes over the terminal. The proxy itself continues to run in the same process — there is no extra service to start.</p>
+
+  <h2>Layouts</h2>
+
+  <p>The TUI adapts to your terminal width:</p>
+
+  <table>
+    <tr><th>Width</th><th>Layout</th><th>Panels</th></tr>
+    <tr>
+      <td>≥ 120 columns</td>
+      <td>Four-panel (when <code>--api-port</code> is enabled)</td>
+      <td>Flow list · Flow detail · Active rules · Pending intercepts</td>
+    </tr>
+    <tr>
+      <td>80–119 columns</td>
+      <td>Two-panel</td>
+      <td>Flow list · Flow detail (split horizontally, ratio adapts to width)</td>
+    </tr>
+    <tr>
+      <td>&lt; 80 columns</td>
+      <td>Single-pane (toggle with <code>Tab</code>)</td>
+      <td>Full-screen flow list <em>or</em> flow detail</td>
+    </tr>
+  </table>
+
+  <p>The four-panel layout is only available when the TUI is connected to the REST/SSE API (i.e. <code>--api-port</code> is set and reachable). Without the API, the rules and intercepts panels fall back to a local 2-panel view.</p>
+
+  <h2>Keybindings</h2>
+
+  <h3>Global</h3>
+
+  <table>
+    <tr><th>Key</th><th>Action</th></tr>
+    <tr><td><code>q</code></td><td>Quit the TUI (proxy continues in background until SIGINT)</td></tr>
+    <tr><td><code>?</code></td><td>Toggle the in-app help overlay</td></tr>
+    <tr><td><code>Esc</code></td><td>Return to the flow list / dismiss overlay</td></tr>
+    <tr><td><code>Tab</code></td><td>Cycle active area (list → detail → rules → list)</td></tr>
+    <tr><td><code>1</code> / <code>2</code> / <code>3</code> / <code>4</code></td><td>Jump to detail tab: Overview · Request · Response · Messages</td></tr>
+    <tr><td><code>y</code></td><td>Copy the selected HTTP flow as a cURL command</td></tr>
+    <tr><td><code>Ctrl+C</code></td><td>Hard-exit the process</td></tr>
+  </table>
+
+  <h3>Flow list (default focus)</h3>
+
+  <table>
+    <tr><th>Key</th><th>Action</th></tr>
+    <tr><td><code>j</code> / <code>↓</code></td><td>Next flow</td></tr>
+    <tr><td><code>k</code> / <code>↑</code></td><td>Previous flow</td></tr>
+    <tr><td><code>g</code></td><td>Jump to newest (top) and re-enable auto-scroll</td></tr>
+    <tr><td><code>G</code> / <code>End</code></td><td>Jump to oldest (bottom)</td></tr>
+    <tr><td><code>Enter</code> / <code>l</code> / <code>→</code></td><td>Focus the detail panel</td></tr>
+    <tr><td><code>d</code></td><td>Delete the selected flow from the local list</td></tr>
+    <tr><td><code>c</code></td><td>Clear the entire flow list (proxy is unaffected)</td></tr>
+    <tr><td><code>p</code></td><td>Pause/resume capture. While paused, new flows are counted as pending instead of being added to the list.</td></tr>
+    <tr><td><code>r</code></td><td>Focus the rules panel (API mode only)</td></tr>
+    <tr><td><code>/</code></td><td>Open the filter bar</td></tr>
+  </table>
+
+  <h3>Flow detail</h3>
+
+  <table>
+    <tr><th>Key</th><th>Action</th></tr>
+    <tr><td><code>j</code> / <code>k</code> or <code>↓</code> / <code>↑</code></td><td>Scroll by one line</td></tr>
+    <tr><td><code>Ctrl+d</code> / <code>PageDown</code></td><td>Scroll by 10 lines</td></tr>
+    <tr><td><code>Ctrl+u</code> / <code>PageUp</code></td><td>Scroll up 10 lines</td></tr>
+    <tr><td><code>g</code> / <code>Home</code></td><td>Scroll to top</td></tr>
+    <tr><td><code>G</code> / <code>End</code></td><td>Scroll to bottom</td></tr>
+    <tr><td><code>Tab</code></td><td>Cycle detail tabs (Overview → Request → Response → Messages → Overview)</td></tr>
+    <tr><td><code>h</code> / <code>←</code> / <code>Esc</code></td><td>Return to the flow list</td></tr>
+  </table>
+
+  <h3>Filter bar</h3>
+
+  <p>Press <code>/</code> in the flow list to start a filter, <code>Enter</code> or <code>Esc</code> to commit/close. See <a href="#filter-expression-syntax">Filter expression syntax</a> below.</p>
+
+  <h2>Status bar</h2>
+
+  <p>The bottom row always shows the live operating picture:</p>
+
+  <ul>
+    <li>Live request rate (5-second sliding window, in req/s)</li>
+    <li>Total flows captured since startup</li>
+    <li>Active area indicator (LIST / DETAIL / RULES)</li>
+    <li>Uptime in <code>hh:mm:ss</code></li>
+    <li>Pending counter when capture is paused or auto-scroll is off</li>
+  </ul>
+
+  <h2>Mouse support</h2>
+
+  <p>Mouse capture is enabled. You can scroll the list with the wheel and click to focus rows or panels.</p>
+
+  <h2 id="filter-expression-syntax">Filter expression syntax</h2>
+
+  <p>The TUI filter bar and the <code>relay-core-cli flows --filter</code> flag share the same parser. Tokens are space-separated and combined with implicit AND; bare tokens substring-match the URL or method.</p>
+
+  <pre><code># Substring match against host
+host:api
+host:api.example.com
+
+# Substring match against path
+path:/v1/users
+path:/graphql
+
+# Exact method match (case-insensitive)
+method:GET
+method:POST
+
+# Status code (exact, range, or comparison)
+status:404
+status:400-499
+status:>=500
+status:&lt;300
+
+# Flow-level flags
+err         # any flow with has_error == true (alias: error)
+ws          # WebSocket flows (alias: websocket)
+
+# Plain text substring is matched against the combined URL + method
+health
+users</code></pre>
+
+  <p>Multiple tokens are AND-combined, e.g. <code>host:api method:POST status:&gt;=400</code> shows only failing POSTs to <code>api</code>.</p>
+
+  <h2>Detail tabs</h2>
+
+  <ul>
+    <li><strong>Overview</strong> — method, URL, status, duration, size, host, remote address, list of matched rules, and any error message</li>
+    <li><strong>Request</strong> — start line, headers, and body (subject to <code>max_body_size</code> in the policy)</li>
+    <li><strong>Response</strong> — status line, headers, and body</li>
+    <li><strong>Messages</strong> — WebSocket message log (opcode, direction, size, base64 content). Empty for plain HTTP.</li>
+  </ul>
+
+  <h2>Copy as cURL</h2>
+
+  <p>Press <code>y</code> on any HTTP/WebSocket flow to copy a portable POSIX-shell cURL command to the clipboard. Header values are escaped with single quotes; bodies are written with <code>--data-binary</code>. Requires <code>pbcopy</code> on macOS or <code>wl-copy</code> / <code>xclip</code> on Linux; if none is found the TUI still builds the command and shows a toast indicating the clipboard is unavailable.</p>
+
+  <h2 id="themes">Themes</h2>
+
+  <p>Three color presets ship with the TUI. The current default <code>relay</code> matches the <code>relaycore.dev</code> brand palette (cyan accent on near-black).</p>
+
+  <table>
+    <tr><th>Theme ID</th><th>Aliases</th><th>Description</th></tr>
+    <tr><td><code>relay</code></td><td><code>brand</code>, <code>default</code></td><td>relaycore.dev brand — cyan accent on near-black (default)</td></tr>
+    <tr><td><code>slate</code></td><td><code>legacy</code></td><td>Tokyo Night-style slate background with amber focus</td></tr>
+    <tr><td><code>high-contrast</code></td><td><code>hc</code>, <code>high_contrast</code>, <code>highcontrast</code></td><td>Brighter accents and borders for low-contrast terminals</td></tr>
+  </table>
+
+  <h3>Resolution order</h3>
+
+  <p>Theme is selected using the following precedence (highest first):</p>
+
+  <ol>
+    <li><code>--theme &lt;name&gt;</code> CLI flag</li>
+    <li><code>RELAY_CORE_TUI_THEME</code> environment variable (also wired to the <code>--theme</code> flag via clap)</li>
+    <li><code>[tui].theme</code> in <code>~/.relay-core/config.toml</code></li>
+    <li>Default (<code>relay</code>)</li>
+  </ol>
+
+  <pre><code># One-off override
+relay-core-cli run --ui --theme slate
+
+# Persistent per-host preference
+cat &gt;&gt; ~/.relay-core/config.toml &lt;&lt;'EOF'
+[tui]
+theme = "high-contrast"
+EOF
+
+# Environment override (e.g. in CI)
+RELAY_CORE_TUI_THEME=slate relay-core-cli run --ui</code></pre>
+
+  <h3>Color semantics</h3>
+
+  <ul>
+    <li><strong>HTTP method</strong>: GET = green, POST = orange, PUT = cyan, DELETE = red, PATCH = teal, HEAD = purple, OPTIONS = grey, WS = cyan</li>
+    <li><strong>Status code</strong>: 2xx = green, 3xx = orange, 4xx/5xx = red, in-flight = dim italic</li>
+    <li><strong>Duration</strong>: &lt; 100 ms = green, &lt; 500 ms = dim, ≥ 500 ms = red</li>
+    <li><strong>Hosts</strong>: deterministic 8-color palette hashed from the hostname</li>
+  </ul>
+
+  <p>Names are parsed case-insensitively. An unknown name produces a clear error listing the available choices.</p>
+
+  <h2>Capture pause &amp; pending counter</h2>
+
+  <p>Pressing <code>p</code> toggles "paused" mode. The proxy keeps running and the TUI still tracks incoming flow updates, but the list is frozen and the pending counter increments with each new event. Resume with <code>p</code> to drop the pending counter and refollow live traffic.</p>
+
+  <h2>Tips</h2>
+
+  <ul>
+    <li>Use <code>g</code> frequently to re-engage auto-scroll — manually scrolling with <code>j</code>/<code>k</code> disables it so you can read a specific row while traffic continues.</li>
+    <li>The TUI only holds the last 1,000 flows in memory. Use <code>--save-stream &lt;PATH&gt;</code> to capture every flow as JSONL to disk for offline <a href="/en/docs/cli#analyze">analysis</a>.</li>
+    <li>Combine with <code>--api-port</code> to feed downstream tools (e.g. <code>relay-core-cli flows</code>) over the same proxy instance.</li>
+  </ul>
+</DocsLayout>
