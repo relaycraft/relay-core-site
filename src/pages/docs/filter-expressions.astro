@@ -1,0 +1,110 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="过滤表达式" description="跨 TUI、CLI 与 HTTP API 的统一查询语法">
+  <h1>过滤表达式</h1>
+
+  <p>RelayCore 在多个面共享同一套过滤表达式：</p>
+
+  <ul>
+    <li><a href="/docs/tui">TUI</a> 中的 <code>/</code> 过滤栏</li>
+    <li><a href="/docs/cli#flows">CLI</a> 的 <code>relay-core-cli flows --filter</code></li>
+    <li>HTTP API 的 <code>GET /api/v1/flows</code> 显式结构化参数</li>
+    <li>MCP 工具 <code>search_flows</code> 的 <code>filter</code> 字段</li>
+  </ul>
+
+  <p>所有这些面最终都被同一份解析器解释。掌握了这套语法就能在任意地方使用。</p>
+
+  <h2>基础语法</h2>
+
+  <p>表达式由空格分隔的 token 组成，多个 token 隐式 AND。裸 token 在 URL 与 method 上做大小写不敏感的子串匹配。</p>
+
+  <pre><code># 主机名子串匹配
+host:api
+host:api.example.com
+
+# 路径子串匹配
+path:/v1/users
+path:/graphql
+
+# HTTP 方法（大小写不敏感）
+method:GET
+method:POST
+
+# 状态码（精确、区间、比较）
+status:404
+status:400-499
+status:>=500
+status:&lt;300
+
+# 流级标志
+err         # 任意 has_error==true 的流（别名 error）
+ws          # WebSocket 流（别名 websocket）
+
+# 裸文本子串（针对 URL + method 拼接）
+health
+users</code></pre>
+
+  <h2>组合使用</h2>
+
+  <p>多个 token 隐式 AND：</p>
+
+  <pre><code># 失败的 POST 请求到 api 主机
+host:api method:POST status:&gt;=400
+
+# 5xx 错误的 WebSocket
+ws status:500-599
+
+# 任何包含 health 的 2xx
+health status:&lt;300</code></pre>
+
+  <h2>状态码语法</h2>
+
+  <p>状态码支持四种语法：</p>
+
+  <table>
+    <tr><th>写法</th><th>含义</th><th>示例</th></tr>
+    <tr><td>精确</td><td>完全相等</td><td><code>status:404</code></td></tr>
+    <tr><td>区间</td><td>闭区间</td><td><code>status:400-499</code></td></tr>
+    <tr><td>下界</td><td><code>&gt;=</code> 或 <code>&gt;</code></td><td><code>status:&gt;=500</code></td></tr>
+    <tr><td>上界</td><td><code>&lt;=</code> 或 <code>&lt;</code></td><td><code>status:&lt;300</code></td></tr>
+  </table>
+
+  <p>比较符与数字之间不能有空格。</p>
+
+  <h2>HTTP API 结构化参数</h2>
+
+  <p>当使用 HTTP API 的 <code>GET /api/v1/flows</code> 时，等价于 token 的方式是显式结构化参数：</p>
+
+  <table>
+    <tr><th>Token</th><th>查询参数</th></tr>
+    <tr><td><code>host:api</code></td><td><code>?host=api</code></td></tr>
+    <tr><td><code>path:/v1/users</code></td><td><code>?path=/v1/users</code></td></tr>
+    <tr><td><code>method:POST</code></td><td><code>?method=POST</code></td></tr>
+    <tr><td><code>status:&gt;=500</code></td><td><code>?status_min=500</code></td></tr>
+    <tr><td><code>status:&lt;300</code></td><td><code>?status_max=299</code></td></tr>
+    <tr><td><code>status:400-499</code></td><td><code>?status_min=400&amp;status_max=499</code></td></tr>
+    <tr><td><code>err</code></td><td><code>?has_error=true</code></td></tr>
+    <tr><td><code>ws</code></td><td><code>?is_websocket=true</code></td></tr>
+  </table>
+
+  <p>对于简单筛选，结构化参数更直观；对于 ad-hoc 调试，token 形式更短。</p>
+
+  <h2>大小写与子串语义</h2>
+
+  <ul>
+    <li>所有字符串字段的匹配都是 <strong>大小写不敏感</strong> 的。</li>
+    <li>host 与 path 都是 <strong>子串</strong> 匹配，不是 glob——要 <code>api.example.com</code> 完整子串，不是 <code>api.*.com</code>。</li>
+    <li>方法比较特殊：精确匹配（不区分大小写），但只有标准 HTTP 方法（GET / POST / PUT / DELETE / PATCH / HEAD / OPTIONS）和 <code>WS</code>。</li>
+    <li>裸 token 在拼接的 "URL + method" 字符串上匹配，例如 <code>health</code> 会同时命中 URL 含 "health" 与 method = "HEALTH"（后者不存在，实践中只命中前者）。</li>
+  </ul>
+
+  <h2>常见陷阱</h2>
+
+  <ul>
+    <li><strong>裸 token 命中过多</strong>：<code>api</code> 会同时匹配 host 含 "api"、path 含 "api"、URL 含 "api" 的所有流。如果想精确到主机，加 <code>host:api</code> 前缀。</li>
+    <li><strong>状态码比较符漏空格</strong>：<code>status:&gt; 500</code> 是非法，必须 <code>status:&gt;=500</code>。</li>
+    <li><strong>跨面表现差异</strong>：TUI 实时显示过滤结果；CLI 一次性查询；HTTP API 返回分页。语法相同但交互不同。</li>
+  </ul>
+</DocsLayout>

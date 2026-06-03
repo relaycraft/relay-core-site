@@ -18,17 +18,23 @@ const sidebar = locale === 'zh' ? [
     items: [
       { label: '快速开始', href: '/docs/getting-started' },
       { label: '安装', href: '/docs/installation' },
+      { label: '功能特性', href: '/docs/features' },
     ]
   },
   {
-    heading: '核心概念',
+    heading: '概念',
     items: [
       { label: '架构', href: '/docs/architecture' },
+      { label: '代理模式', href: '/docs/proxy-modes' },
+      { label: '证书与 HTTPS 拦截', href: '/docs/certificates' },
+      { label: '过滤表达式', href: '/docs/filter-expressions' },
+      { label: '协议支持', href: '/docs/protocols' },
     ]
   },
   {
     heading: '流量处理',
     items: [
+      { label: '拦截与改写能力', href: '/docs/flow-capabilities' },
       { label: '规则 API', href: '/docs/rule-engine' },
       { label: '规则编写指南', href: '/docs/rule-guide' },
       { label: '脚本 API', href: '/docs/scripting' },
@@ -40,17 +46,21 @@ const sidebar = locale === 'zh' ? [
     heading: '接入',
     items: [
       { label: 'TUI 交互界面', href: '/docs/tui' },
-      { label: '上游代理', href: '/docs/upstream-proxy' },
       { label: 'MCP 服务器', href: '/docs/mcp' },
       { label: 'Tauri 插件', href: '/docs/tauri-plugin' },
     ]
   },
   {
-    heading: '参考与运维',
+    heading: '参考',
     items: [
       { label: 'HTTP API', href: '/docs/api' },
       { label: 'CLI 参考', href: '/docs/cli' },
       { label: '配置', href: '/docs/configuration' },
+    ]
+  },
+  {
+    heading: '运维',
+    items: [
       { label: '监控与可观测性', href: '/docs/observability' },
       { label: '故障排除', href: '/docs/troubleshooting' },
     ]
@@ -61,17 +71,23 @@ const sidebar = locale === 'zh' ? [
     items: [
       { label: 'Quick Start', href: '/en/docs/getting-started' },
       { label: 'Installation', href: '/en/docs/installation' },
+      { label: 'Features', href: '/en/docs/features' },
     ]
   },
   {
-    heading: 'Core Concepts',
+    heading: 'Concepts',
     items: [
       { label: 'Architecture', href: '/en/docs/architecture' },
+      { label: 'Proxy Modes', href: '/en/docs/proxy-modes' },
+      { label: 'Certificates', href: '/en/docs/certificates' },
+      { label: 'Filter Expressions', href: '/en/docs/filter-expressions' },
+      { label: 'Protocols', href: '/en/docs/protocols' },
     ]
   },
   {
     heading: 'Flow Processing',
     items: [
+      { label: 'Interception &amp; Rewriting', href: '/en/docs/flow-capabilities' },
       { label: 'Rule API', href: '/en/docs/rule-engine' },
       { label: 'Rule Guide', href: '/en/docs/rule-guide' },
       { label: 'Scripting API', href: '/en/docs/scripting' },
@@ -83,17 +99,21 @@ const sidebar = locale === 'zh' ? [
     heading: 'Access',
     items: [
       { label: 'TUI', href: '/en/docs/tui' },
-      { label: 'Upstream Proxy', href: '/en/docs/upstream-proxy' },
       { label: 'MCP Server', href: '/en/docs/mcp' },
       { label: 'Tauri Plugin', href: '/en/docs/tauri-plugin' },
     ]
   },
   {
-    heading: 'Reference & Ops',
+    heading: 'Reference',
     items: [
       { label: 'HTTP API', href: '/en/docs/api' },
       { label: 'CLI Reference', href: '/en/docs/cli' },
       { label: 'Configuration', href: '/en/docs/configuration' },
+    ]
+  },
+  {
+    heading: 'Operations',
+    items: [
       { label: 'Monitoring', href: '/en/docs/observability' },
       { label: 'Troubleshooting', href: '/en/docs/troubleshooting' },
     ]

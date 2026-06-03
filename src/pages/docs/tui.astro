@@ -106,35 +106,12 @@ relay-core-cli run --ui --api-port 8082</code></pre>
 
   <h2 id="filter-expression-syntax">过滤表达式语法</h2>
 
-  <p>TUI 过滤栏与 <code>relay-core-cli flows --filter</code> 共享同一解析器。Token 以空格分隔，隐式 AND 组合；裸 token 在 URL 与 method 上做大小写不敏感的子串匹配。</p>
+  <p>TUI 过滤栏与 <code>relay-core-cli flows --filter</code>、HTTP API 的 <code>search_flows</code> 共享同一解析器。按 <code>/</code> 打开过滤栏后输入表达式即可。完整语法见 <a href="/docs/filter-expressions">过滤表达式</a>。</p>
 
-  <pre><code># 主机名子串匹配
-host:api
-host:api.example.com
-
-# 路径子串匹配
-path:/v1/users
-path:/graphql
-
-# HTTP 方法（大小写不敏感）
-method:GET
-method:POST
-
-# 状态码（精确、区间、比较）
-status:404
-status:400-499
-status:>=500
-status:&lt;300
-
-# 流级别标志
-err         # 任意 has_error==true 的流（别名 error）
-ws          # WebSocket 流（别名 websocket）
-
-# 裸文本子串匹配（针对 URL + method 拼接）
-health
-users</code></pre>
-
-  <p>多个 token 隐式 AND，例如 <code>host:api method:POST status:&gt;=400</code> 只显示对 <code>api</code> 主机失败的 POST 请求。</p>
+  <p>速览：</p>
+  <pre><code>host:api method:POST status:&gt;=400   # 失败的对 api 的 POST
+ws status:500-599                    # 5xx 的 WebSocket
+health                               # URL 含 "health" 的任意流</code></pre>
 
   <h2>详情选项卡</h2>
 

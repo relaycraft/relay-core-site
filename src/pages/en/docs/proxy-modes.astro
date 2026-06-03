@@ -1,0 +1,120 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Proxy Modes" description="The three proxy operating modes of RelayCore">
+  <h1>Proxy Modes</h1>
+
+  <p>RelayCore supports three proxy operating modes, covering deployments from a developer laptop to a corporate gateway.</p>
+
+  <h2>Explicit proxy (default)</h2>
+
+  <p>The client is explicitly configured to use RelayCore as its HTTP/HTTPS proxy. This is the most common mode for local development and debugging — no OS or client changes beyond setting the proxy URL.</p>
+
+  <pre><code># Start
+relay-core-cli run
+
+# Point your browser or system proxy at
+# 127.0.0.1:8080 (the default listen address)</code></pre>
+
+  <p>Once configured, all traffic flows through RelayCore; HTTPS is decrypted using dynamically-issued certificates (see <a href="/en/docs/certificates">Certificates &amp; HTTPS interception</a>).</p>
+
+  <h2>Transparent proxy</h2>
+
+  <p>The client is unaware of the proxy; the OS or network device redirects traffic to RelayCore. Useful for device debugging, mobile devices, embedded devices, and scenarios where you cannot change client config.</p>
+
+  <pre><code>relay-core-cli run --transparent</code></pre>
+
+  <h3>macOS (PF)</h3>
+
+  <p>Use the <code>relay-core-cli proxy</code> subcommand to manage PF rules:</p>
+
+  <pre><code># Generate PF config (defaults to en0, override with --interface)
+relay-core-cli proxy generate --port 8080
+
+# Load and enable the rules (requires sudo)
+sudo relay-core-cli proxy load --port 8080 --interface en0
+
+# Show current state
+relay-core-cli proxy status
+
+# Disable
+sudo relay-core-cli proxy unload</code></pre>
+
+  <p>The generated rules redirect TCP traffic on ports 80/443 to the local proxy port. Supported on macOS only.</p>
+
+  <h3>Linux (TPROXY)</h3>
+
+  <p>Enabled via <code>--transparent</code>. Linux transparent proxy requires iptables/nftables and routing-table setup that RelayCore does not manage directly; see the Linux section in <a href="/en/docs/troubleshooting">Troubleshooting</a>.</p>
+
+  <h3>UDP TPROXY</h3>
+
+  <pre><code>relay-core-cli run --transparent --udp-tproxy-port 8080</code></pre>
+
+  <p>Enables UDP transparent proxy. Linux only; requires <code>IP_TRANSPARENT</code> kernel support.</p>
+
+  <h2 id="upstream-proxy">Upstream proxy (chained proxying)</h2>
+
+  <p>Place RelayCore behind another proxy. All outbound traffic goes to RelayCore first, which then forwards through a parent proxy. Typical for corporate proxies, VPN concentrators, and TLS-inspecting middleboxes.</p>
+
+  <pre><code># Plain HTTP upstream
+relay-core-cli run --upstream http://corp-proxy.internal:8080
+
+# HTTPS upstream (TLS to the proxy itself)
+relay-core-cli run --upstream https://secure-proxy.internal:8443
+
+# With Basic auth
+export RELAYCORE_UPSTREAM_PASSWORD='s3cret'
+relay-core-cli run --upstream http://corp-proxy.internal:8080 --upstream-auth-user alice
+
+# Fall back to direct if upstream is unreachable (default fail-closed)
+relay-core-cli run --upstream http://corp-proxy.internal:8080 --upstream-fail-open</code></pre>
+
+  <h3>Bypass list</h3>
+
+  <p>Specify targets that should not go through the upstream with <code>--upstream-bypass</code>. Three pattern kinds, freely mixed:</p>
+
+  <pre><code>--upstream-bypass "127.0.0.1,::1,localhost,*.internal,cidr:10.0.0.0/8,cidr:192.168.0.0/16"</code></pre>
+
+  <table>
+    <tr><th>Pattern</th><th>Matches</th></tr>
+    <tr><td><code>127.0.0.1</code></td><td>Literal IPv4 / IPv6 address</td></tr>
+    <tr><td><code>localhost</code></td><td>Literal hostname (case-insensitive)</td></tr>
+    <tr><td><code>*.internal</code></td><td>Glob — matches subdomains</td></tr>
+    <tr><td><code>cidr:10.0.0.0/8</code></td><td>CIDR block (IPv4 / IPv6)</td></tr>
+  </table>
+
+  <p>In transparent mode the original destination IP is also checked against the bypass list, so loopback and RFC1918 traffic to local services stays local even when the upstream is up.</p>
+
+  <h3>HTTP vs HTTPS upstream</h3>
+
+  <p>When the URL starts with <code>https://</code>, RelayCore performs a full TLS handshake to the proxy before sending <code>CONNECT</code>. The upstream certificate is validated against the system trust store. In private-CA environments, import the CA into the OS trust store.</p>
+
+  <h3>Mutating at runtime</h3>
+
+  <p>Upstream is part of the <code>ProxyPolicy</code> and can be patched through the REST API:</p>
+
+  <pre><code># Read the current policy
+curl -s http://127.0.0.1:8082/api/v1/policy
+
+# Update only the upstream section
+curl -s -X PATCH http://127.0.0.1:8082/api/v1/policy \
+  -H 'Content-Type: application/json' \
+  -d '&#123;
+    "upstream": &#123;
+      "proxy_url": "http://corp-proxy.internal:8080",
+      "bypass_hosts": ["*.internal", "127.0.0.1"],
+      "fail_open": false
+    &#125;
+  &#125;'</code></pre>
+
+  <p>Changing <code>proxy_url</code> at runtime returns <code>409 Conflict</code> because existing connections are already pinned to the old path. Restart the proxy to apply.</p>
+
+  <h3>Security notes</h3>
+
+  <ul>
+    <li>The <code>password</code> field uses <code>secrecy::SecretString</code>. The <code>Debug</code> impl, the <code>GET /api/v1/policy</code> response, and the JSON serializer all mask it as <code>***</code>.</li>
+    <li>When the upstream is enforcing policy, keep <code>--upstream-fail-open=false</code> (the default) — silently going direct would defeat the point.</li>
+    <li>Policy changes are written to <code>/api/v1/audit</code> with <code>kind=policy_updated</code> and the actor that triggered the change.</li>
+  </ul>
+</DocsLayout>

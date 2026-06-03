@@ -1,0 +1,111 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="功能特性" description="RelayCore 全功能速览">
+  <h1>功能特性</h1>
+
+  <p>本页是 RelayCore 所有内置能力的速览索引，每项给出一句话定位和深入文档链接。遇到具体需求时按 Ctrl+F 搜关键字最快。</p>
+
+  <h2>流量拦截与改写</h2>
+
+  <table>
+    <tr><th>能力</th><th>说明</th></tr>
+    <tr>
+      <td><a href="/docs/flow-capabilities#mock-response">Mock Response</a></td>
+      <td>用本地假响应替换上游响应（无需启动服务器）</td>
+    </tr>
+    <tr>
+      <td><a href="/docs/flow-capabilities#map-local">Map Local</a></td>
+      <td>把 HTTP 请求映射到本地文件</td>
+    </tr>
+    <tr>
+      <td><a href="/docs/flow-capabilities#map-remote">Map Remote</a></td>
+      <td>URL 重写（指向另一个环境/服务器）</td>
+    </tr>
+    <tr>
+      <td><a href="/docs/flow-capabilities#redirect">Redirect</a></td>
+      <td>3xx 重定向</td>
+    </tr>
+    <tr>
+      <td><a href="/docs/flow-capabilities#header-modification">Header 改写</a></td>
+      <td>增删改请求/响应头</td>
+    </tr>
+    <tr>
+      <td><a href="/docs/flow-capabilities#body-modification">Body 改写</a></td>
+      <td>整体替换、正则替换、JSONPath 修改</td>
+    </tr>
+    <tr>
+      <td><a href="/docs/flow-capabilities#intercept-breakpoints">拦截断点</a></td>
+      <td>暂停实时流量、检查、改写、放行/丢弃</td>
+    </tr>
+    <tr>
+      <td><a href="/docs/flow-capabilities#flow-replay">流量重放</a></td>
+      <td>用之前的请求/响应再发一次，可改写</td>
+    </tr>
+  </table>
+
+  <h2>协议</h2>
+
+  <table>
+    <tr><th>能力</th><th>说明</th><th>链接</th></tr>
+    <tr><td>HTTP/1.1</td><td>完整支持</td><td rowspan="2"><a href="/docs/protocols">协议支持</a></td></tr>
+    <tr><td>HTTP/2</td><td>完整支持，含 HPACK 解压</td></tr>
+    <tr><td>HTTPS / TLS</td><td>动态 CA + MITM 拦截</td><td><a href="/docs/certificates">证书</a></td></tr>
+    <tr><td>WebSocket</td><td>消息级检查与改写</td><td><a href="/docs/protocols#websocket">协议 § WebSocket</a></td></tr>
+    <tr><td>QUIC / HTTP/3</td><td>默认 Downgrade，可选 Passthrough / ExperimentalMitm</td><td><a href="/docs/protocols#quic--http3">协议 § QUIC</a></td></tr>
+  </table>
+
+  <h2>运行模式</h2>
+
+  <table>
+    <tr><th>能力</th><th>说明</th><th>链接</th></tr>
+    <tr><td>普通代理</td><td>客户端显式设置代理地址</td><td rowspan="3"><a href="/docs/proxy-modes">代理模式</a></td></tr>
+    <tr><td>透明代理</td><td>macOS PF / Linux TPROXY</td></tr>
+    <tr><td>上游代理</td><td>串接在父级代理后</td></tr>
+    <tr><td><a href="/docs/tui">TUI 交互界面</a></td><td>终端实时检查与改写</td><td><a href="/docs/tui">TUI</a></td></tr>
+    <tr><td>UDP TPROXY</td><td>UDP 透明代理（仅 Linux）</td><td><a href="/docs/proxy-modes#udp-tproxy">代理模式 § UDP TPROXY</a></td></tr>
+  </table>
+
+  <h2>用户面</h2>
+
+  <table>
+    <tr><th>面</th><th>说明</th><th>链接</th></tr>
+    <tr><td><a href="/docs/tui">TUI</a></td><td>终端交互 UI</td><td><a href="/docs/tui">TUI</a></td></tr>
+    <tr><td><a href="/docs/cli">CLI</a></td><td>所有命令与 flag</td><td><a href="/docs/cli">CLI 参考</a></td></tr>
+    <tr><td><a href="/docs/api">HTTP API</a></td><td>REST + SSE</td><td><a href="/docs/api">HTTP API</a></td></tr>
+    <tr><td><a href="/docs/mcp">MCP</a></td><td>给 AI Agent 用</td><td><a href="/docs/mcp">MCP 服务器</a></td></tr>
+    <tr><td><a href="/docs/tauri-plugin">Tauri 插件</a></td><td>嵌入 Tauri 应用</td><td><a href="/docs/tauri-plugin">Tauri 插件</a></td></tr>
+  </table>
+
+  <h2>扩展与脚本</h2>
+
+  <table>
+    <tr><th>能力</th><th>说明</th><th>链接</th></tr>
+    <tr><td><a href="/docs/rule-engine">规则引擎</a></td><td>声明式 match + action 管道</td><td><a href="/docs/rule-engine">规则 API</a></td></tr>
+    <tr><td><a href="/docs/scripting">Deno 脚本</a></td><td>用 JS/TS 写复杂逻辑</td><td><a href="/docs/scripting">脚本 API</a></td></tr>
+    <tr><td>脚本 fetch</td><td>脚本内发起 HTTP 请求（白名单）</td><td><a href="/docs/scripting#relayfetch">脚本 API § fetch</a></td></tr>
+  </table>
+
+  <h2>可观测性与运维</h2>
+
+  <table>
+    <tr><th>能力</th><th>说明</th><th>链接</th></tr>
+    <tr><td>Prometheus 指标</td><td>标准文本格式，<code>/api/v1/metrics/prometheus</code></td><td rowspan="2"><a href="/docs/observability">监控</a></td></tr>
+    <tr><td>SSE 实时事件流</td><td>流量、WebSocket 消息、审计、生命周期</td></tr>
+    <tr><td>审计日志</td><td>所有控制平面变更（actor / kind / outcome）</td><td><a href="/docs/api#audit">HTTP API § audit</a></td></tr>
+    <tr><td>JSONL 流落盘</td><td>每条流量写到文件，供离线 <a href="/docs/cli#analyze">analyze</a></td><td><a href="/docs/cli#run">CLI § run</a></td></tr>
+    <tr><td>HAR 导出</td><td>单条/批量</td><td><a href="/docs/api#flows">HTTP API § flows</a></td></tr>
+  </table>
+
+  <h2>安全与隐私</h2>
+
+  <table>
+    <tr><th>能力</th><th>说明</th><th>链接</th></tr>
+    <tr><td>Header / query 脱敏</td><td>白名单字段全部掩码</td><td rowspan="2"><a href="/docs/api#policy--redaction">HTTP API § policy</a></td></tr>
+    <tr><td>Body 脱敏</td><td>可按 content-type 范围触发</td></tr>
+    <tr><td>Bearer 认证</td><td>HTTP API 的 <code>--api-token</code></td><td><a href="/docs/cli#run">CLI § run</a></td></tr>
+    <tr><td>CORS 白名单</td><td><code>--api-cors</code></td><td><a href="/docs/cli#run">CLI § run</a></td></tr>
+    <tr><td>Secret 字段掩码</td><td>上游代理密码等</td><td><a href="/docs/proxy-modes#upstream-proxy">代理模式 § 上游</a></td></tr>
+  </table>
+</DocsLayout>

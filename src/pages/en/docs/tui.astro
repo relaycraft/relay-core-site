@@ -106,35 +106,12 @@ relay-core-cli run --ui --api-port 8082</code></pre>
 
   <h2 id="filter-expression-syntax">Filter expression syntax</h2>
 
-  <p>The TUI filter bar and the <code>relay-core-cli flows --filter</code> flag share the same parser. Tokens are space-separated and combined with implicit AND; bare tokens substring-match the URL or method.</p>
+  <p>The TUI filter bar shares its parser with <code>relay-core-cli flows --filter</code> and the HTTP API's <code>search_flows</code> tool. Press <code>/</code> to open the bar, then enter a filter expression. See <a href="/en/docs/filter-expressions">Filter Expressions</a> for the full syntax.</p>
 
-  <pre><code># Substring match against host
-host:api
-host:api.example.com
-
-# Substring match against path
-path:/v1/users
-path:/graphql
-
-# Exact method match (case-insensitive)
-method:GET
-method:POST
-
-# Status code (exact, range, or comparison)
-status:404
-status:400-499
-status:>=500
-status:&lt;300
-
-# Flow-level flags
-err         # any flow with has_error == true (alias: error)
-ws          # WebSocket flows (alias: websocket)
-
-# Plain text substring is matched against the combined URL + method
-health
-users</code></pre>
-
-  <p>Multiple tokens are AND-combined, e.g. <code>host:api method:POST status:&gt;=400</code> shows only failing POSTs to <code>api</code>.</p>
+  <p>Quick examples:</p>
+  <pre><code>host:api method:POST status:&gt;=400   # failing POSTs to api
+ws status:500-599                    # 5xx WebSocket
+health                               # any flow whose URL contains "health"</code></pre>
 
   <h2>Detail tabs</h2>
 

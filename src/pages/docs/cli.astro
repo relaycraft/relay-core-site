@@ -49,10 +49,10 @@ REST / SSE HTTP API：
       --upstream-bypass &lt;LIST&gt;   绕过上级的主机列表
       --upstream-fail-open        上级不可达时回落到直连</code></pre>
 
-  <p>交互界面详见 <a href="/docs/tui">TUI</a>，串接代理详见 <a href="/docs/upstream-proxy">上游代理</a>，环境变量与数据目录布局见 <a href="/docs/configuration">配置</a>。</p>
+  <p>交互界面详见 <a href="/docs/tui">TUI</a>，部署模式详见 <a href="/docs/proxy-modes">代理模式</a>，环境变量与数据目录布局见 <a href="/docs/configuration">配置</a>。</p>
 
   <h2 id="ca">ca</h2>
-  <p>管理 HTTPS 拦截所用 CA 证书。可选路径 <code>--ca-cert</code> / <code>--ca-key</code> 可由 <code>RELAY_CA_CERT</code> / <code>RELAY_CA_KEY</code> 替代；二者须成对提供。</p>
+  <p>管理 HTTPS 拦截所用 CA 证书。各平台安装步骤、Windows .cer 导出、CI/容器环境使用见 <a href="/docs/certificates">证书与 HTTPS 拦截</a>。</p>
   <pre><code>relay-core-cli ca &lt;subcommand&gt;
 
 子命令：
@@ -62,8 +62,6 @@ REST / SSE HTTP API：
   status                        显示 CA 路径、存在性与信任状态
   export [-o PATH] [--der]      导出 CA 证书
                                 --der 输出 Windows .cer 适用的二进制格式</code></pre>
-
-  <p>macOS 下 <code>ca install</code> 会先清理旧的 <code>RelayCraft CA</code> 条目再写入新指纹。<code>ca status</code> 通过 SHA-1 比对本地证书与钥匙串，不一致时会报告。</p>
 
   <h2 id="rules">rules</h2>
   <p>管理拦截规则。</p>

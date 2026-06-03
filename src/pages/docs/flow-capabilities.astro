@@ -1,0 +1,189 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="拦截与改写能力" description="每种改写能力的最小可用示例">
+  <h1>拦截与改写能力</h1>
+
+  <p>本页列出 RelayCore 内置的所有流量改写能力，每项配一个最小可用的 JSON 示例（直接喂给 <code>PUT /api/v1/rules</code> 或 <code>relay-core-cli rules validate</code> 即可）。完整的 filter 字段说明见 <a href="/docs/rule-engine">规则 API</a>。</p>
+
+  <h2 id="mock-response">Mock Response</h2>
+  <p>用本地假响应替换上游响应。常用于前端开发、契约测试、错误模拟。</p>
+  <pre><code>&#123;
+  "id": "mock-health",
+  "name": "Mock /v1/health",
+  "filter": &#123; "path": "/v1/health" &#125;,
+  "action": &#123;
+    "type": "MockResponse",
+    "status": 200,
+    "headers": &#123; "content-type": "application/json" &#125;,
+    "body": &#123; "type": "Text", "value": "&#123;\"ok\":true&#125;" &#125;
+  &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <h2 id="map-local">Map Local</h2>
+  <p>把 HTTP 请求替换成本地文件。常用于前端联调、离线调试。</p>
+  <pre><code>&#123;
+  "id": "map-local-static",
+  "name": "Serve /static from disk",
+  "filter": &#123; "path_starts_with": "/static/" &#125;,
+  "action": &#123;
+    "type": "MapLocal",
+    "path": "/Users/me/projects/app/static",
+    "content_type": null
+  &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <h2 id="map-remote">Map Remote</h2>
+  <p>URL 重写为另一个地址。常用于将生产流量切到预发环境。</p>
+  <pre><code>&#123;
+  "id": "map-remote-prod-to-staging",
+  "name": "api.example.com -&gt; staging",
+  "filter": &#123; "host": "api.example.com" &#125;,
+  "action": &#123;
+    "type": "MapRemote",
+    "url": "https://api-staging.example.com",
+    "preserve_host": false
+  &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <h2 id="redirect">Redirect</h2>
+  <p>返回 3xx 重定向。</p>
+  <pre><code>&#123;
+  "id": "redirect-legacy",
+  "name": "/old -&gt; /new",
+  "filter": &#123; "path": "/old" &#125;,
+  "action": &#123;
+    "type": "Redirect",
+    "location": "https://example.com/new",
+    "status": 301
+  &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <h2 id="header-modification">Header 改写</h2>
+  <p>增删改请求/响应头。所有 header 改写都支持 <code>&#123;&#123;previous&#125;&#125;</code> 变量引用改写前的值。</p>
+  <pre><code>&#123;
+  "id": "strip-cookie",
+  "name": "Strip Set-Cookie on /api/*",
+  "filter": &#123; "path_starts_with": "/api/" &#125;,
+  "action": &#123; "type": "DeleteResponseHeader", "name": "set-cookie" &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <pre><code>&#123;
+  "id": "add-debug",
+  "name": "Add X-Debug header",
+  "filter": &#123; "method": "POST" &#125;,
+  "action": &#123;
+    "type": "AddRequestHeader",
+    "name": "x-debug",
+    "value": "relay-core"
+  &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <h2 id="body-modification">Body 改写</h2>
+  <p>支持整体替换、正则替换、JSONPath 修改。</p>
+  <pre><code>&#123;
+  "id": "jsonpath-set",
+  "name": "Force user.role = admin",
+  "filter": &#123; "host": "api.example.com" &#125;,
+  "action": &#123;
+    "type": "TransformRequestBody",
+    "transform": &#123;
+      "type": "JsonPathSet",
+      "path": "$.user.role",
+      "value": "\"admin\""
+    &#125;
+  &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <pre><code>&#123;
+  "id": "regex-replace",
+  "name": "Replace token in body",
+  "filter": &#123; "path": "/login" &#125;,
+  "action": &#123;
+    "type": "TransformResponseBody",
+    "transform": &#123;
+      "type": "RegexReplace",
+      "pattern": "secret=([^&amp;]+)",
+      "replacement": "secret=REDACTED"
+    &#125;
+  &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <h2 id="intercept-breakpoints">拦截断点</h2>
+  <p>暂停实时流量等待人工决定。规则 <code>set_intercept</code> 创建断点；<code>resume_flow</code> 放行或丢弃。</p>
+
+  <pre><code># 创建一个请求阶段断点
+relay-core-cli intercept create
+# 等价于
+curl -X POST http://127.0.0.1:8082/api/v1/intercepts \
+  -H 'Content-Type: application/json' \
+  -d '&#123;
+    "url_pattern": "api.example.com",
+    "phase": "request"
+  &#125;'</code></pre>
+
+  <p>断点命中时在 TUI <strong>Intercepts</strong> 面板可见，也可以通过 <code>GET /api/v1/intercepts</code> 查询。放行时可以携带修改：</p>
+
+  <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/intercepts/&lt;key&gt;/resume \
+  -H 'Content-Type: application/json' \
+  -d '&#123;
+    "action": "continue",
+    "request_headers": &#123; "x-test": "value" &#125;
+  &#125;'</code></pre>
+
+  <p>支持修改的字段：<code>method</code>、<code>url</code>、<code>request_headers</code>、<code>request_body</code>、<code>status_code</code>、<code>response_headers</code>、<code>response_body</code>、<code>message_content</code>（WebSocket）。</p>
+
+  <h2 id="flow-replay">流量重放</h2>
+  <p>用之前捕获的请求/响应再发一次，可改写。</p>
+  <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/flows/fld_01HX.../replay \
+  -H 'Content-Type: application/json' \
+  -d '&#123;
+    "modifications": &#123;
+      "headers": &#123; "x-test": "value" &#125;,
+      "body": "raw body content"
+    &#125;
+  &#125;'
+
+# TLS 校验失败时（仅调试！）
+curl -X POST 'http://127.0.0.1:8082/api/v1/flows/fld_01HX.../replay?accept_invalid_certs=true'</code></pre>
+
+  <h2>WebSocket 消息改写</h2>
+  <p>WebSocket 流量有专用的两个 action：</p>
+  <pre><code>&#123;
+  "id": "ws-mock",
+  "name": "Mock chat messages",
+  "filter": &#123; "host": "chat.example.com" &#125;,
+  "action": &#123;
+    "type": "MockWebSocketMessage",
+    "direction": "Incoming",
+    "message": "&#123;\"type\":\"welcome\",\"user\":\"bot\"&#125;"
+  &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <p>也可以无条件丢弃某些消息：</p>
+  <pre><code>&#123;
+  "id": "ws-drop-pings",
+  "name": "Drop ping frames",
+  "action": &#123; "type": "DropWebSocketMessage" &#125;,
+  "enabled": true
+&#125;</code></pre>
+
+  <h2>L3/L4 Action（未来）</h2>
+  <p>以下 action 类型已注册但未在所有版本中启用，参见 <a href="/docs/rule-engine">规则 API</a> 了解当前状态：</p>
+
+  <ul>
+    <li><code>RedirectIp</code> — 重定向到不同 IP</li>
+    <li><code>SetTtl</code> — 修改 IP TTL</li>
+    <li><code>ForwardPort</code> — 转发到不同端口</li>
+  </ul>
+</DocsLayout>

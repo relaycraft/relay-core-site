@@ -1,0 +1,63 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="协议支持" description="RelayCore 支持的应用层协议">
+  <h1>协议支持</h1>
+
+  <p>RelayCore 是 L7 代理，关注应用层协议的解析、检查与改写。底层传输一律走 TCP（HTTP/HTTPS/WebSocket），UDP 目前仅透明代理场景支持。</p>
+
+  <h2>HTTP/1.1</h2>
+
+  <p>完整支持。请求/响应头、chunked 编码、Transfer-Encoding、双向 keep-alive、流式 body 都可以被解析。规则与脚本可以无差别作用于头与体。</p>
+
+  <h2>HTTP/2</h2>
+
+  <p>完整支持。客户端 ↔ RelayCore 走 HTTP/1.1 或 HTTP/2 都行（取决于客户端能力与 ALPN 协商结果）；RelayCore ↔ 上游使用相同的协议版本。Header compression (HPACK) 在 RelayCore 内部完全展开，规则处理的是已解码的伪头（<code>:method</code>、<code>:path</code>、<code>:scheme</code>、<code>:authority</code>）。</p>
+
+  <h2>HTTPS / TLS</h2>
+
+  <p>对所有 HTTP-over-TLS 流量做 MITM 拦截，依赖动态签发的证书（见 <a href="/docs/certificates">证书与 HTTPS 拦截</a>）。上游默认校验证书；可在 replay 场景中临时关闭（仅 <code>POST /api/v1/flows/:id/replay?accept_invalid_certs=true</code>，调试用）。</p>
+
+  <h2>WebSocket</h2>
+
+  <p>完整支持。基于 RFC 6455。RelayCore 解析握手、注册 <code>Layer::WebSocket</code> 流量、对每条消息提供消息级检查与改写：</p>
+
+  <ul>
+    <li>每条消息记录 <code>direction</code>（incoming / outgoing）、<code>opcode</code>（text / binary / ping / pong / close / continuation）、<code>content</code>（含 encoding、size、base64 body）。</li>
+    <li>规则可以 <code>MockWebSocketMessage</code>、<code>DropWebSocketMessage</code>。</li>
+    <li>脚本 hook <code>onWebSocketMessage</code> 可读改每条消息。</li>
+    <li>TUI 的 <strong>Messages</strong> 详情页实时显示消息日志。</li>
+    <li>大消息可能触发 <code>ws-message-budget-exceeded</code>，避免无界内存占用。</li>
+  </ul>
+
+  <h2>QUIC / HTTP/3</h2>
+
+  <p>QUIC 是 UDP 之上的传输层协议，现代浏览器会优先尝试。RelayCore 通过 <code>ProxyPolicy.quic_mode</code> 控制其行为：</p>
+
+  <table>
+    <tr><th>模式</th><th>说明</th></tr>
+    <tr><td><code>Downgrade</code>（默认）</td><td>下发 <code>Alt-Svc</code> 清除响应 + <code>Clear-Site-Data</code>，强制客户端回退到 HTTP/2 或 HTTP/1.1。可设置 <code>quic_downgrade_clear_cache=true</code> 强制清缓存。</td></tr>
+    <tr><td><code>Passthrough</code></td><td>不做任何处理，QUIC 流量原样转发（不可见、不可改）。</td></tr>
+    <tr><td><code>ExperimentalMitm</code></td><td>实验性 HTTP/3 MITM。需要 <code>quic_mitm_experimental</code> feature flag，且尚未生产可用。</td></tr>
+  </table>
+
+  <p>QUIC 模式下没有可观察的 Flow 记录（<code>Downgrade</code> 除外，下发 <code>Alt-Svc</code> 的请求会被记为 <code>has_error=false</code> 的正常流）。</p>
+
+  <h2>TCP / UDP（透明代理场景）</h2>
+
+  <p>RelayCore 不解析 TCP 原始字节，只解析 HTTP/WebSocket 等应用层协议。透明代理模式下：</p>
+
+  <ul>
+    <li>TCP 流量：被重定向到代理端口后，RelayCore 尝试按 HTTP/1.1 解析；如果客户端发的不是 HTTP（例如裸 TCP），会被代理拒绝并记录 error。</li>
+    <li>UDP 流量：通过 <code>--udp-tproxy-port</code>（仅 Linux，需要 <code>IP_TRANSPARENT</code>）支持 UDP 透明代理，但仅做转发，不解析。</li>
+  </ul>
+
+  <h2>不支持的协议</h2>
+
+  <ul>
+    <li><strong>原始 TCP 上的自定义协议</strong>（非 HTTP）：RelayCore 不解析；透明代理场景下会让连接失败。</li>
+    <li><strong>gRPC over HTTP/2</strong>：HTTP/2 层透明，但 gRPC 的 protobuf payload RelayCore 不会解析——可以用脚本读 body 当作字节处理。</li>
+    <li><strong>SSE（Server-Sent Events）</strong>：HTTP/1.1 长连接，RelayCore 在 <code>GET /api/v1/events</code> 端点上自用，外部站点 SSE 流量以 HTTP 形式被记录但事件边界不会被单独标注。</li>
+  </ul>
+</DocsLayout>

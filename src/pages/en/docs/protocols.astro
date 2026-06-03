@@ -1,0 +1,61 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Protocols" description="Application-layer protocols supported by RelayCore">
+  <h1>Protocols</h1>
+
+  <p>RelayCore is an L7 proxy: it parses, inspects, and rewrites application-layer protocols. Lower-layer transport is TCP (for HTTP/HTTPS/WebSocket); UDP is supported only in the transparent proxy path.</p>
+
+  <h2>HTTP/1.1</h2>
+
+  <p>Fully supported. Request/response headers, chunked encoding, Transfer-Encoding, bidirectional keep-alive, and streaming bodies are all parsed. Rules and scripts apply uniformly to headers and bodies.</p>
+
+  <h2>HTTP/2</h2>
+
+  <p>Fully supported. The client ↔ RelayCore leg can be HTTP/1.1 or HTTP/2 depending on the client and ALPN negotiation. RelayCore ↔ upstream uses the same protocol version. Header compression (HPACK) is fully decompressed internally — rules operate on decoded pseudo-headers (<code>:method</code>, <code>:path</code>, <code>:scheme</code>, <code>:authority</code>).</p>
+
+  <h2>HTTPS / TLS</h2>
+
+  <p>MITM interception is performed for all HTTP-over-TLS traffic using dynamically-issued certificates (see <a href="/en/docs/certificates">Certificates</a>). Upstream certificates are validated by default; in the replay endpoint you can pass <code>?accept_invalid_certs=true</code> to skip verification (debug only).</p>
+
+  <h2>WebSocket</h2>
+
+  <p>Fully supported. RFC 6455. RelayCore parses the handshake, registers a <code>Layer::WebSocket</code> flow, and provides per-message inspection and modification:</p>
+
+  <ul>
+    <li>Each message records <code>direction</code> (incoming / outgoing), <code>opcode</code> (text / binary / ping / pong / close / continuation), and <code>content</code> (encoding, size, base64 body).</li>
+    <li>Rules can use <code>MockWebSocketMessage</code> and <code>DropWebSocketMessage</code>.</li>
+    <li>The script hook <code>onWebSocketMessage</code> can read and rewrite every message.</li>
+    <li>The TUI's <strong>Messages</strong> detail tab displays the message log in real time.</li>
+    <li>Large messages may trigger a <code>ws-message-budget-exceeded</code> event to bound memory usage.</li>
+  </ul>
+
+  <h2>QUIC / HTTP/3</h2>
+
+  <p>QUIC runs over UDP; modern browsers prefer it when available. RelayCore controls this via <code>ProxyPolicy.quic_mode</code>:</p>
+
+  <table>
+    <tr><th>Mode</th><th>Description</th></tr>
+    <tr><td><code>Downgrade</code> (default)</td><td>Sends <code>Alt-Svc</code> clearing responses with <code>Clear-Site-Data</code> to force the client to fall back to HTTP/2 or HTTP/1.1. Set <code>quic_downgrade_clear_cache=true</code> to also clear the cache.</td></tr>
+    <tr><td><code>Passthrough</code></td><td>No intervention; QUIC traffic is forwarded as-is (invisible and immutable).</td></tr>
+    <tr><td><code>ExperimentalMitm</code></td><td>Experimental HTTP/3 MITM. Requires the <code>quic_mitm_experimental</code> feature flag; not yet production-ready.</td></tr>
+  </table>
+
+  <p>QUIC modes do not produce visible flow records except <code>Downgrade</code>, where requests that triggered <code>Alt-Svc</code> clearing are recorded as normal flows with <code>has_error=false</code>.</p>
+
+  <h2>TCP / UDP (transparent proxy)</h2>
+
+  <ul>
+    <li><strong>TCP</strong>: redirected traffic is parsed as HTTP/1.1. Raw TCP (non-HTTP) connections are rejected and recorded as errors.</li>
+    <li><strong>UDP</strong>: forwarded via <code>--udp-tproxy-port</code> (Linux only, requires <code>IP_TRANSPARENT</code>). No parsing, just forwarding.</li>
+  </ul>
+
+  <h2>Unsupported protocols</h2>
+
+  <ul>
+    <li><strong>Custom protocols over raw TCP</strong> (non-HTTP): RelayCore does not parse them. In transparent mode such connections will fail.</li>
+    <li><strong>gRPC over HTTP/2</strong>: transparent at the HTTP/2 layer, but gRPC protobuf payloads are opaque — your scripts can read the bytes but won't decode them.</li>
+    <li><strong>SSE (Server-Sent Events)</strong>: long-lived HTTP/1.1. RelayCore uses SSE on its own <code>GET /api/v1/events</code> endpoint; external SSE traffic is recorded as plain HTTP without per-event boundaries.</li>
+  </ul>
+</DocsLayout>

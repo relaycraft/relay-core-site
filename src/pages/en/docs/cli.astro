@@ -49,10 +49,10 @@ Upstream proxy:
       --upstream-bypass &lt;LIST&gt;   Hosts to bypass upstream
       --upstream-fail-open        Fall back to direct if upstream unreachable</code></pre>
 
-  <p>See <a href="/en/docs/tui">TUI</a> for the interactive terminal UI, <a href="/en/docs/upstream-proxy">Upstream Proxy</a> for chained proxying, and <a href="/en/docs/configuration">Configuration</a> for environment variables and data directory layout.</p>
+  <p>See <a href="/en/docs/tui">TUI</a> for the interactive terminal UI, <a href="/en/docs/proxy-modes">Proxy Modes</a> for deployment options, and <a href="/en/docs/configuration">Configuration</a> for environment variables and data directory layout.</p>
 
   <h2 id="ca">ca</h2>
-  <p>Manage CA certificates for HTTPS interception. Optional paths <code>--ca-cert</code> / <code>--ca-key</code> can be replaced by <code>RELAY_CA_CERT</code> / <code>RELAY_CA_KEY</code>; the pair must be supplied together.</p>
+  <p>Manage the CA certificate for HTTPS interception. See <a href="/en/docs/certificates">Certificates</a> for platform-specific install instructions, Windows .cer export, and CI/container setup.</p>
   <pre><code>relay-core-cli ca &lt;subcommand&gt;
 
 Subcommands:
@@ -62,8 +62,6 @@ Subcommands:
   status                        Show CA paths, existence, and trust status
   export [-o PATH] [--der]      Export CA certificate
                                 --der produces a binary .cer for Windows import</code></pre>
-
-  <p>On macOS, <code>ca install</code> cleans up stale <code>RelayCraft CA</code> entries before adding the new fingerprint. <code>ca status</code> compares the local certificate against the keychain by SHA-1 and reports a mismatch if they diverge.</p>
 
   <h2 id="rules">rules</h2>
   <p>Manage interception rules.</p>

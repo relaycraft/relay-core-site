@@ -28,7 +28,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <tr><td><code>RELAY_CA_KEY</code></td><td>CA 私钥路径（须与 <code>RELAY_CA_CERT</code> 成对）</td></tr>
     <tr><td><code>RELAY_LOG</code></td><td>日志过滤级别（如 <code>info</code>、<code>debug</code>、<code>trace</code>）</td></tr>
     <tr><td><code>RELAY_CORE_TUI_THEME</code></td><td><code>--theme</code> 缺省时的 TUI 配色（<code>relay</code>、<code>slate</code>、<code>high-contrast</code>）。见 <a href="/docs/tui#themes">TUI 主题</a>。</td></tr>
-    <tr><td><code>RELAYCORE_UPSTREAM_PASSWORD</code></td><td>上游代理 HTTP Basic 认证密码，与 <code>--upstream-auth-user</code> 配合。绝不要通过命令行参数传入密码（会进入 shell 历史）。见 <a href="/docs/upstream-proxy">上游代理</a>。</td></tr>
+    <tr><td><code>RELAYCORE_UPSTREAM_PASSWORD</code></td><td>上游代理 HTTP Basic 认证密码，与 <code>--upstream-auth-user</code> 配合。绝不要通过命令行参数传入密码（会进入 shell 历史）。见 <a href="/docs/proxy-modes#upstream-proxy">代理模式 § 上游</a>。</td></tr>
     <tr><td><code>RELAY_PORT</code></td><td><code>relay-core-probe</code> 代理端口（默认 8080）</td></tr>
     <tr><td><code>RELAY_PROBE_TRANSPORT</code></td><td>MCP 传输方式：<code>stdio</code>（默认）或 <code>sse</code></td></tr>
     <tr><td><code>RELAY_PROBE_PORT</code></td><td>SSE 模式下 MCP 监听端口（默认 3000）</td></tr>

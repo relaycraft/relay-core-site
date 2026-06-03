@@ -28,7 +28,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     <tr><td><code>RELAY_CA_KEY</code></td><td>CA key path (must be paired with <code>RELAY_CA_CERT</code>)</td></tr>
     <tr><td><code>RELAY_LOG</code></td><td>Log filter level (e.g. <code>info</code>, <code>debug</code>, <code>trace</code>)</td></tr>
     <tr><td><code>RELAY_CORE_TUI_THEME</code></td><td>TUI color preset when <code>--theme</code> is omitted (<code>relay</code>, <code>slate</code>, <code>high-contrast</code>). See <a href="/en/docs/tui#themes">TUI themes</a>.</td></tr>
-    <tr><td><code>RELAYCORE_UPSTREAM_PASSWORD</code></td><td>Upstream proxy HTTP Basic auth password. Paired with <code>--upstream-auth-user</code>. Never pass the password via CLI — it would land in shell history. See <a href="/en/docs/upstream-proxy">Upstream Proxy</a>.</td></tr>
+    <tr><td><code>RELAYCORE_UPSTREAM_PASSWORD</code></td><td>Upstream proxy HTTP Basic auth password. Paired with <code>--upstream-auth-user</code>. Never pass the password via CLI — it would land in shell history. See <a href="/en/docs/proxy-modes#upstream-proxy">Proxy Modes § upstream</a>.</td></tr>
     <tr><td><code>RELAY_PORT</code></td><td><code>relay-core-probe</code> proxy port (default 8080)</td></tr>
     <tr><td><code>RELAY_PROBE_TRANSPORT</code></td><td>MCP transport: <code>stdio</code> (default) or <code>sse</code></td></tr>
     <tr><td><code>RELAY_PROBE_PORT</code></td><td>MCP listen port in SSE mode (default 3000)</td></tr>

@@ -1,0 +1,114 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Certificates" description="CA certificate generation, install, and management">
+  <h1>Certificates &amp; HTTPS interception</h1>
+
+  <p>A traditional HTTP proxy cannot transparently forward HTTPS without the client knowing — the browser will reject the man-in-the-middle. RelayCore performs transparent HTTPS interception by dynamically issuing certificates: the client connects to RelayCore using a RelayCore-signed certificate (which the client must trust), and RelayCore in turn speaks real HTTPS to the upstream server.</p>
+
+  <p>For this to work, you must first generate a CA certificate and install it into the client's trust store.</p>
+
+  <h2>Default storage</h2>
+
+  <p>All CA files live in the data directory (default <code>~/.relay-core</code>):</p>
+
+  <ul>
+    <li><code>ca_cert.pem</code> — CA certificate</li>
+    <li><code>ca_key.pem</code> — CA private key</li>
+    <li><code>ca_cert.json</code> — CA metadata (required for persistent load)</li>
+  </ul>
+
+  <p>Override the default paths with <code>RELAY_CA_CERT</code> / <code>RELAY_CA_KEY</code> (must be set as a pair). The <code>run</code> command will fail fast with an actionable error if the CA is missing.</p>
+
+  <h2>Quick flow</h2>
+
+  <pre><code># 1. Generate the CA (once)
+relay-core-cli ca generate
+
+# 2. Install into the system trust store
+relay-core-cli ca install   # macOS auto; other platforms see below
+
+# 3. Start the proxy
+relay-core-cli run</code></pre>
+
+  <h2><code>ca</code> subcommands</h2>
+
+  <pre><code>relay-core-cli ca &lt;subcommand&gt;
+
+  generate [--force]        Generate the CA (--force to overwrite)
+  install                   Install into the system trust store
+  uninstall                 Remove from the system trust store
+  status                    Show paths, presence, and trust status
+  export [-o PATH] [--der]  Export the certificate; --der produces a Windows .cer</code></pre>
+
+  <h2>Platform notes</h2>
+
+  <h3>macOS</h3>
+
+  <p><code>ca install</code> writes the CA to the system keychain, cleaning up any stale <code>RelayCraft CA</code> entries first to avoid leftover fingerprint conflicts.</p>
+
+  <p><code>ca status</code> compares the local certificate against the keychain entry by SHA-1:</p>
+
+  <pre><code>$ relay-core-cli ca status
+CA cert: /Users/me/.relay-core/ca_cert.pem
+CA key:  /Users/me/.relay-core/ca_key.pem
+Trusted in keychain: yes
+Keychain SHA-1:       12:34:56:78:9a:bc:de:f0:12:34:56:78:9a:bc:de:f0:12:34:56:78
+Local cert SHA-1:     12:34:56:78:9a:bc:de:f0:12:34:56:78:9a:bc:de:f0:12:34:56:78
+Match:                OK</code></pre>
+
+  <p>If the report says <code>Match: MISMATCH</code>, the CA was regenerated but not reinstalled — re-run <code>ca install</code>.</p>
+
+  <h3>Linux</h3>
+
+  <p>No automated install step. Manual:</p>
+
+  <pre><code># Debian / Ubuntu
+sudo cp ~/.relay-core/ca_cert.pem /usr/local/share/ca-certificates/relay-core.crt
+sudo update-ca-certificates
+
+# RHEL / Fedora
+sudo cp ~/.relay-core/ca_cert.pem /etc/pki/ca-trust/source/anchors/relay-core.crt
+sudo update-ca-trust
+
+# Arch
+sudo trust anchor ~/.relay-core/ca_cert.pem
+
+# Verify
+curl -vI https://example.com --proxy http://127.0.0.1:8080</code></pre>
+
+  <h3>Windows</h3>
+
+  <p>Export a binary .cer with <code>--der</code>:</p>
+
+  <pre><code>relay-core-cli ca export -o relay-core.cer --der</code></pre>
+
+  <p>Double-click the .cer → "Install Certificate" → "Local Machine" → "Place all certificates in the following store" → "Trusted Root Certification Authorities". PowerShell equivalent:</p>
+
+  <pre><code>Import-Certificate -FilePath .\relay-core.cer `
+  -CertStoreLocation Cert:\LocalMachine\Root</code></pre>
+
+  <h3>Firefox / per-browser trust stores</h3>
+
+  <p>Firefox maintains its own CA trust store and does not use the system one. In <em>Settings → Privacy &amp; Security → Certificates → View Certificates → Import</em>, import <code>ca_cert.pem</code> and check "Trust this CA to identify websites".</p>
+
+  <h2>CI &amp; container environments</h2>
+
+  <ul>
+    <li>Bake <code>ca_cert.pem</code> into your Docker image at <code>/usr/local/share/ca-certificates/</code> and run <code>update-ca-certificates</code> in the Dockerfile.</li>
+    <li>For CI runners that need HTTPS interception, use <code>ca export --der</code> to feed the certificate into the runner's trust store.</li>
+    <li>Run <code>ca install --help</code> for conflict-resolution details when multiple proxies coexist.</li>
+  </ul>
+
+  <h2>Uninstalling</h2>
+
+  <pre><code># macOS
+relay-core-cli ca uninstall
+
+# Linux
+sudo rm /usr/local/share/ca-certificates/relay-core.crt
+sudo update-ca-certificates --fresh</code></pre>
+
+  <p>After uninstall, HTTPS sites will show certificate errors — this is expected, and proves the CA was doing its job.</p>
+</DocsLayout>

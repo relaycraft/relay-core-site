@@ -1,0 +1,111 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Features" description="Quick reference of all RelayCore capabilities">
+  <h1>Features</h1>
+
+  <p>A quick-reference index of every built-in capability in RelayCore, with a one-line description and a link to the deep-dive doc. Use Ctrl+F to jump to what you need.</p>
+
+  <h2>Flow interception &amp; rewriting</h2>
+
+  <table>
+    <tr><th>Capability</th><th>Description</th></tr>
+    <tr>
+      <td><a href="/en/docs/flow-capabilities#mock-response">Mock Response</a></td>
+      <td>Replace the upstream response with a local fake — no server needed</td>
+    </tr>
+    <tr>
+      <td><a href="/en/docs/flow-capabilities#map-local">Map Local</a></td>
+      <td>Serve a local file in place of an HTTP request</td>
+    </tr>
+    <tr>
+      <td><a href="/en/docs/flow-capabilities#map-remote">Map Remote</a></td>
+      <td>Rewrite the URL to point at another environment or server</td>
+    </tr>
+    <tr>
+      <td><a href="/en/docs/flow-capabilities#redirect">Redirect</a></td>
+      <td>3xx redirect</td>
+    </tr>
+    <tr>
+      <td><a href="/en/docs/flow-capabilities#header-modification">Header modification</a></td>
+      <td>Add, update, or delete request/response headers</td>
+    </tr>
+    <tr>
+      <td><a href="/en/docs/flow-capabilities#body-modification">Body modification</a></td>
+      <td>Full replace, regex replace, JSONPath set/delete</td>
+    </tr>
+    <tr>
+      <td><a href="/en/docs/flow-capabilities#intercept-breakpoints">Intercept breakpoints</a></td>
+      <td>Pause live traffic, inspect, modify, then resume or drop</td>
+    </tr>
+    <tr>
+      <td><a href="/en/docs/flow-capabilities#flow-replay">Flow replay</a></td>
+      <td>Resend a captured request/response, with optional modifications</td>
+    </tr>
+  </table>
+
+  <h2>Protocols</h2>
+
+  <table>
+    <tr><th>Capability</th><th>Description</th><th>Link</th></tr>
+    <tr><td>HTTP/1.1</td><td>Full support</td><td rowspan="2"><a href="/en/docs/protocols">Protocols</a></td></tr>
+    <tr><td>HTTP/2</td><td>Full support, including HPACK decompression</td></tr>
+    <tr><td>HTTPS / TLS</td><td>Dynamic CA + MITM</td><td><a href="/en/docs/certificates">Certificates</a></td></tr>
+    <tr><td>WebSocket</td><td>Per-message inspection and modification</td><td><a href="/en/docs/protocols#websocket">Protocols § WebSocket</a></td></tr>
+    <tr><td>QUIC / HTTP/3</td><td>Default Downgrade, optional Passthrough / ExperimentalMitm</td><td><a href="/en/docs/protocols#quic--http3">Protocols § QUIC</a></td></tr>
+  </table>
+
+  <h2>Operating modes</h2>
+
+  <table>
+    <tr><th>Capability</th><th>Description</th><th>Link</th></tr>
+    <tr><td>Explicit proxy</td><td>Client sets the proxy URL</td><td rowspan="3"><a href="/en/docs/proxy-modes">Proxy Modes</a></td></tr>
+    <tr><td>Transparent proxy</td><td>macOS PF / Linux TPROXY</td></tr>
+    <tr><td>Upstream proxy</td><td>Chained behind a parent proxy</td></tr>
+    <tr><td><a href="/en/docs/tui">TUI</a></td><td>Terminal real-time inspection and modification</td><td><a href="/en/docs/tui">TUI</a></td></tr>
+    <tr><td>UDP TPROXY</td><td>UDP transparent proxy (Linux only)</td><td><a href="/en/docs/proxy-modes#udp-tproxy">Proxy Modes § UDP TPROXY</a></td></tr>
+  </table>
+
+  <h2>User surfaces</h2>
+
+  <table>
+    <tr><th>Surface</th><th>Description</th><th>Link</th></tr>
+    <tr><td><a href="/en/docs/tui">TUI</a></td><td>Interactive terminal UI</td><td><a href="/en/docs/tui">TUI</a></td></tr>
+    <tr><td><a href="/en/docs/cli">CLI</a></td><td>All commands and flags</td><td><a href="/en/docs/cli">CLI Reference</a></td></tr>
+    <tr><td><a href="/en/docs/api">HTTP API</a></td><td>REST + SSE</td><td><a href="/en/docs/api">HTTP API</a></td></tr>
+    <tr><td><a href="/en/docs/mcp">MCP</a></td><td>For AI agents</td><td><a href="/en/docs/mcp">MCP Server</a></td></tr>
+    <tr><td><a href="/en/docs/tauri-plugin">Tauri plugin</a></td><td>Embed in a Tauri app</td><td><a href="/en/docs/tauri-plugin">Tauri Plugin</a></td></tr>
+  </table>
+
+  <h2>Extensions &amp; scripting</h2>
+
+  <table>
+    <tr><th>Capability</th><th>Description</th><th>Link</th></tr>
+    <tr><td><a href="/en/docs/rule-engine">Rule engine</a></td><td>Declarative match + action pipeline</td><td><a href="/en/docs/rule-engine">Rule API</a></td></tr>
+    <tr><td><a href="/en/docs/scripting">Deno scripts</a></td><td>JS/TS for complex logic</td><td><a href="/en/docs/scripting">Scripting API</a></td></tr>
+    <tr><td>Script fetch</td><td>HTTP from inside a script (allowlist)</td><td><a href="/en/docs/scripting#relayfetch">Scripting § fetch</a></td></tr>
+  </table>
+
+  <h2>Observability &amp; operations</h2>
+
+  <table>
+    <tr><th>Capability</th><th>Description</th><th>Link</th></tr>
+    <tr><td>Prometheus metrics</td><td>Standard text format at <code>/api/v1/metrics/prometheus</code></td><td rowspan="2"><a href="/en/docs/observability">Monitoring</a></td></tr>
+    <tr><td>SSE live event stream</td><td>Flows, WebSocket messages, audit, lifecycle</td></tr>
+    <tr><td>Audit log</td><td>Every control-plane change (actor / kind / outcome)</td><td><a href="/en/docs/api#audit">HTTP API § audit</a></td></tr>
+    <tr><td>JSONL stream to disk</td><td>Every flow appended to a file, for offline <a href="/en/docs/cli#analyze">analyze</a></td><td><a href="/en/docs/cli#run">CLI § run</a></td></tr>
+    <tr><td>HAR export</td><td>Single or batch</td><td><a href="/en/docs/api#flows">HTTP API § flows</a></td></tr>
+  </table>
+
+  <h2>Security &amp; privacy</h2>
+
+  <table>
+    <tr><th>Capability</th><th>Description</th><th>Link</th></tr>
+    <tr><td>Header / query redaction</td><td>Allowlist fields are masked everywhere</td><td rowspan="2"><a href="/en/docs/api#policy--redaction">HTTP API § policy</a></td></tr>
+    <tr><td>Body redaction</td><td>Optional, by content-type</td></tr>
+    <tr><td>Bearer auth</td><td><code>--api-token</code> for the HTTP API</td><td><a href="/en/docs/cli#run">CLI § run</a></td></tr>
+    <tr><td>CORS allowlist</td><td><code>--api-cors</code></td><td><a href="/en/docs/cli#run">CLI § run</a></td></tr>
+    <tr><td>Secret field masking</td><td>Upstream proxy passwords, etc.</td><td><a href="/en/docs/proxy-modes#upstream-proxy">Proxy Modes § upstream</a></td></tr>
+  </table>
+</DocsLayout>

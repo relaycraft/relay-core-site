@@ -1,0 +1,110 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Filter Expressions" description="Unified query syntax across TUI, CLI, and HTTP API">
+  <h1>Filter Expressions</h1>
+
+  <p>RelayCore shares one filter expression across multiple surfaces:</p>
+
+  <ul>
+    <li>The <code>/</code> bar in the <a href="/en/docs/tui">TUI</a></li>
+    <li><code>relay-core-cli flows --filter</code> on the <a href="/en/docs/cli#flows">CLI</a></li>
+    <li>Structured query parameters on <code>GET /api/v1/flows</code></li>
+    <li>The <code>filter</code> field of the <code>search_flows</code> MCP tool</li>
+  </ul>
+
+  <p>All of these are interpreted by the same parser. Master the syntax once and use it everywhere.</p>
+
+  <h2>Basic syntax</h2>
+
+  <p>An expression is a space-separated list of tokens. Multiple tokens are AND-combined. Bare tokens substring-match the URL + method (case-insensitive).</p>
+
+  <pre><code># Substring match against host
+host:api
+host:api.example.com
+
+# Substring match against path
+path:/v1/users
+path:/graphql
+
+# HTTP method (case-insensitive)
+method:GET
+method:POST
+
+# Status code (exact, range, or comparison)
+status:404
+status:400-499
+status:>=500
+status:&lt;300
+
+# Flow-level flags
+err         # any flow with has_error == true (alias: error)
+ws          # WebSocket flows (alias: websocket)
+
+# Plain text substring (matched against the joined URL + method)
+health
+users</code></pre>
+
+  <h2>Combining tokens</h2>
+
+  <p>Multiple tokens are implicit AND:</p>
+
+  <pre><code># Failed POSTs to api host
+host:api method:POST status:&gt;=400
+
+# 5xx WebSocket errors
+ws status:500-599
+
+# Any 2xx containing health
+health status:&lt;300</code></pre>
+
+  <h2>Status code syntax</h2>
+
+  <p>Status codes support four forms:</p>
+
+  <table>
+    <tr><th>Form</th><th>Meaning</th><th>Example</th></tr>
+    <tr><td>Exact</td><td>Equality</td><td><code>status:404</code></td></tr>
+    <tr><td>Range</td><td>Closed interval</td><td><code>status:400-499</code></td></tr>
+    <tr><td>Lower bound</td><td><code>&gt;=</code> or <code>&gt;</code></td><td><code>status:&gt;=500</code></td></tr>
+    <tr><td>Upper bound</td><td><code>&lt;=</code> or <code>&lt;</code></td><td><code>status:&lt;300</code></td></tr>
+  </table>
+
+  <p>No space is allowed between the operator and the number.</p>
+
+  <h2>HTTP API structured parameters</h2>
+
+  <p>When using <code>GET /api/v1/flows</code>, the structured-parameter equivalents are:</p>
+
+  <table>
+    <tr><th>Token</th><th>Query parameter</th></tr>
+    <tr><td><code>host:api</code></td><td><code>?host=api</code></td></tr>
+    <tr><td><code>path:/v1/users</code></td><td><code>?path=/v1/users</code></td></tr>
+    <tr><td><code>method:POST</code></td><td><code>?method=POST</code></td></tr>
+    <tr><td><code>status:&gt;=500</code></td><td><code>?status_min=500</code></td></tr>
+    <tr><td><code>status:&lt;300</code></td><td><code>?status_max=299</code></td></tr>
+    <tr><td><code>status:400-499</code></td><td><code>?status_min=400&amp;status_max=499</code></td></tr>
+    <tr><td><code>err</code></td><td><code>?has_error=true</code></td></tr>
+    <tr><td><code>ws</code></td><td><code>?is_websocket=true</code></td></tr>
+  </table>
+
+  <p>Structured parameters are clearer for simple lookups; the token form is shorter for ad-hoc debugging.</p>
+
+  <h2>Case &amp; substring semantics</h2>
+
+  <ul>
+    <li>All string fields are matched <strong>case-insensitively</strong>.</li>
+    <li><code>host</code> and <code>path</code> are <strong>substring</strong> matches, not globs. To match <code>api.example.com</code> you write the full substring, not <code>api.*.com</code>.</li>
+    <li>Method is exact match (case-insensitive) against the standard methods (GET / POST / PUT / DELETE / PATCH / HEAD / OPTIONS) plus <code>WS</code>.</li>
+    <li>Bare tokens match against the joined "URL + method" string, so <code>health</code> hits any flow whose URL contains "health" (in practice that's the only case).</li>
+  </ul>
+
+  <h2>Common pitfalls</h2>
+
+  <ul>
+    <li><strong>Bare tokens match too much</strong>: <code>api</code> matches any flow with "api" in the host, path, or URL. Add a <code>host:</code> / <code>path:</code> prefix to disambiguate.</li>
+    <li><strong>Spaces around operators</strong>: <code>status:&gt; 500</code> is invalid; use <code>status:&gt;=500</code>.</li>
+    <li><strong>Cross-surface semantics differ</strong>: the TUI applies the filter live; the CLI returns a single page; the HTTP API returns paginated results. Same syntax, different interaction.</li>
+  </ul>
+</DocsLayout>

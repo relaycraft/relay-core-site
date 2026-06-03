@@ -1,0 +1,114 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="证书与 HTTPS 拦截" description="CA 证书生成、安装与管理">
+  <h1>证书与 HTTPS 拦截</h1>
+
+  <p>为了在不解密的情况下转发 HTTPS 流量，传统的 HTTP 代理是做不到的——浏览器/客户端会拒绝中间人。RelayCore 通过动态签发证书实现透明 HTTPS 拦截：客户端与 RelayCore 之间使用 RelayCore 签发的证书（被客户端信任），RelayCore 与上游之间使用真正的 HTTPS 握手。</p>
+
+  <p>要让这个机制工作，必须先生成一个 CA 证书并将其安装到客户端的信任库中。</p>
+
+  <h2>默认存储</h2>
+
+  <p>所有 CA 相关文件都放在数据目录下（默认 <code>~/.relay-core</code>）：</p>
+
+  <ul>
+    <li><code>ca_cert.pem</code> — CA 证书</li>
+    <li><code>ca_key.pem</code> — CA 私钥</li>
+    <li><code>ca_cert.json</code> — CA 元数据（持久化加载所需）</li>
+  </ul>
+
+  <p>使用 <code>RELAY_CA_CERT</code> / <code>RELAY_CA_KEY</code> 可覆盖默认路径（须成对设置）。<code>run</code> 命令在 CA 文件缺失时会直接失败并提示先生成。</p>
+
+  <h2>快速流程</h2>
+
+  <pre><code># 1. 生成 CA（一次性）
+relay-core-cli ca generate
+
+# 2. 安装到系统信任库
+relay-core-cli ca install   # macOS 自动；其他平台见下文
+
+# 3. 启动代理
+relay-core-cli run</code></pre>
+
+  <h2><code>ca</code> 子命令</h2>
+
+  <pre><code>relay-core-cli ca &lt;subcommand&gt;
+
+  generate [--force]        生成 CA（--force 覆盖已有）
+  install                   安装到系统信任库
+  uninstall                 从系统信任库移除
+  status                    显示路径、存在性与信任状态
+  export [-o PATH] [--der]  导出证书；--der 输出 Windows .cer 适用的二进制</code></pre>
+
+  <h2>平台说明</h2>
+
+  <h3>macOS</h3>
+
+  <p><code>ca install</code> 会把 CA 写入系统钥匙串。在写入前会先清理旧的 <code>RelayCraft CA</code> 条目（避免遗留指纹冲突）。</p>
+
+  <p><code>ca status</code> 通过 SHA-1 比对本地证书与钥匙串里的条目：</p>
+
+  <pre><code>$ relay-core-cli ca status
+CA cert: /Users/me/.relay-core/ca_cert.pem
+CA key:  /Users/me/.relay-core/ca_key.pem
+Trusted in keychain: yes
+Keychain SHA-1:       12:34:56:78:9a:bc:de:f0:12:34:56:78:9a:bc:de:f0:12:34:56:78
+Local cert SHA-1:     12:34:56:78:9a:bc:de:f0:12:34:56:78:9a:bc:de:f0:12:34:56:78
+Match:                OK</code></pre>
+
+  <p>如果显示 <code>Match: MISMATCH</code>，通常是重新生成过 CA 但没有再次安装，重新运行 <code>ca install</code> 即可。</p>
+
+  <h3>Linux</h3>
+
+  <p>目前没有自动安装步骤。手动：</p>
+
+  <pre><code># Debian / Ubuntu
+sudo cp ~/.relay-core/ca_cert.pem /usr/local/share/ca-certificates/relay-core.crt
+sudo update-ca-certificates
+
+# RHEL / Fedora
+sudo cp ~/.relay-core/ca_cert.pem /etc/pki/ca-trust/source/anchors/relay-core.crt
+sudo update-ca-trust
+
+# Arch
+sudo trust anchor ~/.relay-core/ca_cert.pem
+
+# 验证
+curl -vI https://example.com --proxy http://127.0.0.1:8080</code></pre>
+
+  <h3>Windows</h3>
+
+  <p>用 <code>--der</code> 输出二进制 .cer：</p>
+
+  <pre><code>relay-core-cli ca export -o relay-core.cer --der</code></pre>
+
+  <p>双击 .cer → "安装证书" → "本地计算机" → "将所有证书放入下列存储" → "受信任的根证书颁发机构"。PowerShell 等价命令：</p>
+
+  <pre><code>Import-Certificate -FilePath .\relay-core.cer `
+  -CertStoreLocation Cert:\LocalMachine\Root</code></pre>
+
+  <h3>Firefox / 浏览器专属信任库</h3>
+
+  <p>Firefox 单独维护自己的 CA 信任库，不使用系统证书。需要在 <em>设置 → 隐私与安全 → 证书 → 查看证书 → 导入</em> 中导入 <code>ca_cert.pem</code>，并勾选"信任由此证书标识的网站"。</p>
+
+  <h2>CI 与容器环境</h2>
+
+  <ul>
+    <li>把 <code>ca_cert.pem</code> 编入 Docker 镜像的 <code>/usr/local/share/ca-certificates/</code> 并在 Dockerfile 中执行 <code>update-ca-certificates</code>。</li>
+    <li>在 CI 中测试需要 HTTPS 拦截的链路时，可用 <code>ca export --der</code> 把证书喂给 runner 的 trust store。</li>
+    <li>使用 <code>ca install --help</code> 查看与代理并存时的冲突解决细节。</li>
+  </ul>
+
+  <h2>卸载</h2>
+
+  <pre><code># macOS
+relay-core-cli ca uninstall
+
+# Linux
+sudo rm /usr/local/share/ca-certificates/relay-core.crt
+sudo update-ca-certificates --fresh</code></pre>
+
+  <p>卸载后再次访问 HTTPS 站点会出现证书错误——这是预期行为，证明 CA 之前确实在工作。</p>
+</DocsLayout>

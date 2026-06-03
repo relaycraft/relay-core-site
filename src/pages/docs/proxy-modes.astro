@@ -1,0 +1,120 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="代理模式" description="RelayCore 的三种代理运行模式">
+  <h1>代理模式</h1>
+
+  <p>RelayCore 支持三种代理运行模式，覆盖从"开发机本地代理"到"作为企业网关"的各种部署形态。</p>
+
+  <h2>普通代理（默认）</h2>
+
+  <p>客户端显式地把 RelayCore 设为 HTTP/HTTPS 代理。这是开发与调试最常用的模式，对操作系统与客户端配置零侵入。</p>
+
+  <pre><code># 启动
+relay-core-cli run
+
+# 在浏览器或系统设置中将 HTTP/HTTPS 代理指向
+# 127.0.0.1:8080（默认监听地址）</code></pre>
+
+  <p>配置完成后所有请求都会经过 RelayCore；HTTPS 流量由动态签发的证书解密（需要先安装 CA，见 <a href="/docs/certificates">证书与 HTTPS 拦截</a>）。</p>
+
+  <h2>透明代理</h2>
+
+  <p>客户端不感知代理存在，操作系统或网络设备把流量强制重定向到 RelayCore。适合设备调试、移动设备、嵌入式设备和不需要修改客户端配置的场景。</p>
+
+  <pre><code>relay-core-cli run --transparent</code></pre>
+
+  <h3>macOS（PF）</h3>
+
+  <p>使用 <code>relay-core-cli proxy</code> 子命令管理 PF 规则：</p>
+
+  <pre><code># 生成 PF 配置（默认 en0，可通过 --interface 改）
+relay-core-cli proxy generate --port 8080
+
+# 加载并启用规则（需要 sudo）
+sudo relay-core-cli proxy load --port 8080 --interface en0
+
+# 查看当前状态
+relay-core-cli proxy status
+
+# 关闭
+sudo relay-core-cli proxy unload</code></pre>
+
+  <p>生成的 PF 规则会重定向 80/443 端口的 TCP 流量到本地代理端口。仅在 macOS 上受支持。</p>
+
+  <h3>Linux（TPROXY）</h3>
+
+  <p>通过 <code>--transparent</code> 启动。Linux 透明代理需要 iptables/nftables 与路由表配合，RelayCore 不直接管理这些规则；请参考 <a href="/docs/troubleshooting">故障排除</a> 中的 Linux 段。</p>
+
+  <h3>UDP TPROXY</h3>
+
+  <pre><code>relay-core-cli run --transparent --udp-tproxy-port 8080</code></pre>
+
+  <p>启用 UDP 透明代理。仅 Linux，需要内核支持 <code>IP_TRANSPARENT</code>。</p>
+
+  <h2 id="upstream-proxy">上游代理（Chained Proxy）</h2>
+
+  <p>把 RelayCore 放在另一个代理之后。所有出站请求先到 RelayCore，再由 RelayCore 通过父级代理转发。常用于企业代理环境、VPN 集中器、TLS 检查中间盒后面。</p>
+
+  <pre><code># 纯 HTTP 上级代理
+relay-core-cli run --upstream http://corp-proxy.internal:8080
+
+# HTTPS 上级代理（先与代理建立 TLS）
+relay-core-cli run --upstream https://secure-proxy.internal:8443
+
+# 带 Basic 认证
+export RELAYCORE_UPSTREAM_PASSWORD='s3cret'
+relay-core-cli run --upstream http://corp-proxy.internal:8080 --upstream-auth-user alice
+
+# 上级不可达时回落到直连（默认 fail-closed）
+relay-core-cli run --upstream http://corp-proxy.internal:8080 --upstream-fail-open</code></pre>
+
+  <h3>绕过列表</h3>
+
+  <p>通过 <code>--upstream-bypass</code> 指定不走上级代理的目标，三种规则可混用：</p>
+
+  <pre><code>--upstream-bypass "127.0.0.1,::1,localhost,*.internal,cidr:10.0.0.0/8,cidr:192.168.0.0/16"</code></pre>
+
+  <table>
+    <tr><th>模式</th><th>匹配</th></tr>
+    <tr><td><code>127.0.0.1</code></td><td>字面量 IPv4 / IPv6</td></tr>
+    <tr><td><code>localhost</code></td><td>字面量主机名（大小写不敏感）</td></tr>
+    <tr><td><code>*.internal</code></td><td>glob —— 匹配子域</td></tr>
+    <tr><td><code>cidr:10.0.0.0/8</code></td><td>CIDR 段（IPv4 / IPv6）</td></tr>
+  </table>
+
+  <p>透明代理模式下还会将原始目的 IP 与绕过列表比对，确保到本地服务的回环与 RFC1918 流量始终直连。</p>
+
+  <h3>HTTP vs HTTPS 上级</h3>
+
+  <p>URL 以 <code>https://</code> 开头时，RelayCore 先与代理完成 TLS 握手再发送 <code>CONNECT</code>。代理证书使用系统信任库校验。在使用私有 CA 的环境中请将 CA 导入系统信任库。</p>
+
+  <h3>运行时变更</h3>
+
+  <p>上游配置是 <code>ProxyPolicy</code> 的一部分，可通过 REST API 局部更新：</p>
+
+  <pre><code># 查看当前策略
+curl -s http://127.0.0.1:8082/api/v1/policy
+
+# 仅更新 upstream 段
+curl -s -X PATCH http://127.0.0.1:8082/api/v1/policy \
+  -H 'Content-Type: application/json' \
+  -d '&#123;
+    "upstream": &#123;
+      "proxy_url": "http://corp-proxy.internal:8080",
+      "bypass_hosts": ["*.internal", "127.0.0.1"],
+      "fail_open": false
+    &#125;
+  &#125;'</code></pre>
+
+  <p>运行时切换 <code>proxy_url</code> 会返回 <code>409 Conflict</code>，因为已有连接绑定在旧路径上，需要重启代理才能生效。</p>
+
+  <h3>安全提示</h3>
+
+  <ul>
+    <li>密码字段使用 <code>secrecy::SecretString</code> 包装；<code>Debug</code>、API 响应、JSON 序列化器都掩码为 <code>***</code>。</li>
+    <li>当上级是策略强制的，保持 <code>--upstream-fail-open=false</code>（默认）—— 静默回落会失去保护。</li>
+    <li>策略变更会写入 <code>/api/v1/audit</code>，<code>kind=policy_updated</code>，并记录触发者（actor）。</li>
+  </ul>
+</DocsLayout>
