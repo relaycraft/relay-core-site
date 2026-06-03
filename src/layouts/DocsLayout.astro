@@ -24,6 +24,11 @@ const sidebar = locale === 'zh' ? [
     heading: '核心概念',
     items: [
       { label: '架构', href: '/docs/architecture' },
+    ]
+  },
+  {
+    heading: '流量处理',
+    items: [
       { label: '规则 API', href: '/docs/rule-engine' },
       { label: '规则编写指南', href: '/docs/rule-guide' },
       { label: '脚本 API', href: '/docs/scripting' },
@@ -32,27 +37,22 @@ const sidebar = locale === 'zh' ? [
     ]
   },
   {
-    heading: '使用方式',
+    heading: '接入',
     items: [
       { label: 'TUI 交互界面', href: '/docs/tui' },
       { label: '上游代理', href: '/docs/upstream-proxy' },
+      { label: 'MCP 服务器', href: '/docs/mcp' },
+      { label: 'Tauri 插件', href: '/docs/tauri-plugin' },
     ]
   },
   {
-    heading: '参考',
+    heading: '参考与运维',
     items: [
       { label: 'HTTP API', href: '/docs/api' },
       { label: 'CLI 参考', href: '/docs/cli' },
       { label: '配置', href: '/docs/configuration' },
       { label: '监控与可观测性', href: '/docs/observability' },
       { label: '故障排除', href: '/docs/troubleshooting' },
-    ]
-  },
-  {
-    heading: '集成',
-    items: [
-      { label: 'MCP 服务器', href: '/docs/mcp' },
-      { label: 'Tauri 插件', href: '/docs/tauri-plugin' },
     ]
   }
 ] : [
@@ -67,6 +67,11 @@ const sidebar = locale === 'zh' ? [
     heading: 'Core Concepts',
     items: [
       { label: 'Architecture', href: '/en/docs/architecture' },
+    ]
+  },
+  {
+    heading: 'Flow Processing',
+    items: [
       { label: 'Rule API', href: '/en/docs/rule-engine' },
       { label: 'Rule Guide', href: '/en/docs/rule-guide' },
       { label: 'Scripting API', href: '/en/docs/scripting' },
@@ -75,27 +80,22 @@ const sidebar = locale === 'zh' ? [
     ]
   },
   {
-    heading: 'Usage Surfaces',
+    heading: 'Access',
     items: [
       { label: 'TUI', href: '/en/docs/tui' },
       { label: 'Upstream Proxy', href: '/en/docs/upstream-proxy' },
+      { label: 'MCP Server', href: '/en/docs/mcp' },
+      { label: 'Tauri Plugin', href: '/en/docs/tauri-plugin' },
     ]
   },
   {
-    heading: 'Reference',
+    heading: 'Reference & Ops',
     items: [
       { label: 'HTTP API', href: '/en/docs/api' },
       { label: 'CLI Reference', href: '/en/docs/cli' },
       { label: 'Configuration', href: '/en/docs/configuration' },
       { label: 'Monitoring', href: '/en/docs/observability' },
       { label: 'Troubleshooting', href: '/en/docs/troubleshooting' },
-    ]
-  },
-  {
-    heading: 'Integrations',
-    items: [
-      { label: 'MCP Server', href: '/en/docs/mcp' },
-      { label: 'Tauri Plugin', href: '/en/docs/tauri-plugin' },
     ]
   }
 ];
