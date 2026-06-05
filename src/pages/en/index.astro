@@ -28,6 +28,8 @@ const apiSampleJson = `{
 
 const apiRequestUrl = 'http://127.0.0.1:8082/api/v1/flows?limit=10';
 const sourceCmd = 'git clone https://github.com/relaycraft/relay-core && cd relay-core && cargo build --release';
+// Bump on each release alongside the `relay-core` workspace version.
+const CLI_VERSION = '0.7.4';
 ---
 
 <BaseLayout title="RelayCore — Rust Traffic Interception Engine">
@@ -41,7 +43,7 @@ const sourceCmd = 'git clone https://github.com/relaycraft/relay-core && cd rela
           <span class="chrome-title">relay-core — zsh</span>
         </div>
         <pre class="terminal-body"><span class="prompt">$</span> <span class="cmd">relay-core-cli --version</span>
-<span class="output">relay-core-cli 0.5.2</span>
+<span class="output">relay-core-cli {CLI_VERSION}</span>
 
 <span class="prompt">$</span> <span class="cmd">relay-core-cli ca generate</span>
 <span class="output">CA certificate generated at ~/.relay-core/ca_cert.pem</span>
