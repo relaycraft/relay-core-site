@@ -377,6 +377,18 @@
   text-decoration-color: var(--accent-primary);
 }
 
+/* Competitor names in the perf table \u2014 external, subtle. */
+.competitor-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--border-highlight);
+  transition: var(--transition);
+}
+.competitor-link:hover {
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+}
+
 .api { background: var(--bg-primary); }
 
 .api-example {
