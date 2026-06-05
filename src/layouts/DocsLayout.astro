@@ -1,4 +1,5 @@
 ---
+import { execSync } from 'node:child_process';
 import BaseLayout from './BaseLayout.astro';
 import { getLocaleFromUrl } from '../i18n/translations';
 
@@ -135,6 +136,23 @@ const editOnGithubUrl =
   `https://github.com/relaycraft/relay-core-site/edit/main/${sourcePath}`;
 const editLabel = locale === 'zh' ? '在 GitHub 编辑此页' : 'Edit on GitHub';
 const lastUpdatedLabel = locale === 'zh' ? '最后更新' : 'Last updated';
+
+// Read last commit date for the source. `git log -1 --format=%cI` returns
+// the ISO timestamp; we keep the date portion (YYYY-MM-DD) only. If the
+// source has never been committed (e.g. preview branches) or git is missing,
+// we silently omit the date — the page still renders fine.
+function lastmodFor(p: string): string | null {
+  try {
+    const out = execSync(`git log -1 --format=%cI -- ${JSON.stringify(p)}`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return out ? out.slice(0, 10) : null;
+  } catch {
+    return null;
+  }
+}
+const lastmod = lastmodFor(sourcePath);
 ---
 
 <BaseLayout title={`${title} — RelayCore`} description={description}>
@@ -168,6 +186,11 @@ const lastUpdatedLabel = locale === 'zh' ? '最后更新' : 'Last updated';
     <article class="docs-content">
       <slot />
       <footer class="docs-meta">
+        {lastmod && (
+          <span class="docs-lastmod" title={lastmod}>
+            {lastUpdatedLabel}{locale === 'zh' ? '：' : ': '}<time datetime={lastmod}>{lastmod}</time>
+          </span>
+        )}
         <a
           class="docs-edit-link"
           href={editOnGithubUrl}
@@ -556,7 +579,20 @@ const lastUpdatedLabel = locale === 'zh' ? '最后更新' : 'Last updated';
     padding-top: var(--space-md);
     border-top: 1px solid var(--border-color);
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  .docs-lastmod {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  .docs-lastmod time {
+    color: var(--text-secondary);
   }
 
   .docs-edit-link {
