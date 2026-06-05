@@ -1,8 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="RelayCore">
   <rect width="1200" height="630" fill="#050505"/>
   <rect x="0" y="0" width="1200" height="4" fill="#00d4ff" opacity="0.6"/>
   <text x="80" y="200" fill="#00d4ff" font-family="ui-monospace, monospace" font-size="28" letter-spacing="0.2em">[~] RELAYCORE</text>
   <text x="80" y="280" fill="#e0e0e0" font-family="system-ui, sans-serif" font-size="52" font-weight="600">Rust traffic interception</text>
-  <text x="80" y="350" fill="#808080" font-family="system-ui, sans-serif" font-size="32">HTTP · HTTPS · WebSocket · MITM · Rules · Scripts</text>
+  <text x="80" y="350" fill="#808080" font-family="system-ui, sans-serif" font-size="32">HTTP Â· HTTPS Â· WebSocket Â· MITM Â· Rules Â· Scripts</text>
   <text x="80" y="520" fill="#666666" font-family="ui-monospace, monospace" font-size="22">relaycore.dev</text>
 </svg>

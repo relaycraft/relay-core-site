@@ -16,7 +16,8 @@ const alternateLocale = locale === 'en' ? 'zh-CN' : 'en';
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const alternateURL = new URL(alternatePath, Astro.site);
 const xDefaultURL = locale === 'en' ? alternateURL : canonicalURL;
-const socialImage = new URL(ogImage ?? '/og.svg', Astro.site);
+const socialImage = new URL(ogImage ?? '/og.png', Astro.site);
+const socialImageSvg = new URL('/og.svg', Astro.site);
 
 // JSON-LD: only emit on the home page (avoids Schema.org noise on every doc).
 // SoftwareApplication/SourceCode gives GitHub and search engines a canonical
@@ -65,12 +66,16 @@ const softwareJsonLd = isHome
 <meta property="og:description" content={description} />
 <meta property="og:url" content={canonicalURL} />
 <meta property="og:image" content={socialImage} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="RelayCore — Rust traffic interception engine" />
 <meta property="og:locale" content={locale === 'en' ? 'en_US' : 'zh_CN'} />
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={socialImage} />
+<meta name="twitter:image:alt" content="RelayCore — Rust traffic interception engine" />
 
 {softwareJsonLd && (
   <script
