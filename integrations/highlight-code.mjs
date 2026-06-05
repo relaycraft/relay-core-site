@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseHTML } from 'linkedom';
 import { createHighlighter } from 'shiki';
@@ -93,15 +94,65 @@ function htmlFileToLoc(site, distDir, filePath) {
   return `${site}${pathname}`;
 }
 
+// Map a built HTML path back to its source .astro under src/pages/. The
+// `directory` build format is lossy: `dist/en/index.html` and
+// `dist/en/index.html` (theoretically) could come from either
+// `src/pages/en.astro` or `src/pages/en/index.astro`. We try the alongside
+// path first (matches `src/pages/docs/foo.astro` → `dist/docs/foo/index.html`,
+// the dominant shape) and fall back to the nested path (`src/pages/en/`).
+// Returns the first existing candidate, or the alongside path as a guess
+// (git log will then return null for missing paths).
+function htmlFileToSourcePath(filePath, distDir) {
+  const rel = path.relative(distDir, filePath).replace(/\\/g, '/');
+  if (rel === 'index.html') return 'src/pages/index.astro';
+  if (rel.endsWith('/index.html')) {
+    const dir = rel.slice(0, -'/index.html'.length);
+    const alongside = `src/pages/${dir}.astro`;
+    const nested = `src/pages/${dir}/index.astro`;
+    if (fs.existsSync(alongside)) return alongside;
+    return nested;
+  }
+  return `src/pages/${rel.replace(/\.html$/, '')}.astro`;
+}
+
+// Best-effort lastmod from `git log` on the source file. Returns ISO date
+// (YYYY-MM-DD) or null if git/history is unavailable. Failure is silent:
+// sitemap still emits without lastmod, which is valid per sitemaps.org.
+function lastmodFor(sourcePath) {
+  try {
+    const out = execSync(`git log -1 --format=%cI -- ${JSON.stringify(sourcePath)}`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (!out) return null;
+    // %cI emits full ISO 8601 with offset; sitemap only needs the date.
+    return out.slice(0, 10);
+  } catch {
+    return null;
+  }
+}
+
 function writeSitemap(distDir, site = 'https://relaycore.dev') {
-  const urls = walkHtmlFiles(distDir)
-    .map((filePath) => htmlFileToLoc(site, distDir, filePath))
+  const files = walkHtmlFiles(distDir);
+  const entries = files
+    .map((filePath) => {
+      const loc = htmlFileToLoc(site, distDir, filePath);
+      if (!loc) return null;
+      const sourcePath = htmlFileToSourcePath(filePath, distDir);
+      return { loc, lastmod: lastmodFor(sourcePath) };
+    })
     .filter(Boolean)
-    .sort();
+    .sort((a, b) => a.loc.localeCompare(b.loc));
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((loc) => `  <url><loc>${loc}</loc></url>`).join('\n')}
+${entries
+    .map(({ loc, lastmod }) =>
+      lastmod
+        ? `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod></url>`
+        : `  <url><loc>${loc}</loc></url>`
+    )
+    .join('\n')}
 </urlset>`;
 
   fs.writeFileSync(path.join(distDir, 'sitemap-index.xml'), xml);
