@@ -4,6 +4,32 @@
   outline-offset: 2px;
 }
 
+/* ── Skip-to-content ──
+   Hidden until focused, then snaps to the top-left as a clear jump-link
+   for keyboard / screen-reader users. The `<main tabindex="-1">` target
+   makes the focus move take effect. */
+.skip-link {
+  position: absolute;
+  top: var(--space-sm);
+  left: var(--space-sm);
+  z-index: 1000;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 4px;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform var(--transition);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
 /* ── Section headers ── */
 .section-header {
   margin-bottom: var(--space-xl);

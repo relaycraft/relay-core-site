@@ -29,6 +29,9 @@ const alternateUrl = getAlternateUrl(Astro.url);
     <SeoHead title={title} description={description} ogImage={ogImage} />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">
+      {locale === 'zh' ? '跳到主要内容' : 'Skip to main content'}
+    </a>
     <header class="site-header">
       <nav class="nav-container">
         <a href={locale === 'zh' ? '/' : '/en/'} class="logo">
@@ -55,7 +58,7 @@ const alternateUrl = getAlternateUrl(Astro.url);
       </nav>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
       <slot />
     </main>
 
