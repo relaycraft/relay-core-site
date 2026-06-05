@@ -50,6 +50,12 @@ export const translations = {
       npmCmd: 'npm install -g @relay-core/cli',
       sourceCmd: 'git clone https://github.com/relaycraft/relay-core && cd relay-core && cargo build --release',
     },
+    sections: {
+      architecture: 'Architecture',
+      performance: 'Performance',
+      api: 'HTTP API',
+      cli: 'CLI Reference',
+    },
     nextSteps: 'Next Steps',
     nextStepsLinks: {
       rustDocs: 'Read the Rust API documentation',
@@ -116,6 +122,12 @@ export const translations = {
       cargoCmd: 'cargo install relay-core-cli',
       npmCmd: 'npm install -g @relay-core/cli',
       sourceCmd: 'git clone https://github.com/relaycraft/relay-core && cd relay-core && cargo build --release',
+    },
+    sections: {
+      architecture: '架构',
+      performance: '性能',
+      api: 'HTTP API',
+      cli: 'CLI 参考',
     },
     nextSteps: '下一步',
     nextStepsLinks: {
