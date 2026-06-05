@@ -17,6 +17,37 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const alternateURL = new URL(alternatePath, Astro.site);
 const xDefaultURL = locale === 'en' ? alternateURL : canonicalURL;
 const socialImage = new URL(ogImage ?? '/og.svg', Astro.site);
+
+// JSON-LD: only emit on the home page (avoids Schema.org noise on every doc).
+// SoftwareApplication/SourceCode gives GitHub and search engines a canonical
+// description of the project. Keep fields minimal and verified.
+const isHome =
+  Astro.url.pathname === '/' || Astro.url.pathname === '/en/' ||
+  Astro.url.pathname === '/en' || Astro.url.pathname === '';
+const softwareJsonLd = isHome
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareSourceCode',
+      name: 'RelayCore',
+      description,
+      url: canonicalURL.toString(),
+      codeRepository: 'https://github.com/relaycraft/relay-core',
+      programmingLanguage: 'Rust',
+      license: 'https://opensource.org/licenses/MIT',
+      author: {
+        '@type': 'Organization',
+        name: 'RelayCraft',
+        url: 'https://relaycraft.dev',
+      },
+      applicationCategory: 'DeveloperApplication',
+      operatingSystem: 'Linux, macOS, Windows',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+      },
+    }
+  : null;
 ---
 
 <meta charset="UTF-8" />
@@ -40,3 +71,11 @@ const socialImage = new URL(ogImage ?? '/og.svg', Astro.site);
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={socialImage} />
+
+{softwareJsonLd && (
+  <script
+    type="application/ld+json"
+    is:inline
+    set:html={JSON.stringify(softwareJsonLd)}
+  />
+)}

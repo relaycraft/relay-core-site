@@ -359,6 +359,24 @@
 .row-value { color: var(--text-primary); }
 .row-value.highlight { color: var(--success); font-weight: 600; }
 
+.comparison-footnote {
+  margin-top: var(--space-md);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 64ch;
+}
+.comparison-footnote a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-decoration-color: var(--border-highlight);
+  text-underline-offset: 2px;
+}
+.comparison-footnote a:hover {
+  color: var(--accent-primary);
+  text-decoration-color: var(--accent-primary);
+}
+
 .api { background: var(--bg-primary); }
 
 .api-example {
