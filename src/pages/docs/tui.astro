@@ -5,40 +5,55 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="TUI 交互界面" description="RelayCore 交互式终端界面">
   <h1>交互式终端界面（TUI）</h1>
 
-  <p>RelayCore 自带功能完整的终端 UI，可实时检查流量。基于 <a href="https://github.com/ratatui/ratatui" target="_blank" rel="noopener">ratatui</a> 构建，使用体验类似 Shell 里的轻量级 Charles / Proxyman。</p>
+  <p>RelayCore 自带功能完整的终端 UI，可实时检查流量。基于 <a href="https://github.com/ratatui/ratatui" target="_blank" rel="noopener">ratatui</a> 构建，使用体验类似 Shell 里的轻量级 Charles / Proxyman。0.8 起整体改写为响应式双面板布局，引入命令面板、流标记、Body 视图切换与状态栏优先级提示。</p>
 
   <h2>启动</h2>
 
   <pre><code>relay-core-cli run --ui
-# 可选：与 REST/SSE API 搭配使用，启用四面板布局
+# 可选：与 REST/SSE API 搭配使用，便于外部工具（如 flows）共享同一代理实例
 relay-core-cli run --ui --api-port 8082</code></pre>
 
-  <p>启用 <code>--ui</code> 后 TUI 会接管终端，代理进程本身仍在同一进程中运行，无需启动额外服务。</p>
+  <p>启用 <code>--ui</code> 后 TUI 会接管终端，代理进程本身仍在同一进程中运行，无需启动额外服务。终端最小尺寸 <code>60 × 12</code>，低于此值会拒绝启动并提示调整窗口。</p>
 
   <h2>布局</h2>
 
-  <p>TUI 会根据终端宽度自适应：</p>
+  <p>TUI 根据终端宽度自适应切换 5 档 profile，列预算由窄到宽自动展开：</p>
 
   <table>
-    <tr><th>宽度</th><th>布局</th><th>面板</th></tr>
+    <tr><th>宽度</th><th>布局</th><th>面板与列</th></tr>
     <tr>
-      <td>≥ 120 列</td>
-      <td>四面板（需 <code>--api-port</code>）</td>
-      <td>流量列表 · 详情 · 当前规则 · 待处理拦截</td>
+      <td>&lt; 60 列</td>
+      <td>—</td>
+      <td>终端过窄，TUI 拒绝启动并提示调整窗口</td>
     </tr>
     <tr>
-      <td>80–119 列</td>
-      <td>两面板</td>
-      <td>流量列表 · 详情（水平分屏，比例随宽度变化）</td>
-    </tr>
-    <tr>
-      <td>&lt; 80 列</td>
+      <td>60–79 列</td>
       <td>单面板（<code>Tab</code> 切换）</td>
-      <td>全屏显示流量列表 <em>或</em> 详情</td>
+      <td>全屏流量列表 <em>或</em> 详情</td>
+    </tr>
+    <tr>
+      <td>80–99 列</td>
+      <td>双面板（紧凑）</td>
+      <td>流量列表 · 详情（列：Method、Code、Dur、URL）</td>
+    </tr>
+    <tr>
+      <td>100–119 列</td>
+      <td>双面板（标准）</td>
+      <td>更长 URL 列</td>
+    </tr>
+    <tr>
+      <td>120–179 列</td>
+      <td>双面板（宽）</td>
+      <td>新增 Size、Host、Path 列</td>
+    </tr>
+    <tr>
+      <td>≥ 180 列</td>
+      <td>双面板（超宽）</td>
+      <td>Path 列获得额外列预算</td>
     </tr>
   </table>
 
-  <p>只有当 TUI 能连上 REST/SSE API（<code>--api-port</code> 已启用且可达）时才会出现四面板布局。脱离 API 时回退为本地两面板视图，规则与拦截面板不可见。</p>
+  <p>0.8 起四面板（Flow list / Detail / Rules / Pending intercepts）布局被移除；规则与待处理拦截面板仅在 <code>--api-port</code> 模式下保留。脱离 API 时统一回退为本地双面板视图。</p>
 
   <h2>快捷键</h2>
 
@@ -47,9 +62,10 @@ relay-core-cli run --ui --api-port 8082</code></pre>
   <table>
     <tr><th>按键</th><th>动作</th></tr>
     <tr><td><code>q</code></td><td>退出 TUI（代理在后台继续运行，SIGINT 时结束）</td></tr>
+    <tr><td><code>:</code></td><td>打开命令面板（<code>:help</code> 查看完整命令）</td></tr>
     <tr><td><code>?</code></td><td>切换应用内帮助浮层</td></tr>
-    <tr><td><code>Esc</code></td><td>返回流量列表 / 关闭浮层</td></tr>
-    <tr><td><code>Tab</code></td><td>循环切换活动区域（列表 → 详情 → 规则 → 列表）</td></tr>
+    <tr><td><code>Esc</code></td><td>返回流量列表 / 关闭浮层 / 退出命令面板</td></tr>
+    <tr><td><code>Tab</code></td><td>循环切换活动区域（列表 ↔ 详情）</td></tr>
     <tr><td><code>1</code> / <code>2</code> / <code>3</code> / <code>4</code></td><td>跳转到详情选项卡：概览 · 请求 · 响应 · 消息</td></tr>
     <tr><td><code>y</code></td><td>将当前选中的 HTTP 流量复制为 cURL 命令</td></tr>
     <tr><td><code>Ctrl+C</code></td><td>强制结束进程</td></tr>
@@ -61,15 +77,18 @@ relay-core-cli run --ui --api-port 8082</code></pre>
     <tr><th>按键</th><th>动作</th></tr>
     <tr><td><code>j</code> / <code>↓</code></td><td>下一行</td></tr>
     <tr><td><code>k</code> / <code>↑</code></td><td>上一行</td></tr>
-    <tr><td><code>g</code></td><td>跳到最新（顶部）并重新启用自动滚动</td></tr>
+    <tr><td><code>g</code> / <code>Home</code></td><td>跳到最新（顶部）并重新启用自动滚动</td></tr>
     <tr><td><code>G</code> / <code>End</code></td><td>跳到最旧（底部）</td></tr>
     <tr><td><code>Enter</code> / <code>l</code> / <code>→</code></td><td>聚焦详情面板</td></tr>
+    <tr><td><code>m</code></td><td>在当前流量上切换 A–Z 标记（再次按同一字母移除）</td></tr>
+    <tr><td><code>'</code>（反引号 / backtick）</td><td>跳转到下一个被标记的流量</td></tr>
     <tr><td><code>d</code></td><td>从本地列表中删除当前选中流量</td></tr>
     <tr><td><code>c</code></td><td>清空整个流量列表（不影响代理）</td></tr>
     <tr><td><code>p</code></td><td>暂停/恢复捕获。暂停时新流量计入待处理计数，不进列表。</td></tr>
-    <tr><td><code>r</code></td><td>聚焦规则面板（仅 API 模式）</td></tr>
     <tr><td><code>/</code></td><td>打开过滤栏</td></tr>
   </table>
+
+  <p>被标记的流量在列表中显示一个 <code>Mk</code> 列（标记字母）。该列在窄终端下会被压缩进 Status 列以节省列预算。</p>
 
   <h3>流量详情</h3>
 
@@ -82,31 +101,64 @@ relay-core-cli run --ui --api-port 8082</code></pre>
     <tr><td><code>G</code> / <code>End</code></td><td>滚到底部</td></tr>
     <tr><td><code>Tab</code></td><td>循环切换详情选项卡（概览 → 请求 → 响应 → 消息 → 概览）</td></tr>
     <tr><td><code>h</code> / <code>←</code> / <code>Esc</code></td><td>返回流量列表</td></tr>
+    <tr><td><code>v</code></td><td>循环切换 Body 视图：<code>auto</code> → <code>pretty</code> → <code>raw</code> → <code>hex</code></td></tr>
   </table>
 
   <h3>过滤栏</h3>
 
   <p>在流量列表中按 <code>/</code> 开始过滤，<code>Enter</code> 或 <code>Esc</code> 提交/关闭。语法见下方的<a href="#filter-expression-syntax">过滤表达式语法</a>。</p>
 
+  <h3>命令面板（<code>:</code>）</h3>
+
+  <p>在任意面板按 <code>:</code> 打开命令面板，输入子命令并 <code>Enter</code> 执行。命令面板可访问所有常用操作的稳定别名，也支持主题切换、过滤器、复制等。</p>
+
+  <table>
+    <tr><th>命令</th><th>动作</th></tr>
+    <tr><td><code>:q</code> / <code>:quit</code></td><td>退出 TUI</td></tr>
+    <tr><td><code>:c</code> / <code>:clear</code></td><td>清空流量列表</td></tr>
+    <tr><td><code>:p</code> / <code>:pause</code></td><td>暂停捕获</td></tr>
+    <tr><td><code>:r</code> / <code>:resume</code></td><td>恢复捕获</td></tr>
+    <tr><td><code>:f &lt;expr&gt;</code> / <code>:filter &lt;expr&gt;</code></td><td>设置过滤表达式</td></tr>
+    <tr><td><code>:uf</code> / <code>:unfilter</code></td><td>清除过滤</td></tr>
+    <tr><td><code>:t &lt;name&gt;</code> / <code>:theme &lt;name&gt;</code></td><td>切换主题（<code>relay</code> / <code>slate</code> / <code>high-contrast</code>）</td></tr>
+    <tr><td><code>:cp</code> / <code>:copy</code></td><td>复制当前流量为 cURL</td></tr>
+    <tr><td><code>:v &lt;mode&gt;</code> / <code>:view &lt;mode&gt;</code></td><td>切换 Body 视图（<code>auto</code> / <code>pretty</code> / <code>raw</code> / <code>hex</code>）</td></tr>
+    <tr><td><code>:h</code> / <code>:help</code></td><td>列出所有命令</td></tr>
+  </table>
+
+  <h2>Body 视图（<code>v</code>）</h2>
+
+  <p>详情面板内，按 <code>v</code> 循环切换请求/响应 body 的渲染模式：</p>
+
+  <ul>
+    <li><strong>auto</strong> — 根据 <code>Content-Type</code> 自动选择：JSON 走 <code>pretty</code>，文本与图片走 <code>raw</code>，未知二进制走 <code>hex</code></li>
+    <li><strong>pretty</strong> — 语法高亮（JSON / YAML / XML / HTML / JavaScript / CSS），并尝试 JSONPath 折叠</li>
+    <li><strong>raw</strong> — 原始字节流（适合看压缩或二进制 payload）</li>
+    <li><strong>hex</strong> — 十六进制转储，常用于二进制协议调试</li>
+  </ul>
+
+  <p>WebSocket 消息页同样受 <code>v</code> 控制：文本帧走 pretty/raw，二进制帧走 hex。</p>
+
   <h2>状态栏</h2>
 
-  <p>底部一行始终显示运行状态：</p>
+  <p>底部状态栏始终显示运行状态，0.8 起增加 <strong>优先级提示</strong>：当存在暂停捕获、待处理流量、待处理拦截或脚本错误时，相关指示会以高亮占据状态栏左侧，直到处置完毕。</p>
 
   <ul>
     <li>实时请求速率（5 秒滑动窗口，req/s）</li>
     <li>启动以来累计捕获的流量数</li>
-    <li>当前活动区域指示（LIST / DETAIL / RULES）</li>
+    <li>当前活动区域指示（LIST / DETAIL）</li>
     <li>运行时长 <code>hh:mm:ss</code></li>
     <li>捕获暂停或自动滚动关闭时的待处理计数</li>
+    <li>当前 Body 视图（仅在详情面板时显示）</li>
   </ul>
 
   <h2>鼠标支持</h2>
 
-  <p>已启用鼠标捕获。可使用滚轮滚动列表，点击切换行或面板焦点。</p>
+  <p>已启用鼠标捕获。可使用滚轮滚动列表，点击切换行或面板焦点。终端尺寸变化会立即触发布局重新计算。</p>
 
   <h2 id="filter-expression-syntax">过滤表达式语法</h2>
 
-  <p>TUI 过滤栏与 <code>relay-core-cli flows --filter</code>、HTTP API 的 <code>search_flows</code> 共享同一解析器。按 <code>/</code> 打开过滤栏后输入表达式即可。完整语法见 <a href="/docs/filter-expressions">过滤表达式</a>。</p>
+  <p>TUI 过滤栏、命令面板 <code>:filter</code> 与 <code>relay-core-cli flows --filter</code>、HTTP API 的 <code>search_flows</code> 共享同一解析器。按 <code>/</code> 打开过滤栏后输入表达式即可。完整语法见 <a href="/docs/filter-expressions">过滤表达式</a>。</p>
 
   <p>速览：</p>
   <pre><code>host:api method:POST status:&gt;=400   # 失败的对 api 的 POST
@@ -117,14 +169,14 @@ health                               # URL 含 "health" 的任意流</code></pre
 
   <ul>
     <li><strong>概览 (Overview)</strong> — 方法、URL、状态、耗时、大小、主机、远端地址、命中的规则、错误信息</li>
-    <li><strong>请求 (Request)</strong> — 起始行、请求头、请求体（受 <code>max_body_size</code> 限制）</li>
+    <li><strong>请求 (Request)</strong> — 起始行、请求头、请求体（受 <code>max_body_size</code> 限制，按 <code>v</code> 切换视图）</li>
     <li><strong>响应 (Response)</strong> — 状态行、响应头、响应体</li>
     <li><strong>消息 (Messages)</strong> — WebSocket 消息日志（opcode、方向、大小、base64 内容）。普通 HTTP 此页为空。</li>
   </ul>
 
   <h2>复制为 cURL</h2>
 
-  <p>在任意 HTTP/WebSocket 流量上按 <code>y</code>，即可将一条可移植的 POSIX shell cURL 命令复制到剪贴板。Header 值使用单引号转义；body 使用 <code>--data-binary</code> 写入。macOS 需要 <code>pbcopy</code>，Linux 需要 <code>wl-copy</code> / <code>xclip</code>；未找到时仍会构造命令并通过 toast 提示剪贴板不可用。</p>
+  <p>在任意 HTTP/WebSocket 流量上按 <code>y</code> 或在命令面板执行 <code>:cp</code>，即可将一条可移植的 POSIX shell cURL 命令复制到剪贴板。Header 值使用单引号转义；body 使用 <code>--data-binary</code> 写入。macOS 需要 <code>pbcopy</code>，Linux 需要 <code>wl-copy</code> / <code>xclip</code>；未找到时仍会构造命令并通过 toast 提示剪贴板不可用。</p>
 
   <h2 id="themes">主题</h2>
 
@@ -179,6 +231,8 @@ RELAY_CORE_TUI_THEME=slate relay-core-cli run --ui</code></pre>
 
   <ul>
     <li>多按 <code>g</code> 重新启用自动滚动——使用 <code>j</code>/<code>k</code> 手动滚动时会暂时关闭自动滚动，便于在持续流量中查看某一行。</li>
+    <li>用 <code>m</code> 给关键流量打标记（如 <code>m</code> 后 <code>A</code>），再用 <code>'</code> 快速跳转——替代上一会话中的"记忆位置"。</li>
+    <li>不确定快捷键？按 <code>:</code> 打开命令面板，所有动作都有稳定的文本别名。</li>
     <li>TUI 仅在内存中保留最近 1,000 条流量。可结合 <code>--save-stream &lt;PATH&gt;</code> 将所有流量以 JSONL 形式落盘，供 <a href="/docs/cli#analyze">离线分析</a>。</li>
     <li>搭配 <code>--api-port</code> 可让 <code>relay-core-cli flows</code> 等下游工具共享同一代理实例。</li>
   </ul>

@@ -5,40 +5,55 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="TUI" description="Interactive Terminal UI for RelayCore">
   <h1>Interactive Terminal UI (TUI)</h1>
 
-  <p>RelayCore ships a full-featured terminal UI for inspecting traffic in real time. It is built on <a href="https://github.com/ratatui/ratatui" target="_blank" rel="noopener">ratatui</a> and behaves like a lightweight Charles/Proxyman for your shell.</p>
+  <p>RelayCore ships a full-featured terminal UI for inspecting traffic in real time. It is built on <a href="https://github.com/ratatui/ratatui" target="_blank" rel="noopener">ratatui</a> and behaves like a lightweight Charles/Proxyman for your shell. Starting in 0.8 the TUI was rewritten around a responsive two-pane layout with a column budget system, a colon command palette, A–Z flow marks, a body-view toggle, and priority hints on the status bar.</p>
 
   <h2>Launching</h2>
 
   <pre><code>relay-core-cli run --ui
-# optionally pair with the REST/SSE API for the four-panel layout
+# optionally pair with the REST/SSE API so external tools (e.g. flows) can share the same proxy
 relay-core-cli run --ui --api-port 8082</code></pre>
 
-  <p>When <code>--ui</code> is enabled the TUI takes over the terminal. The proxy itself continues to run in the same process — there is no extra service to start.</p>
+  <p>When <code>--ui</code> is enabled the TUI takes over the terminal. The proxy itself continues to run in the same process — there is no extra service to start. Minimum terminal size is <code>60 × 12</code>; below that the TUI refuses to start and asks you to resize.</p>
 
   <h2>Layouts</h2>
 
-  <p>The TUI adapts to your terminal width:</p>
+  <p>The TUI adapts to your terminal width through five responsive profiles that progressively expand the column budget:</p>
 
   <table>
-    <tr><th>Width</th><th>Layout</th><th>Panels</th></tr>
+    <tr><th>Width</th><th>Layout</th><th>Panels &amp; columns</th></tr>
     <tr>
-      <td>≥ 120 columns</td>
-      <td>Four-panel (when <code>--api-port</code> is enabled)</td>
-      <td>Flow list · Flow detail · Active rules · Pending intercepts</td>
+      <td>&lt; 60 columns</td>
+      <td>—</td>
+      <td>Terminal too narrow — TUI refuses to start and asks you to resize</td>
     </tr>
     <tr>
-      <td>80–119 columns</td>
-      <td>Two-panel</td>
-      <td>Flow list · Flow detail (split horizontally, ratio adapts to width)</td>
-    </tr>
-    <tr>
-      <td>&lt; 80 columns</td>
+      <td>60–79 columns</td>
       <td>Single-pane (toggle with <code>Tab</code>)</td>
       <td>Full-screen flow list <em>or</em> flow detail</td>
     </tr>
+    <tr>
+      <td>80–99 columns</td>
+      <td>Two-pane compact</td>
+      <td>Flow list · Detail (Method, Code, Dur, URL)</td>
+    </tr>
+    <tr>
+      <td>100–119 columns</td>
+      <td>Two-pane standard</td>
+      <td>Longer URL column</td>
+    </tr>
+    <tr>
+      <td>120–179 columns</td>
+      <td>Two-pane wide</td>
+      <td>Adds Size, Host, Path columns</td>
+    </tr>
+    <tr>
+      <td>≥ 180 columns</td>
+      <td>Two-pane extra wide</td>
+      <td>Extended Path budget</td>
+    </tr>
   </table>
 
-  <p>The four-panel layout is only available when the TUI is connected to the REST/SSE API (i.e. <code>--api-port</code> is set and reachable). Without the API, the rules and intercepts panels fall back to a local 2-panel view.</p>
+  <p>The four-pane layout (Flow list / Detail / Rules / Pending intercepts) was removed in 0.8. Rules and intercepts panels only remain in <code>--api-port</code> mode; without the API the TUI always falls back to a local two-pane view.</p>
 
   <h2>Keybindings</h2>
 
@@ -47,9 +62,10 @@ relay-core-cli run --ui --api-port 8082</code></pre>
   <table>
     <tr><th>Key</th><th>Action</th></tr>
     <tr><td><code>q</code></td><td>Quit the TUI (proxy continues in background until SIGINT)</td></tr>
+    <tr><td><code>:</code></td><td>Open the command palette (try <code>:help</code>)</td></tr>
     <tr><td><code>?</code></td><td>Toggle the in-app help overlay</td></tr>
-    <tr><td><code>Esc</code></td><td>Return to the flow list / dismiss overlay</td></tr>
-    <tr><td><code>Tab</code></td><td>Cycle active area (list → detail → rules → list)</td></tr>
+    <tr><td><code>Esc</code></td><td>Return to the flow list / dismiss overlay / exit command palette</td></tr>
+    <tr><td><code>Tab</code></td><td>Cycle active area (list ↔ detail)</td></tr>
     <tr><td><code>1</code> / <code>2</code> / <code>3</code> / <code>4</code></td><td>Jump to detail tab: Overview · Request · Response · Messages</td></tr>
     <tr><td><code>y</code></td><td>Copy the selected HTTP flow as a cURL command</td></tr>
     <tr><td><code>Ctrl+C</code></td><td>Hard-exit the process</td></tr>
@@ -61,15 +77,18 @@ relay-core-cli run --ui --api-port 8082</code></pre>
     <tr><th>Key</th><th>Action</th></tr>
     <tr><td><code>j</code> / <code>↓</code></td><td>Next flow</td></tr>
     <tr><td><code>k</code> / <code>↑</code></td><td>Previous flow</td></tr>
-    <tr><td><code>g</code></td><td>Jump to newest (top) and re-enable auto-scroll</td></tr>
+    <tr><td><code>g</code> / <code>Home</code></td><td>Jump to newest (top) and re-enable auto-scroll</td></tr>
     <tr><td><code>G</code> / <code>End</code></td><td>Jump to oldest (bottom)</td></tr>
     <tr><td><code>Enter</code> / <code>l</code> / <code>→</code></td><td>Focus the detail panel</td></tr>
+    <tr><td><code>m</code></td><td>Toggle A–Z mark on the selected flow (same key removes it)</td></tr>
+    <tr><td><code>'</code> (backtick)</td><td>Jump to the next marked flow</td></tr>
     <tr><td><code>d</code></td><td>Delete the selected flow from the local list</td></tr>
     <tr><td><code>c</code></td><td>Clear the entire flow list (proxy is unaffected)</td></tr>
     <tr><td><code>p</code></td><td>Pause/resume capture. While paused, new flows are counted as pending instead of being added to the list.</td></tr>
-    <tr><td><code>r</code></td><td>Focus the rules panel (API mode only)</td></tr>
     <tr><td><code>/</code></td><td>Open the filter bar</td></tr>
   </table>
+
+  <p>Marked flows show an <code>Mk</code> column with the assigned letter. On narrow terminals this column collapses into the Status column to save horizontal budget.</p>
 
   <h3>Flow detail</h3>
 
@@ -82,31 +101,64 @@ relay-core-cli run --ui --api-port 8082</code></pre>
     <tr><td><code>G</code> / <code>End</code></td><td>Scroll to bottom</td></tr>
     <tr><td><code>Tab</code></td><td>Cycle detail tabs (Overview → Request → Response → Messages → Overview)</td></tr>
     <tr><td><code>h</code> / <code>←</code> / <code>Esc</code></td><td>Return to the flow list</td></tr>
+    <tr><td><code>v</code></td><td>Cycle body view: <code>auto</code> → <code>pretty</code> → <code>raw</code> → <code>hex</code></td></tr>
   </table>
 
   <h3>Filter bar</h3>
 
   <p>Press <code>/</code> in the flow list to start a filter, <code>Enter</code> or <code>Esc</code> to commit/close. See <a href="#filter-expression-syntax">Filter expression syntax</a> below.</p>
 
+  <h3>Command palette (<code>:</code>)</h3>
+
+  <p>Press <code>:</code> from anywhere to open the command palette, type a subcommand, and press <code>Enter</code>. It exposes stable text aliases for every common action — theme switching, filter management, copy, and more.</p>
+
+  <table>
+    <tr><th>Command</th><th>Action</th></tr>
+    <tr><td><code>:q</code> / <code>:quit</code></td><td>Quit the TUI</td></tr>
+    <tr><td><code>:c</code> / <code>:clear</code></td><td>Clear the flow list</td></tr>
+    <tr><td><code>:p</code> / <code>:pause</code></td><td>Pause capture</td></tr>
+    <tr><td><code>:r</code> / <code>:resume</code></td><td>Resume capture</td></tr>
+    <tr><td><code>:f &lt;expr&gt;</code> / <code>:filter &lt;expr&gt;</code></td><td>Set a filter expression</td></tr>
+    <tr><td><code>:uf</code> / <code>:unfilter</code></td><td>Clear the filter</td></tr>
+    <tr><td><code>:t &lt;name&gt;</code> / <code>:theme &lt;name&gt;</code></td><td>Switch theme (<code>relay</code> / <code>slate</code> / <code>high-contrast</code>)</td></tr>
+    <tr><td><code>:cp</code> / <code>:copy</code></td><td>Copy the selected flow as cURL</td></tr>
+    <tr><td><code>:v &lt;mode&gt;</code> / <code>:view &lt;mode&gt;</code></td><td>Switch body view (<code>auto</code> / <code>pretty</code> / <code>raw</code> / <code>hex</code>)</td></tr>
+    <tr><td><code>:h</code> / <code>:help</code></td><td>List all commands</td></tr>
+  </table>
+
+  <h2>Body view (<code>v</code>)</h2>
+
+  <p>In the detail panel, press <code>v</code> to cycle the request/response body render mode:</p>
+
+  <ul>
+    <li><strong>auto</strong> — picks based on <code>Content-Type</code>: JSON → <code>pretty</code>, text and images → <code>raw</code>, unknown binary → <code>hex</code></li>
+    <li><strong>pretty</strong> — syntax-highlighted (JSON / YAML / XML / HTML / JavaScript / CSS) with JSONPath folding when possible</li>
+    <li><strong>raw</strong> — raw byte stream (good for compressed or binary payloads)</li>
+    <li><strong>hex</strong> — hex dump, handy for binary protocol debugging</li>
+  </ul>
+
+  <p>The WebSocket Messages tab follows the same <code>v</code> cycle: text frames go through pretty/raw, binary frames through hex.</p>
+
   <h2>Status bar</h2>
 
-  <p>The bottom row always shows the live operating picture:</p>
+  <p>The bottom row always shows the live operating picture. In 0.8 it gains <strong>priority hints</strong>: when there is a paused capture, pending flows, pending intercepts, or a script error, the relevant indicator claims the left side of the status bar with a highlighted style until resolved.</p>
 
   <ul>
     <li>Live request rate (5-second sliding window, in req/s)</li>
     <li>Total flows captured since startup</li>
-    <li>Active area indicator (LIST / DETAIL / RULES)</li>
+    <li>Active area indicator (LIST / DETAIL)</li>
     <li>Uptime in <code>hh:mm:ss</code></li>
     <li>Pending counter when capture is paused or auto-scroll is off</li>
+    <li>Current body view (only when the detail panel is focused)</li>
   </ul>
 
   <h2>Mouse support</h2>
 
-  <p>Mouse capture is enabled. You can scroll the list with the wheel and click to focus rows or panels.</p>
+  <p>Mouse capture is enabled. You can scroll the list with the wheel and click to focus rows or panels. Resizes trigger an immediate layout recompute.</p>
 
   <h2 id="filter-expression-syntax">Filter expression syntax</h2>
 
-  <p>The TUI filter bar shares its parser with <code>relay-core-cli flows --filter</code> and the HTTP API's <code>search_flows</code> tool. Press <code>/</code> to open the bar, then enter a filter expression. See <a href="/en/docs/filter-expressions">Filter Expressions</a> for the full syntax.</p>
+  <p>The TUI filter bar, the command palette's <code>:filter</code>, <code>relay-core-cli flows --filter</code>, and the HTTP API's <code>search_flows</code> tool all share the same parser. Press <code>/</code> to open the bar, then enter a filter expression. See <a href="/en/docs/filter-expressions">Filter Expressions</a> for the full syntax.</p>
 
   <p>Quick examples:</p>
   <pre><code>host:api method:POST status:&gt;=400   # failing POSTs to api
@@ -117,14 +169,14 @@ health                               # any flow whose URL contains "health"</cod
 
   <ul>
     <li><strong>Overview</strong> — method, URL, status, duration, size, host, remote address, list of matched rules, and any error message</li>
-    <li><strong>Request</strong> — start line, headers, and body (subject to <code>max_body_size</code> in the policy)</li>
+    <li><strong>Request</strong> — start line, headers, and body (subject to <code>max_body_size</code> in the policy; toggle the view with <code>v</code>)</li>
     <li><strong>Response</strong> — status line, headers, and body</li>
     <li><strong>Messages</strong> — WebSocket message log (opcode, direction, size, base64 content). Empty for plain HTTP.</li>
   </ul>
 
   <h2>Copy as cURL</h2>
 
-  <p>Press <code>y</code> on any HTTP/WebSocket flow to copy a portable POSIX-shell cURL command to the clipboard. Header values are escaped with single quotes; bodies are written with <code>--data-binary</code>. Requires <code>pbcopy</code> on macOS or <code>wl-copy</code> / <code>xclip</code> on Linux; if none is found the TUI still builds the command and shows a toast indicating the clipboard is unavailable.</p>
+  <p>Press <code>y</code> on any HTTP/WebSocket flow (or run <code>:cp</code> from the command palette) to copy a portable POSIX-shell cURL command to the clipboard. Header values are escaped with single quotes; bodies are written with <code>--data-binary</code>. Requires <code>pbcopy</code> on macOS or <code>wl-copy</code> / <code>xclip</code> on Linux; if none is found the TUI still builds the command and shows a toast indicating the clipboard is unavailable.</p>
 
   <h2 id="themes">Themes</h2>
 
@@ -179,6 +231,8 @@ RELAY_CORE_TUI_THEME=slate relay-core-cli run --ui</code></pre>
 
   <ul>
     <li>Use <code>g</code> frequently to re-engage auto-scroll — manually scrolling with <code>j</code>/<code>k</code> disables it so you can read a specific row while traffic continues.</li>
+    <li>Press <code>m</code> to mark interesting flows (e.g. <code>m</code> then <code>A</code>), then jump between them with <code>'</code> — replaces the older "remember position" pattern.</li>
+    <li>Forgot a binding? Hit <code>:</code> for the command palette — every action has a stable text alias.</li>
     <li>The TUI only holds the last 1,000 flows in memory. Use <code>--save-stream &lt;PATH&gt;</code> to capture every flow as JSONL to disk for offline <a href="/en/docs/cli#analyze">analysis</a>.</li>
     <li>Combine with <code>--api-port</code> to feed downstream tools (e.g. <code>relay-core-cli flows</code>) over the same proxy instance.</li>
   </ul>
