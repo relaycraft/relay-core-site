@@ -79,13 +79,13 @@ relay-core-cli run --listen 127.0.0.1:8080
 
 ## 性能参考
 
-| 指标 | RelayCore | mitmproxy | Charles |
-|------|-----------|-----------|---------|
-| 吞吐量 | 10K+ req/s | ~1K req/s | ~2K req/s |
-| 空闲内存 | ~38MB | ~150MB | ~300MB |
-| P99 开销 | <5ms | ~50ms | ~30ms |
+| 指标 | RelayCore | mitmproxy |
+|------|-----------|-----------|
+| 吞吐量 | ~80K req/s | ~2K req/s |
+| P99 延迟 | ~2.6 ms | ~135 ms |
+| 冷启动 | ~136 ms | ~1.5 s |
 
-*实验室环境参考值，实际取决于规则复杂度与脚本启用情况。*
+*测试环境：M4 Max / macOS 26 / 64 GB，详见 [`benchmarks/compare_mitmproxy.sh`](https://github.com/relaycraft/relay-core/blob/main/benchmarks/compare_mitmproxy.sh).*
 
 ---
 

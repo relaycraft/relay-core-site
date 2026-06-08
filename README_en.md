@@ -79,13 +79,13 @@ Layered crates: **Adapter → API → Runtime → Engine**. Public crates ship i
 
 ## Performance (reference)
 
-| Metric | RelayCore | mitmproxy | Charles |
-|--------|-----------|-----------|---------|
-| Throughput | 10K+ req/s | ~1K req/s | ~2K req/s |
-| Idle memory | ~38MB | ~150MB | ~300MB |
-| P99 overhead | <5ms | ~50ms | ~30ms |
+| Metric | RelayCore | mitmproxy |
+|--------|-----------|-----------|
+| Throughput | ~80K req/s | ~2K req/s |
+| P99 Latency | ~2.6 ms | ~135 ms |
+| Cold Start | ~136 ms | ~1.5 s |
 
-*Lab figures; real numbers depend on rules and scripting.*
+*Measured on M4 Max / macOS 26 / 64 GB, see [`benchmarks/compare_mitmproxy.sh`](https://github.com/relaycraft/relay-core/blob/main/benchmarks/compare_mitmproxy.sh).*
 
 ---
 

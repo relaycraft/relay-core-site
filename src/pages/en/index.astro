@@ -63,7 +63,7 @@ const CLI_VERSION = '0.8.3';
           <span class="title-line">ENGINE</span>
         </h1>
         <p class="hero-subtitle">
-          Zero-copy async runtime. Sub-millisecond overhead.<br>
+          ~40x faster than mitmproxy.<br>
           MITM proxy for HTTP/HTTPS/WebSocket with full programmatic control.
         </p>
         <div class="hero-cta">
@@ -181,22 +181,22 @@ const CLI_VERSION = '0.8.3';
 
     <div class="metrics-grid">
       <div class="metric-card">
-        <div class="metric-value">&gt;10K</div>
+        <div class="metric-value">~80K</div>
         <div class="metric-unit">req/s</div>
         <div class="metric-label">Throughput (S1)</div>
       </div>
       <div class="metric-card">
-        <div class="metric-value">&lt;200</div>
+        <div class="metric-value">~136</div>
         <div class="metric-unit">ms</div>
         <div class="metric-label">Cold Start</div>
       </div>
       <div class="metric-card">
-        <div class="metric-value">&lt;50</div>
+        <div class="metric-value">~71</div>
         <div class="metric-unit">MB</div>
         <div class="metric-label">Idle RSS</div>
       </div>
       <div class="metric-card">
-        <div class="metric-value">&lt;5</div>
+        <div class="metric-value">~2.6</div>
         <div class="metric-unit">ms</div>
         <div class="metric-label">P99 Latency Add</div>
       </div>
@@ -207,39 +207,34 @@ const CLI_VERSION = '0.8.3';
         <span>Metric</span>
         <span>RelayCore</span>
         <span><a href="https://mitmproxy.org" target="_blank" rel="noopener" class="competitor-link">mitmproxy</a></span>
-        <span><a href="https://www.charlesproxy.com" target="_blank" rel="noopener" class="competitor-link">Charles</a></span>
       </div>
       <div class="table-row">
         <span class="row-label">Language</span>
         <span class="row-value highlight">Rust</span>
         <span>Python</span>
-        <span>Java</span>
       </div>
       <div class="table-row">
         <span class="row-label">Throughput</span>
-        <span class="row-value highlight">10K+ req/s</span>
-        <span>~1K req/s</span>
+        <span class="row-value highlight">~80K req/s</span>
         <span>~2K req/s</span>
       </div>
       <div class="table-row">
-        <span class="row-label">Memory (idle)</span>
-        <span class="row-value highlight">~38MB</span>
-        <span>~150MB</span>
-        <span>~300MB</span>
+        <span class="row-label">P99 Latency</span>
+        <span class="row-value highlight">~2.6 ms</span>
+        <span>~135 ms</span>
       </div>
       <div class="table-row">
-        <span class="row-label">P99 Overhead</span>
-        <span class="row-value highlight">&lt;5ms</span>
-        <span>~50ms</span>
-        <span>~30ms</span>
+        <span class="row-label">Cold Start</span>
+        <span class="row-value highlight">~136 ms</span>
+        <span>~1.5 s</span>
       </div>
     </div>
 
     <p class="comparison-footnote">
-      Lab-environment reference values. Methodology, hardware, and reproduction
-      scripts live in
+      Measured on M4 Max / macOS 26 / 64 GB, 100 concurrent connections, 1 KB payload, using
+      <a href="https://github.com/relaycraft/relay-core/blob/main/benchmarks/compare_mitmproxy.sh" target="_blank" rel="noopener">compare_mitmproxy.sh</a>.
+      3-run average, ±1% ratio stability. Full methodology and raw data in
       <a href="https://github.com/relaycraft/relay-core/tree/main/benchmarks" target="_blank" rel="noopener">benchmarks/</a>.
-      Real-world numbers depend on rule complexity, script features, concurrency, and target upstream.
     </p>
   </section>
 
