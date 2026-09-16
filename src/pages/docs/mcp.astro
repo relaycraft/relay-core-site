@@ -195,6 +195,15 @@ npx @relay-core/cli ca install   # macOS 可自动安装；其他平台见 ca st
     <li><code>ca://install</code> — CA 安装指引（含默认路径）</li>
   </ul>
 
+  <h3>订阅（Subscriptions）</h3>
+  <p>服务端声明了资源订阅能力，并且<strong>只接受它确实会推送更新的 URI</strong>——<code>flows://</code>、
+    <code>flows://&#123;id&#125;</code>、<code>rules://</code>、<code>proxy://status</code>、
+    <code>audit://recent</code>，因此订阅成功的客户端一定会收到通知。其它 URI 会被<strong>明确拒绝</strong>而不是
+    静默接受：一个永远不会产生更新的订阅，只会让客户端白等。<code>unsubscribe</code> 会被接受；
+    服务端是广播给所有连接者，不维护按订阅者的状态。</p>
+  <p>注意<strong>脱敏默认开启</strong>：除非改动策略，agent 读到的是被掩码的敏感 header 与 query 值
+    （见 <a href="/docs/api#policy--redaction">API § 策略与脱敏</a>）。</p>
+
   <h2>使用场景</h2>
 
   <ul>

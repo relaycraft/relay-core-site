@@ -39,6 +39,14 @@ export const translations = {
         title: 'Prometheus Metrics',
         desc: 'Built-in Prometheus text format and JSON metrics endpoint.',
       },
+      mcp: {
+        title: 'MCP for AI Agents',
+        desc: 'An MCP server exposes flows, rules and metrics as tools and subscribable resources, so an agent can read and drive live traffic.',
+      },
+      grpc: {
+        title: 'gRPC and h2c',
+        desc: 'Plaintext HTTP/2 in both directions — including inside a CONNECT tunnel — with gRPC message framing and trailers recorded.',
+      },
     },
     install: {
       label: '// INSTALL',
@@ -111,6 +119,14 @@ export const translations = {
       metrics: {
         title: 'Prometheus 指标',
         desc: '内置 Prometheus 文本格式和 JSON 指标端点。',
+      },
+      mcp: {
+        title: '面向 AI Agent 的 MCP',
+        desc: 'MCP 服务端把 flow、规则与指标暴露为工具与可订阅资源，agent 既能读实时流量，也能操作它。',
+      },
+      grpc: {
+        title: 'gRPC 与 h2c',
+        desc: '双向支持明文 HTTP/2（含 CONNECT 隧道内），并解析 gRPC 消息分帧、记录 trailers。',
       },
     },
     install: {

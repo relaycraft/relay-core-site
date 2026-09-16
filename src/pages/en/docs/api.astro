@@ -142,6 +142,12 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   &#125;
 &#125;</code></pre>
 
+  <p><strong>Redaction is enabled by default.</strong> A default policy masks the sensitive header and
+    query names below, so a fresh install does not persist or serve credentials verbatim — including to
+    anything reading the API. Bodies are the exception: <code>redact_bodies</code> stays off, because
+    masking payload content would change what rules and scripts see. Turn redaction off explicitly if you
+    need raw headers.</p>
+
   <p>Default sensitive header names: <code>authorization</code>, <code>proxy-authorization</code>, <code>cookie</code>, <code>set-cookie</code>, <code>x-api-key</code>, <code>x-auth-token</code>.</p>
   <p>Default sensitive query keys: <code>token</code>, <code>access_token</code>, <code>refresh_token</code>, <code>api_key</code>, <code>apikey</code>, <code>password</code>, <code>secret</code>.</p>
 

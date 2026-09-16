@@ -15,6 +15,13 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <p>Fully supported. The client ↔ RelayCore leg can be HTTP/1.1 or HTTP/2 depending on the client and ALPN negotiation. RelayCore ↔ upstream uses the same protocol version. Header compression (HPACK) is fully decompressed internally — rules operate on decoded pseudo-headers (<code>:method</code>, <code>:path</code>, <code>:scheme</code>, <code>:authority</code>).</p>
 
+  <p><strong>h2c (plaintext HTTP/2) is supported too.</strong> gRPC clients that speak HTTP/2 without TLS are
+    detected by their connection preface, both when they connect directly and when they tunnel through
+    <code>CONNECT</code> — which is what an <code>HTTP_PROXY</code> client does. Upstreams that only speak
+    h2c are reachable as well: the proxy offers HTTP/2 by prior knowledge and falls back to HTTP/1.1 if the
+    upstream rejects it. Because h2c has no negotiation, that fallback waits briefly before giving up, so a
+    new connection to an h2c-only upstream costs a little latency.</p>
+
   <h2>HTTPS / TLS</h2>
 
   <p>MITM interception is performed for all HTTP-over-TLS traffic using dynamically-issued certificates (see <a href="/en/docs/certificates">Certificates</a>). Upstream certificates are validated by default; in the replay endpoint you can pass <code>?accept_invalid_certs=true</code> to skip verification (debug only).</p>
@@ -55,7 +62,11 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <ul>
     <li><strong>Custom protocols over raw TCP</strong> (non-HTTP): RelayCore does not parse them. In transparent mode such connections will fail.</li>
-    <li><strong>gRPC over HTTP/2</strong>: transparent at the HTTP/2 layer, but gRPC protobuf payloads are opaque — your scripts can read the bytes but won't decode them.</li>
+    <li><strong>gRPC message payloads</strong>: the framing is parsed — a gRPC body is read as its
+      length-prefixed messages (count, size, compression flag, and a text preview when the payload is
+      text), and HTTP trailers are recorded, so <code>grpc-status</code> and <code>grpc-message</code>
+      are visible on the flow. Decoding the protobuf fields themselves still needs the service's
+      schema, which the engine does not have, so payload <em>contents</em> remain opaque.</li>
     <li><strong>SSE (Server-Sent Events)</strong>: long-lived HTTP/1.1. RelayCore uses SSE on its own <code>GET /api/v1/events</code> endpoint; external SSE traffic is recorded as plain HTTP without per-event boundaries.</li>
   </ul>
 </DocsLayout>

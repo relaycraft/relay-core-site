@@ -142,6 +142,10 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   &#125;
 &#125;</code></pre>
 
+  <p><strong>脱敏默认开启。</strong>默认策略会掩码下面的敏感 header 与 query 名，因此全新安装不会把凭据
+    原样持久化或返回——包括返回给任何读 API 的一方。body 是例外：<code>redact_bodies</code> 仍为关闭，
+    因为改写载荷内容会改变规则与脚本看到的东西。确实需要原始 header 时，请显式关闭脱敏。</p>
+
   <p>默认敏感 header 名：<code>authorization</code>、<code>proxy-authorization</code>、<code>cookie</code>、<code>set-cookie</code>、<code>x-api-key</code>、<code>x-auth-token</code>。</p>
   <p>默认敏感 query key：<code>token</code>、<code>access_token</code>、<code>refresh_token</code>、<code>api_key</code>、<code>apikey</code>、<code>password</code>、<code>secret</code>。</p>
 

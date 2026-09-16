@@ -15,6 +15,11 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <p>完整支持。客户端 ↔ RelayCore 走 HTTP/1.1 或 HTTP/2 都行（取决于客户端能力与 ALPN 协商结果）；RelayCore ↔ 上游使用相同的协议版本。Header compression (HPACK) 在 RelayCore 内部完全展开，规则处理的是已解码的伪头（<code>:method</code>、<code>:path</code>、<code>:scheme</code>、<code>:authority</code>）。</p>
 
+  <p><strong>同样支持 h2c（明文 HTTP/2）。</strong>不发 TLS 的 gRPC 客户端可以通过连接前导被识别，直连与走
+    <code>CONNECT</code> 隧道都行（后者正是 <code>HTTP_PROXY</code> 客户端的行为）。只支持 h2c 的上游也能到达：
+    代理按 prior knowledge 直接发 HTTP/2，上游拒绝时回退到 HTTP/1.1。由于 h2c 没有协商机制，这个回退会先等一小段时间，
+    因此对纯 h2c 上游建立新连接会有少量额外延迟。</p>
+
   <h2>HTTPS / TLS</h2>
 
   <p>对所有 HTTP-over-TLS 流量做 MITM 拦截，依赖动态签发的证书（见 <a href="/docs/certificates">证书与 HTTPS 拦截</a>）。上游默认校验证书；可在 replay 场景中临时关闭（仅 <code>POST /api/v1/flows/:id/replay?accept_invalid_certs=true</code>，调试用）。</p>
@@ -57,7 +62,10 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <ul>
     <li><strong>原始 TCP 上的自定义协议</strong>（非 HTTP）：RelayCore 不解析；透明代理场景下会让连接失败。</li>
-    <li><strong>gRPC over HTTP/2</strong>：HTTP/2 层透明，但 gRPC 的 protobuf payload RelayCore 不会解析——可以用脚本读 body 当作字节处理。</li>
+    <li><strong>gRPC 的消息载荷</strong>：分帧会被解析——gRPC body 按长度前缀读成一条条消息（条数、长度、
+      压缩标志，载荷是文本时给出文本预览），HTTP trailers 也会被记录，因此流上能看到
+      <code>grpc-status</code> 与 <code>grpc-message</code>。但 protobuf 字段本身的解码仍需要服务的
+      schema，引擎没有，所以载荷<em>内容</em>依然是不透明的。</li>
     <li><strong>SSE（Server-Sent Events）</strong>：HTTP/1.1 长连接，RelayCore 在 <code>GET /api/v1/events</code> 端点上自用，外部站点 SSE 流量以 HTTP 形式被记录但事件边界不会被单独标注。</li>
   </ul>
 </DocsLayout>

@@ -195,6 +195,17 @@ npx @relay-core/cli ca install   # macOS helper; see ca status on other platform
     <li><code>ca://install</code> — CA install guide with default paths</li>
   </ul>
 
+  <h3>Subscriptions</h3>
+  <p>The server declares the resources-subscribe capability and accepts a subscription for exactly the
+    URIs it pushes updates for — <code>flows://</code>, <code>flows://&#123;id&#125;</code>,
+    <code>rules://</code>, <code>proxy://status</code> and <code>audit://recent</code> — so a client that
+    subscribes is a client that will actually be notified. Any other URI is refused with an error rather
+    than silently accepted, because a subscription that can never produce an update only tells a client
+    to wait. <code>unsubscribe</code> is accepted; the server broadcasts to whoever is connected and does
+    not keep per-subscriber state.</p>
+  <p>Note that redaction is on by default: an agent reading flows sees masked sensitive headers and
+    query values unless the policy is changed (see <a href="/en/docs/api#policy--redaction">API § policy</a>).</p>
+
   <h2>Use Cases</h2>
 
   <ul>
