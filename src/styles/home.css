@@ -330,10 +330,13 @@
 .table-header,
 .table-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  /* Three columns for three cells. A fourth was reserved and never filled, which left a quarter of
+     the width empty and made the whole block read as sparse. */
+  grid-template-columns: minmax(0, 1.1fr) 1fr 1fr;
   gap: var(--space-md);
-  padding: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
   align-items: center;
+  min-height: 2.75rem;
 }
 
 .table-header {
@@ -671,9 +674,11 @@
 @media (max-width: 768px) {
   .title-line { font-size: 2rem; }
   .features-grid, .crates-grid, .metrics-grid, .cli-commands { grid-template-columns: 1fr; }
+  /* Two columns: the metric name and relay-core's value. mitmproxy's column is dropped rather than
+     squeezed, since a comparison table with two values and no room to read them says nothing. */
   .table-header, .table-row { grid-template-columns: 1fr 1fr; }
-  .table-header span:nth-child(3), .table-header span:nth-child(4),
-  .table-row span:nth-child(3), .table-row span:nth-child(4) { display: none; }
+  .table-header span:nth-child(3),
+  .table-row span:nth-child(3) { display: none; }
   .endpoint-row {
     grid-template-columns: 3.25rem 1fr;
   }
