@@ -5,12 +5,15 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="MCP 服务器" description="AI 代理的 MCP 集成">
   <h1>MCP 服务器</h1>
 
-  <p>MCP 能力由独立适配器 <code>relay-core-probe</code>（npm 包 <code>@relay-core/mcp</code>）提供。它内置代理进程并通过 MCP 向 AI Agent 暴露工具，<strong>不是</strong> <code>relay-core-cli run --mcp</code>。</p>
+  <p>MCP 能力由 <code>relay-core-probe</code>（npm 包 <code>@relay-core/mcp</code>）提供，它是一个<strong>桥</strong>：把 stdin/stdout 上的 MCP 消息转发到守护进程的 <code>/mcp</code> 端点。</p>
+
+  <p><strong>连接一个 MCP 客户端不会启动引擎。</strong>代理、流量历史、规则与断点队列都归守护进程所有，所以 CLI、编辑器与 Web UI 看到的是同一份状态，而不是各自一份。守护进程自己也能直接服务 HTTP 版 MCP 端点，能配置 remote MCP 的客户端可以完全跳过桥。</p>
 
   <h2>前置条件</h2>
 
   <pre><code>npx @relay-core/cli ca generate
-npx @relay-core/cli ca install   # macOS 可自动安装；其他平台见 ca status 提示</code></pre>
+npx @relay-core/cli ca install   # macOS 可自动安装；其他平台见 ca status 提示
+npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，桥会自行拉起守护进程）</code></pre>
 
   <h2>配置 MCP 客户端</h2>
 
@@ -24,23 +27,25 @@ npx @relay-core/cli ca install   # macOS 可自动安装；其他平台见 ca st
   &#125;
 &#125;</code></pre>
 
-  <p><code>@relay-core/mcp</code> 会启动 <code>relay-core-probe</code>：默认 stdio 传输，同时在本机 <code>127.0.0.1:8080</code> 运行代理。请将浏览器/系统代理指向该地址。</p>
+  <p>守护进程未运行时，桥会自己拉起一个（脱离终端，因此关掉编辑器也不受影响）；它<strong>不会</strong>自动启动代理——代理的启停是显式命令：<code>relay-core-cli start</code> / <code>stop</code>，或 MCP 工具 <code>proxy_start</code> / <code>proxy_stop</code>。设 <code>RELAY_MCP_NO_AUTOSTART=1</code>，或在配置文件里写 <code>[client] autostart_daemon = false</code>，可要求必须手动先起守护进程。</p>
 
-  <h2>probe CLI 参数</h2>
-
-  <p>probe 二进制支持以下参数与环境变量：</p>
+  <h2>桥的参数</h2>
 
   <table>
     <tr><th>参数</th><th>环境变量</th><th>默认值</th><th>说明</th></tr>
-    <tr><td><code>--port &lt;P&gt;</code></td><td><code>RELAY_PORT</code></td><td><code>8080</code></td><td>内嵌代理监听端口</td></tr>
-    <tr><td><code>--ca-cert &lt;PATH&gt;</code></td><td><code>RELAY_CA_CERT</code></td><td>数据目录</td><td>HTTPS 拦截 CA 证书</td></tr>
-    <tr><td><code>--ca-key &lt;PATH&gt;</code></td><td><code>RELAY_CA_KEY</code></td><td>数据目录</td><td>CA 私钥</td></tr>
-    <tr><td><code>--transport &lt;MODE&gt;</code></td><td><code>RELAY_PROBE_TRANSPORT</code></td><td><code>stdio</code></td><td><code>stdio</code> 或 <code>sse</code></td></tr>
-    <tr><td><code>--probe-port &lt;P&gt;</code></td><td><code>RELAY_PROBE_PORT</code></td><td><code>3000</code></td><td>SSE 监听端口（仅 transport=sse）</td></tr>
-    <tr><td><code>--probe-bind &lt;ADDR&gt;</code></td><td><code>RELAY_PROBE_BIND</code></td><td><code>127.0.0.1</code></td><td>SSE 绑定地址</td></tr>
+    <tr><td>—</td><td><code>RELAY_DATA_DIR</code></td><td><code>~/.relay-core</code></td><td>连接哪个守护进程</td></tr>
+    <tr><td><code>--mcp-url &lt;URL&gt;</code></td><td><code>RELAY_MCP_URL</code></td><td>自动发现</td><td>跳过发现，直接使用该 MCP 端点</td></tr>
+    <tr><td><code>--token &lt;T&gt;</code></td><td><code>RELAY_MCP_TOKEN</code></td><td>取自清单</td><td>该端点的 Bearer 令牌</td></tr>
+    <tr><td><code>--no-autostart</code></td><td><code>RELAY_MCP_NO_AUTOSTART=1</code></td><td>允许自动拉起</td><td>拒绝自行启动守护进程</td></tr>
   </table>
 
   <h2>工具</h2>
+
+  <h3>生命周期</h3>
+
+  <p><code>proxy_status</code> 报告代理是否在运行、监听端口、运行时长与失败原因；<code>proxy_start</code> 启动代理（幂等；端口被占返回 <code>start_failed</code>，不会报一个从未 listen 的成功）；<code>proxy_stop</code> 停代理但保留守护进程与历史。三者都带只读 / 破坏性 / 幂等注解，且排在工具列表最前。</p>
+
+  <p>没有任何代理在运行时，流量类工具返回结构化错误 <code>proxy_not_running</code>（在错误的 <code>data.code</code> 里），而不是一个会被误读为"没有流量"的空列表；代理已停但仍有历史时，历史照常返回。
 
   <h3>观察</h3>
 
@@ -183,6 +188,10 @@ npx @relay-core/cli ca install   # macOS 可自动安装；其他平台见 ca st
     "redact_bodies": true
   &#125;
 &#125;</code></pre>
+
+  <h2>结果形态</h2>
+
+  <p>每个工具同时返回 <code>structuredContent</code>（Agent 直接读的 typed 字段，形状稳定处还声明了 <code>outputSchema</code>）与同一份 JSON 的文本回退，因此新旧客户端不会对同一次调用得出不同结论。写操作返回 <code>&#123; ok, message, … &#125;</code>：成功是一个字段，而不是一句需要匹配的提示语。<code>search_flows</code> 返回 <code>&#123; count, flows &#125;</code>。工具契约版本为 <strong>2</strong>。</p>
 
   <h2>资源</h2>
 

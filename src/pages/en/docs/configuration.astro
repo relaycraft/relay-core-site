@@ -5,7 +5,9 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="Configuration" description="RelayCore configuration reference">
   <h1>Configuration</h1>
 
-  <p>RelayCore is configured primarily through <strong>CLI flags, environment variables, and a default data directory</strong>. There is no unified <code>config.toml</code> loader today.</p>
+  <p>Configuration comes from four layers, in this order: <strong>CLI flag &gt; environment variable &gt; config file &gt; built-in default</strong>. A one-off override therefore never requires editing a file, and settings that must survive across commands go in <code>$RELAY_DATA_DIR/config.toml</code>.</p>
+
+  <p><code>relay-core-cli config init</code> writes a commented config file, <code>relay-core-cli config show</code> prints the settings <strong>in effect</strong> (file values merged over the defaults), and <code>relay-core-cli config path</code> prints where the file lives. A config file that cannot be parsed <strong>stops the command</strong> instead of falling back to defaults: silently ignoring a typo runs a daemon with settings nobody asked for.
 
   <h2>Default data directory</h2>
 
@@ -17,7 +19,27 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     <li><code>ca_cert.json</code> — CA metadata (required for persistent load)</li>
   </ul>
 
-  <p>After <code>relay-core-cli ca generate</code>, <code>relay-core-cli run</code> reads from these paths. If CA files are missing, <code>run</code> exits with an actionable error.</p>
+  <p>After <code>relay-core-cli ca generate</code>, the daemon reads from these paths. When the files are missing it creates them on first start; HTTPS interception still needs <code>ca install</code> to trust that CA, plain HTTP does not.</p>
+
+  <h2>Config file</h2>
+
+  <pre><code># ~/.relay-core/config.toml — set only what you change; the rest uses built-in defaults
+[daemon]
+api_port = 8082        # control API / Web UI port (an ephemeral port is used when taken)
+mcp_port = 18083       # MCP endpoint port
+mcp = true             # serve the MCP endpoint from the daemon
+idle_timeout = 0       # stop the proxy after N seconds without traffic; 0 = never
+save_stream = ""       # append every flow update as JSONL here (empty = no recording)
+
+[proxy]
+port = 8080            # port `start` / `run` use when none is named
+
+[client]
+autostart_daemon = true   # may the MCP bridge start a daemon on its own?
+
+[tui]
+# theme = "relay"      # relay | slate | high-contrast (see below)</code></pre>
+
 
   <h2>Environment variables</h2>
 
@@ -29,40 +51,36 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     <tr><td><code>RELAY_LOG</code></td><td>Log filter level (e.g. <code>info</code>, <code>debug</code>, <code>trace</code>)</td></tr>
     <tr><td><code>RELAY_CORE_TUI_THEME</code></td><td>TUI color preset when <code>--theme</code> is omitted (<code>relay</code>, <code>slate</code>, <code>high-contrast</code>). See <a href="/en/docs/tui#themes">TUI themes</a>.</td></tr>
     <tr><td><code>RELAYCORE_UPSTREAM_PASSWORD</code></td><td>Upstream proxy HTTP Basic auth password. Paired with <code>--upstream-auth-user</code>. Never pass the password via CLI — it would land in shell history. See <a href="/en/docs/proxy-modes#upstream-proxy">Proxy Modes § upstream</a>.</td></tr>
-    <tr><td><code>RELAY_PORT</code></td><td><code>relay-core-probe</code> proxy port (default 8080)</td></tr>
-    <tr><td><code>RELAY_PROBE_TRANSPORT</code></td><td>MCP transport: <code>stdio</code> (default) or <code>sse</code></td></tr>
-    <tr><td><code>RELAY_PROBE_PORT</code></td><td>MCP listen port in SSE mode (default 3000)</td></tr>
-    <tr><td><code>RELAY_PROBE_BIND</code></td><td>MCP bind address in SSE mode (default 127.0.0.1)</td></tr>
+    <tr><td><code>RELAY_API_PORT</code> / <code>RELAY_MCP_PORT</code> / <code>RELAY_PROXY_PORT</code></td><td>Port overrides for the daemon and the proxy (<code>--api-port</code> / <code>--mcp-port</code> / <code>--listen</code>)</td></tr>
+    <tr><td><code>RELAY_PROXY_IDLE_TIMEOUT</code></td><td>Seconds without captured traffic before the proxy stops; <code>0</code> never stops it</td></tr>
+    <tr><td><code>RELAY_MCP_URL</code> / <code>RELAY_MCP_TOKEN</code></td><td>Point the MCP bridge at an explicit endpoint instead of discovering the daemon</td></tr>
+    <tr><td><code>RELAY_MCP_NO_AUTOSTART</code></td><td>Set to <code>1</code> to forbid the MCP bridge from starting a daemon itself</td></tr>
   </table>
 
   <p>Path precedence: <strong>CLI args &gt; environment variables &gt; default data directory</strong>.</p>
 
-  <h2>TUI config file</h2>
+  <h2>TUI theme</h2>
 
-  <p>The TUI reads a small TOML file at <code>~/.relay-core/config.toml</code> to set persistent preferences. The only key currently consumed is the TUI theme:</p>
+  <p>The TUI takes its theme from <code>[tui].theme</code> in the file above — one file, one reader, so <code>relay-core-cli config show</code> reports it too. Resolution order: <code>--theme</code> flag &gt; <code>RELAY_CORE_TUI_THEME</code> env &gt; <code>[tui].theme</code> &gt; default (<code>relay</code>).</p>
 
-  <pre><code># ~/.relay-core/config.toml
-[tui]
-theme = "high-contrast"   # relay | slate | high-contrast</code></pre>
+  <h2>Common CLI flags</h2>
 
-  <p>Resolution order for the TUI theme: <code>--theme</code> flag &gt; <code>RELAY_CORE_TUI_THEME</code> env &gt; <code>[tui].theme</code> in this file &gt; default (<code>relay</code>).</p>
+  <pre><code>relay-core-cli start [options]      # daemon + proxy (idempotent)
+relay-core-cli run [options]        # the same daemon, in the foreground
 
-  <h2>Common CLI flags (run)</h2>
-
-  <pre><code>relay-core-cli run [options]
-
-  --listen &lt;ADDR&gt;        Proxy listen address (default 127.0.0.1:8080)
+  -l/--listen &lt;ADDR&gt;     Proxy listen address (default 127.0.0.1:8080)
   --ca-cert &lt;PATH&gt;       CA certificate path (optional override)
   --ca-key &lt;PATH&gt;        CA private key path (must pair with --ca-cert)
-  --api-port &lt;PORT&gt;      Enable REST + SSE HTTP API
-  --api-token &lt;TOKEN&gt;    Bearer auth for the HTTP API
+  --api-port &lt;PORT&gt;      Control API / Web UI port (ephemeral when taken)
+  --api-token &lt;TOKEN&gt;    Bearer token (the daemon generates one by default)
+  --mcp-port &lt;PORT&gt;      Serve the MCP endpoint from the daemon
   --rules &lt;PATH&gt;         Load rules file (JSON/YAML)
   --script &lt;PATH&gt;        Load Deno script
   --script-env-allow      Comma-separated env var names scripts may read
-  --ui                   Enable TUI
+  --ui                   Foreground daemon with the TUI attached as a client
   --theme &lt;NAME&gt;         TUI color preset
   --upstream &lt;URL&gt;       Route all traffic through a parent proxy
-  --save-stream &lt;PATH&gt;   Append every flow as JSONL to disk</code></pre>
+  --save-stream &lt;PATH&gt;   Append every flow update as JSONL to disk</code></pre>
 
   <h2>Production notes</h2>
 

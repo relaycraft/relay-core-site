@@ -10,10 +10,10 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <h2>Launching</h2>
 
   <pre><code>relay-core-cli run --ui
-# optionally pair with the REST/SSE API so external tools (e.g. flows) can share the same proxy
-relay-core-cli run --ui --api-port 8082</code></pre>
+# a different port or colour preset
+relay-core-cli run --ui --listen 127.0.0.1:9090 --theme slate</code></pre>
 
-  <p>When <code>--ui</code> is enabled the TUI takes over the terminal. The proxy itself continues to run in the same process — there is no extra service to start. Minimum terminal size is <code>60 × 12</code>; below that the TUI refuses to start and asks you to resize.</p>
+  <p>With <code>--ui</code> the TUI takes over the terminal and reads the daemon's event stream — the same traffic every other client sees, including another window or an agent connected over MCP. It is a client, not a second engine: quitting it ends the foreground session it started, while a daemon started with <code>relay-core-cli start</code> keeps running. Minimum terminal size is <code>60 × 12</code>; below that the TUI refuses to start and asks you to resize.</p>
 
   <h2>Layouts</h2>
 

@@ -52,10 +52,11 @@ const apiRequestUrl = 'http://127.0.0.1:8082/api/v1/flows?limit=10';
 <span class="prompt">$</span> <span class="cmd">relay-core-cli ca generate</span>
 <span class="output">CA certificate generated at ~/.relay-core/ca_cert.pem</span>
 
-<span class="prompt">$</span> <span class="cmd">relay-core-cli run --listen 127.0.0.1:8080</span>
-<span class="output">RelayCore proxy started</span>
+<span class="prompt">$</span> <span class="cmd">relay-core-cli start</span>
+<span class="output">RelayCore daemon started</span>
 <span class="output">  Proxy   127.0.0.1:8080</span>
-<span class="output">  Control http://127.0.0.1:8081/</span>
+<span class="output">  Control http://127.0.0.1:8082/</span>
+<span class="output">  MCP     http://127.0.0.1:18083/mcp</span>
 <span class="output">  CA      cert=~/.relay-core/ca_cert.pem key=~/.relay-core/ca_key.pem</span>
 <span class="cursor">▋</span></pre>
       </div>
@@ -311,7 +312,7 @@ const apiRequestUrl = 'http://127.0.0.1:8082/api/v1/flows?limit=10';
         <div class="cli-prompt"><TerminalDots /> $ relay-core-cli run --listen 127.0.0.1:8080</div>
         <pre class="cli-output">RelayCore proxy started
   Proxy   127.0.0.1:8080
-  Control http://127.0.0.1:8081/
+  Control http://127.0.0.1:8082/
   TUI     run with --ui for interactive mode
   CA      cert=~/.relay-core/ca_cert.pem key=~/.relay-core/ca_key.pem</pre>
       </div>

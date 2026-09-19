@@ -5,12 +5,15 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="MCP Server" description="MCP integration for AI agents">
   <h1>MCP Server</h1>
 
-  <p>MCP is provided by the standalone adapter <code>relay-core-probe</code> (npm package <code>@relay-core/mcp</code>). It runs an embedded proxy and exposes MCP tools to AI agents. It is <strong>not</strong> <code>relay-core-cli run --mcp</code>.</p>
+  <p>MCP is provided by <code>relay-core-probe</code> (npm package <code>@relay-core/mcp</code>), which is a <strong>bridge</strong>: it forwards MCP messages between stdin/stdout and the daemon's <code>/mcp</code> endpoint.</p>
+
+  <p><strong>Connecting an MCP client starts no engine.</strong> The proxy, the flow history, the rules and the intercept queue all belong to the daemon, so the CLI, your editor and the Web UI see one state rather than one each. The daemon also serves the MCP endpoint over HTTP, so a client that can be configured with a remote MCP server can skip the bridge entirely.</p>
 
   <h2>Prerequisites</h2>
 
   <pre><code>npx @relay-core/cli ca generate
-npx @relay-core/cli ca install   # macOS helper; see ca status on other platforms</code></pre>
+npx @relay-core/cli ca install   # macOS helper; see ca status on other platforms
+npx @relay-core/cli start        # daemon + proxy (optional on first run: the bridge starts one)</code></pre>
 
   <h2>Configure your MCP client</h2>
 
@@ -24,21 +27,25 @@ npx @relay-core/cli ca install   # macOS helper; see ca status on other platform
   &#125;
 &#125;</code></pre>
 
-  <p><code>@relay-core/mcp</code> launches <code>relay-core-probe</code> with stdio transport by default and a local proxy on <code>127.0.0.1:8080</code>. Point your browser or system proxy there.</p>
+  <p>When no daemon is running, the bridge starts one (detached, so closing your editor does not take it with it). It does <strong>not</strong> start a proxy: that stays an explicit command — <code>relay-core-cli start</code> / <code>stop</code>, or the <code>proxy_start</code> / <code>proxy_stop</code> tools. Set <code>RELAY_MCP_NO_AUTOSTART=1</code>, or <code>[client] autostart_daemon = false</code> in the config file, to require starting the daemon yourself.</p>
 
-  <h2>probe CLI flags</h2>
+  <h2>Bridge flags</h2>
 
-  <p>The probe binary accepts a small set of flags and env vars:</p>
+  <p>The bridge accepts a small set of flags and env vars:</p>
 
   <table>
     <tr><th>Flag</th><th>Env</th><th>Default</th><th>Description</th></tr>
-    <tr><td><code>--port &lt;P&gt;</code></td><td><code>RELAY_PORT</code></td><td><code>8080</code></td><td>Embedded proxy listen port</td></tr>
-    <tr><td><code>--ca-cert &lt;PATH&gt;</code></td><td><code>RELAY_CA_CERT</code></td><td>data dir</td><td>CA certificate for HTTPS interception</td></tr>
-    <tr><td><code>--ca-key &lt;PATH&gt;</code></td><td><code>RELAY_CA_KEY</code></td><td>data dir</td><td>CA private key</td></tr>
-    <tr><td><code>--transport &lt;MODE&gt;</code></td><td><code>RELAY_PROBE_TRANSPORT</code></td><td><code>stdio</code></td><td><code>stdio</code> or <code>sse</code></td></tr>
-    <tr><td><code>--probe-port &lt;P&gt;</code></td><td><code>RELAY_PROBE_PORT</code></td><td><code>3000</code></td><td>SSE listen port (only when transport=sse)</td></tr>
-    <tr><td><code>--probe-bind &lt;ADDR&gt;</code></td><td><code>RELAY_PROBE_BIND</code></td><td><code>127.0.0.1</code></td><td>SSE bind address</td></tr>
+    <tr><td>&mdash;</td><td><code>RELAY_DATA_DIR</code></td><td><code>~/.relay-core</code></td><td>Which daemon to attach to</td></tr>
+    <tr><td><code>--mcp-url &lt;URL&gt;</code></td><td><code>RELAY_MCP_URL</code></td><td>discovered</td><td>Skip discovery and use this MCP endpoint</td></tr>
+    <tr><td><code>--token &lt;T&gt;</code></td><td><code>RELAY_MCP_TOKEN</code></td><td>from manifest</td><td>Bearer token for that endpoint</td></tr>
+    <tr><td><code>--no-autostart</code></td><td><code>RELAY_MCP_NO_AUTOSTART=1</code></td><td>auto-start on</td><td>Refuse to start a daemon</td></tr>
   </table>
+
+  <h3>Lifecycle</h3>
+
+  <p><code>proxy_status</code> reports whether the proxy is running, on which port, for how long, and why it failed if it did. <code>proxy_start</code> starts it — idempotent, and a taken port answers <code>start_failed</code> rather than success for a proxy that never bound. <code>proxy_stop</code> stops the proxy and keeps the daemon and its history. All three carry read-only / destructive / idempotent annotations and are listed first.</p>
+
+  <p>When no proxy is running, traffic tools answer a structured <code>proxy_not_running</code> error (in the error's <code>data.code</code>) instead of an empty list that reads as "no traffic". History that was already captured is still returned while the proxy is stopped.</p>
 
   <h2>Tools</h2>
 
@@ -183,6 +190,10 @@ npx @relay-core/cli ca install   # macOS helper; see ca status on other platform
     "redact_bodies": true
   &#125;
 &#125;</code></pre>
+
+  <h2>Result shape</h2>
+
+  <p>Every tool returns <code>structuredContent</code> (typed fields an agent reads directly, with a declared <code>outputSchema</code> where the shape is stable) plus the same JSON as text, so old and new clients cannot disagree about what a call returned. Writes return <code>&#123; ok, message, ... &#125;</code>: success is a field, not a phrase to match. <code>search_flows</code> returns <code>&#123; count, flows &#125;</code>. Tool contract version: <strong>2</strong>.</p>
 
   <h2>Resources</h2>
 

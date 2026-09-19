@@ -5,7 +5,9 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="配置" description="RelayCore 配置参考">
   <h1>配置</h1>
 
-  <p>RelayCore 当前以 <strong>CLI 参数 + 环境变量 + 默认数据目录</strong> 为主进行配置。尚未提供统一的 <code>config.toml</code> 加载路径。</p>
+  <p>RelayCore 的配置来源有四层，优先级为 <strong>命令行参数 &gt; 环境变量 &gt; 配置文件 &gt; 内置默认</strong>。因此一次性的覆盖不需要改文件，而需要跨命令存活的设置写进 <code>$RELAY_DATA_DIR/config.toml</code>。</p>
+
+  <p><code>relay-core-cli config init</code> 会生成一份带注释的配置文件，<code>relay-core-cli config show</code> 打印<strong>生效中</strong>的配置（文件值覆盖默认值），<code>relay-core-cli config path</code> 打印文件位置。<strong>配置文件写坏了会直接报错</strong>，而不是静默回落到默认值——静默忽略一个拼写错误，等于让守护进程用你没有要求的设置运行。
 
   <h2>默认数据目录</h2>
 
@@ -17,7 +19,32 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li><code>ca_cert.json</code> — CA 元数据（持久化加载所需）</li>
   </ul>
 
-  <p>使用 <code>relay-core-cli ca generate</code> 生成证书后，<code>relay-core-cli run</code> 会从上述路径读取。证书不存在时 <code>run</code> 会直接失败并提示先生成 CA。</p>
+  <p>使用 <code>relay-core-cli ca generate</code> 生成证书后，守护进程会从上述路径读取；证书不存在时会在首次启动时自动创建（HTTPS 拦截仍需 <code>ca install</code> 把该 CA 装入系统信任库，纯 HTTP 则不需要）。
+
+  <h2>配置文件</h2>
+
+  <pre><code># ~/.relay-core/config.toml — 只写需要改的键，其余用内置默认
+[daemon]
+api_port = 8082        # 控制 API / Web UI 端口（被占则回落到临时端口）
+mcp_port = 18083       # MCP 端点端口
+mcp = true             # 是否由守护进程服务 MCP 端点
+idle_timeout = 0       # 无流量多少秒后停代理；0 = 永不自动关闭
+save_stream = ""       # 将每个流量更新以 JSONL 追加到该文件（空 = 不录制）
+
+[proxy]
+port = 8080            # 未显式指定监听端口时，start / run 使用的端口
+
+[client]
+autostart_daemon = true   # MCP 桥是否可以在没有守护进程时自行拉起一个
+
+[tui]
+# theme = "relay"      # relay | slate | high-contrast（TUI 主题，见下文）</code></pre>
+
+
+
+
+
+
 
   <h2>环境变量</h2>
 
@@ -29,40 +56,36 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <tr><td><code>RELAY_LOG</code></td><td>日志过滤级别（如 <code>info</code>、<code>debug</code>、<code>trace</code>）</td></tr>
     <tr><td><code>RELAY_CORE_TUI_THEME</code></td><td><code>--theme</code> 缺省时的 TUI 配色（<code>relay</code>、<code>slate</code>、<code>high-contrast</code>）。见 <a href="/docs/tui#themes">TUI 主题</a>。</td></tr>
     <tr><td><code>RELAYCORE_UPSTREAM_PASSWORD</code></td><td>上游代理 HTTP Basic 认证密码，与 <code>--upstream-auth-user</code> 配合。绝不要通过命令行参数传入密码（会进入 shell 历史）。见 <a href="/docs/proxy-modes#upstream-proxy">代理模式 § 上游</a>。</td></tr>
-    <tr><td><code>RELAY_PORT</code></td><td><code>relay-core-probe</code> 代理端口（默认 8080）</td></tr>
-    <tr><td><code>RELAY_PROBE_TRANSPORT</code></td><td>MCP 传输方式：<code>stdio</code>（默认）或 <code>sse</code></td></tr>
-    <tr><td><code>RELAY_PROBE_PORT</code></td><td>SSE 模式下 MCP 监听端口（默认 3000）</td></tr>
-    <tr><td><code>RELAY_PROBE_BIND</code></td><td>SSE 模式下 MCP 绑定地址（默认 127.0.0.1）</td></tr>
+    <tr><td><code>RELAY_API_PORT</code> / <code>RELAY_MCP_PORT</code> / <code>RELAY_PROXY_PORT</code></td><td>守护进程与代理的端口覆盖（对应 <code>--api-port</code> / <code>--mcp-port</code> / <code>--listen</code>）</td></tr>
+    <tr><td><code>RELAY_PROXY_IDLE_TIMEOUT</code></td><td>无流量多少秒后停代理；<code>0</code> 表示永不自动停</td></tr>
+    <tr><td><code>RELAY_MCP_URL</code> / <code>RELAY_MCP_TOKEN</code></td><td>让 MCP 桥直接使用指定端点，而跳过对守护进程的发现</td></tr>
+    <tr><td><code>RELAY_MCP_NO_AUTOSTART</code></td><td>设为 <code>1</code> 时，MCP 桥不得自行启动守护进程</td></tr>
   </table>
 
   <p>路径优先级：<strong>CLI 参数 &gt; 环境变量 &gt; 默认数据目录</strong>。</p>
 
-  <h2>TUI 配置文件</h2>
+  <h2>TUI 主题</h2>
 
-  <p>TUI 读取 <code>~/.relay-core/config.toml</code> 以持久化偏好设置。目前仅消费 TUI 主题一项：</p>
+  <p>TUI 的主题取自上面这份配置文件的 <code>[tui].theme</code>——同一个文件、同一个读取器，因此 <code>relay-core-cli config show</code> 也看得到它。解析顺序：<code>--theme</code> 参数 &gt; <code>RELAY_CORE_TUI_THEME</code> 环境变量 &gt; 文件中的 <code>[tui].theme</code> &gt; 默认（<code>relay</code>）。</p>
 
-  <pre><code># ~/.relay-core/config.toml
-[tui]
-theme = "high-contrast"   # relay | slate | high-contrast</code></pre>
+  <h2>CLI 常用参数</h2>
 
-  <p>TUI 主题解析顺序：<code>--theme</code> 参数 &gt; <code>RELAY_CORE_TUI_THEME</code> 环境变量 &gt; 本文件 <code>[tui].theme</code> &gt; 默认（<code>relay</code>）。</p>
+  <pre><code>relay-core-cli start [options]      # 守护进程 + 代理（幂等）
+relay-core-cli run [options]        # 同一个守护进程，前台运行
 
-  <h2>CLI 常用参数（run）</h2>
-
-  <pre><code>relay-core-cli run [options]
-
-  --listen &lt;ADDR&gt;        代理监听地址（默认 127.0.0.1:8080）
+  -l/--listen &lt;ADDR&gt;     代理监听地址（默认 127.0.0.1:8080）
   --ca-cert &lt;PATH&gt;       CA 证书路径（可选，覆盖默认）
   --ca-key &lt;PATH&gt;        CA 私钥路径（须与 --ca-cert 成对）
-  --api-port &lt;PORT&gt;      启用 REST + SSE HTTP API
-  --api-token &lt;TOKEN&gt;    HTTP API Bearer 认证
+  --api-port &lt;PORT&gt;      控制 API / Web UI 端口（被占则回落临时端口）
+  --api-token &lt;TOKEN&gt;    Bearer 令牌（守护进程默认自动生成并写入清单）
+  --mcp-port &lt;PORT&gt;      由守护进程服务 MCP 端点
   --rules &lt;PATH&gt;         加载规则文件（JSON/YAML）
   --script &lt;PATH&gt;        加载 Deno 脚本
   --script-env-allow      脚本可读取的环境变量名（逗号分隔）
-  --ui                   启用 TUI
+  --ui                   前台守护进程 + TUI（TUI 是它的客户端）
   --theme &lt;NAME&gt;         TUI 配色
   --upstream &lt;URL&gt;       将所有流量路由到上级代理
-  --save-stream &lt;PATH&gt;   将每条流量以 JSONL 追加到磁盘</code></pre>
+  --save-stream &lt;PATH&gt;   将每个流量更新以 JSONL 追加到磁盘</code></pre>
 
   <h2>生产环境建议</h2>
 

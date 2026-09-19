@@ -7,13 +7,23 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <p><code>relay-core-cli</code> 提供功能完整的命令行界面，用于运行代理、检查流量、管理规则、脚本与证书。完整参数请运行 <code>relay-core-cli --help</code> 或 <code>relay-core-cli &lt;command&gt; --help</code>。</p>
 
+  <h2 id="lifecycle">守护进程生命周期</h2>
+  <p>一个常驻守护进程独占引擎与代理生命周期：唯一的状态在它手里，它写 <code>$RELAY_DATA_DIR/daemon.json</code> 供其他客户端发现，并同时服务控制 API 与 MCP 端点。其余界面（CLI、MCP 桥、Web UI、TUI）都是它的客户端。</p>
+  <pre><code>relay-core-cli start      启动守护进程与代理（幂等；已在运行则接入并回报端口）
+relay-core-cli stop       只停代理；守护进程、历史与规则保留
+relay-core-cli restart    重启代理
+relay-core-cli status     守护进程 / 代理相位与端口 / MCP 与 Web UI 地址 / 最近一次变更
+relay-core-cli shutdown   停代理并退出守护进程（注册表清空后才返回）
+relay-core-cli config     读取、查看与生成配置文件</code></pre>
+
+  <p><code>start</code> 是幂等的：守护进程已在跑就接入，代理已在跑就回报它监听的端口，端口被占用则以 <code>start_failed</code> 失败，而不是报一个从未 listen 的成功。<code>status</code> 还会给出最近一次生命周期变更及其来源，例如 <code>stopped by cli:relay stop</code>。</p>
+
   <h2 id="run">run</h2>
-  <p>启动代理服务器。</p>
+  <p>在<strong>前台</strong>运行这个守护进程——与 <code>start</code> 拉起的是同一个守护进程，只是不脱离终端、退出即结束。它写同一份清单、服务同一个控制 API 与 MCP 端点；<code>--ui</code> 的 TUI 是它的客户端，读的是其他客户端读到的那条事件流。</p>
   <pre><code>relay-core-cli run [options]
 
 监听与生命周期：
   -l, --listen &lt;ADDR&gt;           代理监听地址（默认 127.0.0.1:8080）
-  -c, --control-port &lt;PORT&gt;     控制 API 端口（默认 8081）
       --udp-tproxy-port &lt;PORT&gt;   启用 UDP TPROXY（仅 Linux）
       --transparent               启用透明代理模式（macOS PF / Linux TPROXY）
 
@@ -32,15 +42,15 @@ TUI：
       --theme &lt;NAME&gt;             TUI 配色：relay、slate、high-contrast
                                   （覆盖 RELAY_CORE_TUI_THEME 与 config）
 
-控制台输出（非 TUI）：
-      --output &lt;FORMAT&gt;          table、json、jsonl（默认 table）
-      --save-stream &lt;PATH&gt;       将所有流量以 JSONL 追加到该文件
+流量录制：
+      --save-stream &lt;PATH&gt;       将每个流量更新以 JSONL 追加到该文件（含 body / WS 增量）
 
-REST / SSE HTTP API：
-      --api-port &lt;PORT&gt;          启用 REST + SSE API
+控制 API 与 MCP：
+      --api-port &lt;PORT&gt;          控制 API / Web UI 端口（默认 8082，被占则回落到临时端口）
       --api-bind &lt;ADDR&gt;          绑定地址（默认 127.0.0.1）
-      --api-token &lt;TOKEN&gt;        HTTP API Bearer 认证令牌
+      --api-token &lt;TOKEN&gt;        Bearer 令牌（守护进程默认自动生成并写入清单）
       --api-cors &lt;ORIGINS&gt;       CORS 允许源（逗号分隔）
+      --mcp-port &lt;PORT&gt;          同时在本进程内服务 MCP 端点（默认 18083）
 
 上游代理：
       --upstream &lt;URL&gt;           上级代理 URL（http:// 或 https://）
@@ -89,14 +99,14 @@ REST / SSE HTTP API：
   <p><code>init</code> 子命令会创建入门用的 <code>src/index.ts</code> 与 <code>tsconfig.json</code>。<code>build</code> / <code>dev</code> 使用 <a href="https://esbuild.github.io" target="_blank" rel="noopener">esbuild</a> 打成单文件 bundle，再由 <code>--script</code> 加载。</p>
 
   <h2 id="flows">flows</h2>
-  <p>查看已捕获流量。不带任何参数时连接控制 WebSocket 打印实时流；只要带上了 <code>--filter</code> / <code>--host</code> / <code>--path</code> / <code>--method</code> / <code>--status-min</code> / <code>--status-max</code> / <code>--has-error</code> / <code>--websocket</code> / <code>--limit</code> 中的任一参数即进入 REST 搜索模式。</p>
+  <p>查看已捕获流量：默认列出最近的流量，加 <code>--follow</code> 则实时跟随。两者都读运行中守护进程的控制 API，地址由清单自动发现，不需要手工配置 URL。</p>
   <pre><code>relay-core-cli flows [options]
 
 连接：
-      --control-url &lt;URL&gt;       实时流使用的控制 API（默认 http://127.0.0.1:8081）
-      --api-url &lt;URL&gt;           搜索模式使用的 REST API（默认 http://127.0.0.1:8082）
+      --api-url &lt;URL&gt;           控制 API 基址（省略时从守护进程清单发现）
+      --follow                   实时跟随新流量；过滤器不适用于实时流，二者不能同时使用
 
-搜索条件（需要代理启用 --api-port）：
+列表条件：
       --host &lt;HOST&gt;             主机名子串匹配
       --path &lt;PATH&gt;             路径子串匹配
       --method &lt;METHOD&gt;         HTTP 方法（GET、POST、...）
@@ -112,16 +122,6 @@ REST / SSE HTTP API：
 
   <p>过滤表达式语法同 <a href="/docs/tui#filter-expression-syntax">TUI 过滤栏</a>，例如 <code>host:api method:POST status:&gt;=400</code>。</p>
 
-  <h2 id="intercept">intercept</h2>
-  <p>在不停机的情况下暂停或恢复拦截。调用旧版控制 API。</p>
-  <pre><code>relay-core-cli intercept &lt;subcommand&gt; [--control-url &lt;URL&gt;]
-
-子命令：
-  pause                         停止接受新的拦截决策
-  resume                        恢复拦截
-
---control-url 默认 http://127.0.0.1:8081。</code></pre>
-
   <h2 id="metrics">metrics</h2>
   <p>查看运行时指标。代理通过 HTTP 在 <code>--proxy-url</code> 暴露指标端点（默认 <code>http://127.0.0.1:8080</code>）。</p>
   <pre><code>relay-core-cli metrics [options]
@@ -136,7 +136,7 @@ REST / SSE HTTP API：
   <p>Prometheus 文本格式请使用 HTTP API 端点 <code>GET /api/v1/metrics/prometheus</code>（见 <a href="/docs/api#metrics">HTTP API</a>）。</p>
 
   <h2 id="analyze">analyze</h2>
-  <p>对流量 dump（来自 <code>--save-stream</code>）或 HAR 导出进行离线分析。</p>
+  <p>对流量 dump（来自 <code>--save-stream</code>）或 HAR 导出进行离线分析。录制文件每行可能是一个完整 Flow，也可能是一条 FlowUpdate（新格式无损记录增量），两种都能读。</p>
   <pre><code>relay-core-cli analyze --file &lt;PATH&gt; [options]
 
       --file &lt;PATH&gt;             JSONL 流量 dump 或 HAR 文件路径
@@ -166,11 +166,12 @@ RELAY_CORE_TUI_THEME            TUI 主题（relay、slate、high-contrast），
                                 在 --theme 缺省时使用
 RELAYCORE_UPSTREAM_PASSWORD     上级代理 Basic 认证密码
                                 （与 --upstream-auth-user 配合使用）
-RELAY_PORT                      relay-core-probe 代理端口（默认 8080）
-RELAY_CA_CERT / RELAY_CA_KEY    relay-core-probe CA 路径
-RELAY_PROBE_TRANSPORT           MCP 传输方式：stdio（默认）| sse
-RELAY_PROBE_PORT                MCP SSE 监听端口（默认 3000）
-RELAY_PROBE_BIND                MCP SSE 绑定地址（默认 127.0.0.1）</code></pre>
+RELAY_API_PORT                  控制 API / Web UI 端口覆盖
+RELAY_MCP_PORT                  守护进程 MCP 端点端口覆盖
+RELAY_PROXY_PORT                代理端口覆盖
+RELAY_PROXY_IDLE_TIMEOUT        无流量多少秒后停代理（0 = 永不自动停）
+RELAY_MCP_URL / RELAY_MCP_TOKEN MCP 桥直接使用的端点与令牌
+RELAY_MCP_NO_AUTOSTART          设为 1 时 MCP 桥不得自行启动守护进程</code></pre>
 
   <p>完整的数据目录布局与参数优先级见 <a href="/docs/configuration">配置</a>。</p>
 </DocsLayout>

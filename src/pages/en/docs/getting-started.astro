@@ -41,18 +41,17 @@ sudo update-ca-certificates
 
   <h2>Start the Proxy</h2>
 
-  <p>CA files must exist before <code>run</code>; otherwise the CLI exits with guidance to run <code>ca generate</code>.</p>
+  <pre><code># Start the daemon and the proxy (idempotent)
+relay-core-cli start
 
-  <pre><code># Basic usage
-relay-core-cli run
-
-# With TUI interface
+# The same daemon in the foreground, with the TUI attached
 relay-core-cli run --ui
 
-# Custom listen address
-relay-core-cli run --listen 127.0.0.1:9090</code></pre>
+# A different port, or the whole status at a glance
+relay-core-cli start --listen 127.0.0.1:9090
+relay-core-cli status</code></pre>
 
-  <p>The proxy listens on <code>127.0.0.1:8080</code> by default. Use <code>--ui</code> for the interactive TUI, or <code>--api-port 8082</code> to enable the REST API and SSE event stream.</p>
+  <p>One background daemon owns the engine: it holds the state, serves the control API, the Web UI and the MCP endpoint, and survives the terminal that started it. The proxy listens on <code>127.0.0.1:8080</code> by default; <code>relay-core-cli status</code> prints the ports actually in use, and <code>relay-core-cli stop</code> stops the proxy while keeping the daemon and its history.</p>
 
   <h2>Configure Your Client</h2>
 

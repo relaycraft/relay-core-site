@@ -7,13 +7,23 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <p>The <code>relay-core-cli</code> binary provides a full-featured command-line interface for running the proxy, inspecting traffic, and managing rules, scripts, and certificates. For the full schema run <code>relay-core-cli --help</code> or <code>relay-core-cli &lt;command&gt; --help</code>.</p>
 
+  <h2 id="lifecycle">Daemon lifecycle</h2>
+  <p>One long-lived daemon owns the engine and the proxy lifecycle: the single state lives in it, it publishes <code>$RELAY_DATA_DIR/daemon.json</code> for clients to discover, and it serves both the control API and the MCP endpoint. Every other surface — CLI, MCP bridge, Web UI, TUI — is a client of it.</p>
+  <pre><code>relay-core-cli start      Start the daemon and the proxy (idempotent; attaches if already up)
+relay-core-cli stop       Stop the proxy only; the daemon, history and rules stay
+relay-core-cli restart    Restart the proxy
+relay-core-cli status     Daemon / proxy phase and port / MCP and Web UI URLs / last change
+relay-core-cli shutdown   Stop the proxy and the daemon (returns once the registry is clean)
+relay-core-cli config     Read, show and seed the configuration file</code></pre>
+
+  <p><code>start</code> is idempotent: an already-running daemon is attached to, an already-running proxy reports the port it listens on, and a taken port fails with <code>start_failed</code> rather than reporting success for a proxy that never bound. <code>status</code> also reports the last lifecycle change and who asked for it, e.g. <code>stopped by cli:relay stop</code>.</p>
+
   <h2 id="run">run</h2>
-  <p>Start the proxy server.</p>
+  <p>Run that same daemon in the <strong>foreground</strong> — not a second engine, just one that does not detach and ends when you quit. It publishes the same manifest and serves the same control API and MCP endpoint; with <code>--ui</code> the TUI is its client, reading the same event stream every other client reads.</p>
   <pre><code>relay-core-cli run [options]
 
 Listen &amp; lifecycle:
   -l, --listen &lt;ADDR&gt;           Proxy listen address (default 127.0.0.1:8080)
-  -c, --control-port &lt;PORT&gt;     Control API port (default 8081)
       --udp-tproxy-port &lt;PORT&gt;   Enable UDP TPROXY on this port (Linux only)
       --transparent               Enable transparent proxy mode (macOS PF / Linux TPROXY)
 
@@ -32,15 +42,18 @@ TUI:
       --theme &lt;NAME&gt;             TUI color preset: relay, slate, high-contrast
                                   (overrides RELAY_CORE_TUI_THEME and config)
 
-Console output (non-TUI):
-      --output &lt;FORMAT&gt;          table, json, jsonl (default table)
-      --save-stream &lt;PATH&gt;       Append every flow as JSONL to this file
+Flow recording:
+      --save-stream &lt;PATH&gt;       Append every flow update as JSONL to this file (bodies and
+                                  WebSocket messages included)
 
-REST / SSE HTTP API:
-      --api-port &lt;PORT&gt;          Enable REST + SSE API on this port
+Control API and MCP:
+      --api-port &lt;PORT&gt;          Control API / Web UI port (default 8082; an ephemeral port
+                                  is used when it is taken)
       --api-bind &lt;ADDR&gt;          Bind address (default 127.0.0.1)
-      --api-token &lt;TOKEN&gt;        Bearer token for HTTP API auth
+      --api-token &lt;TOKEN&gt;        Bearer token (the daemon generates one and publishes it in the
+                                  manifest)
       --api-cors &lt;ORIGINS&gt;       CORS allowed origins (comma-separated)
+      --mcp-port &lt;PORT&gt;          Also serve the MCP endpoint from this process (default 18083)
 
 Upstream proxy:
       --upstream &lt;URL&gt;           Parent proxy URL (http:// or https://)
@@ -89,14 +102,16 @@ Subcommands:
   <p>The <code>init</code> subcommand creates a starter <code>src/index.ts</code> and <code>tsconfig.json</code>. <code>build</code> / <code>dev</code> use <a href="https://esbuild.github.io" target="_blank" rel="noopener">esbuild</a> to produce a single bundle that <code>--script</code> can load.</p>
 
   <h2 id="flows">flows</h2>
-  <p>Inspect captured traffic. Without flags, <code>flows</code> connects to the control WebSocket and prints a live stream. With any of <code>--filter</code> / <code>--host</code> / <code>--path</code> / <code>--method</code> / <code>--status-min</code> / <code>--status-max</code> / <code>--has-error</code> / <code>--websocket</code> / <code>--limit</code> it queries the REST API.</p>
+  <p>Inspect captured traffic: a listing of recent flows by default, a live stream with <code>--follow</code>. Both read the running daemon's control API, discovered from its manifest — there is no URL to configure by hand.</p>
   <pre><code>relay-core-cli flows [options]
 
 Connection:
-      --control-url &lt;URL&gt;       Control API for live stream (default http://127.0.0.1:8081)
-      --api-url &lt;URL&gt;           REST API for search mode (default http://127.0.0.1:8082)
+      --api-url &lt;URL&gt;           Control API base URL (discovered from the daemon manifest when
+                                omitted)
+      --follow                   Stream new flows; filters do not apply to a live stream, so the
+                                 two cannot be combined
 
-Search filters (require --api-port on the running proxy):
+Listing filters:
       --host &lt;HOST&gt;             Substring match on host
       --path &lt;PATH&gt;             Substring match on path
       --method &lt;METHOD&gt;         HTTP method (GET, POST, ...)
@@ -109,16 +124,6 @@ Search filters (require --api-port on the running proxy):
 
 Output:
       --output &lt;FORMAT&gt;         table, json, jsonl (default table)</code></pre>
-
-  <h2 id="intercept">intercept</h2>
-  <p>Pause or resume live interception without restarting the proxy. Posts to the legacy control API.</p>
-  <pre><code>relay-core-cli intercept &lt;subcommand&gt; [--control-url &lt;URL&gt;]
-
-Subcommands:
-  pause                         Stop accepting new intercept decisions
-  resume                        Resume interception
-
-Default --control-url is http://127.0.0.1:8081.</code></pre>
 
   <h2 id="metrics">metrics</h2>
   <p>Display runtime metrics. The proxy is queried over HTTP at <code>--proxy-url</code> (default <code>http://127.0.0.1:8080</code>).</p>
@@ -135,7 +140,7 @@ flow and audit event channels.</code></pre>
   <p>For a Prometheus-formatted scrape, use the HTTP API endpoint <code>GET /api/v1/metrics/prometheus</code> (see <a href="/en/docs/api#metrics">HTTP API</a>).</p>
 
   <h2 id="analyze">analyze</h2>
-  <p>Offline analysis of a flow dump (from <code>--save-stream</code>) or a HAR export.</p>
+  <p>Analyze a traffic dump (from <code>--save-stream</code>) or a HAR export offline. A recorded file may hold a whole flow per line or a flow update per line — the new recording is lossless and includes incremental updates — and both are read.</p>
   <pre><code>relay-core-cli analyze --file &lt;PATH&gt; [options]
 
       --file &lt;PATH&gt;             Path to JSONL flow dump or HAR file
@@ -166,11 +171,12 @@ RELAY_CORE_TUI_THEME            TUI preset when --theme is omitted
                                 (relay, slate, high-contrast)
 RELAYCORE_UPSTREAM_PASSWORD     Upstream proxy Basic auth password
                                 (used with --upstream-auth-user)
-RELAY_PORT                      relay-core-probe proxy port (default 8080)
-RELAY_CA_CERT / RELAY_CA_KEY    relay-core-probe CA paths
-RELAY_PROBE_TRANSPORT           MCP transport: stdio (default) | sse
-RELAY_PROBE_PORT                MCP SSE listen port (default 3000)
-RELAY_PROBE_BIND                MCP SSE bind address (default 127.0.0.1)</code></pre>
+RELAY_API_PORT                  Control API / Web UI port override
+RELAY_MCP_PORT                  MCP endpoint port override for the daemon
+RELAY_PROXY_PORT                Proxy port override
+RELAY_PROXY_IDLE_TIMEOUT        Seconds without traffic before the proxy stops (0 = never)
+RELAY_MCP_URL / RELAY_MCP_TOKEN Endpoint and token the MCP bridge should use directly
+RELAY_MCP_NO_AUTOSTART          Set to 1 to forbid the bridge from starting a daemon</code></pre>
 
   <p>See <a href="/en/docs/configuration">Configuration</a> for the full data directory layout and path precedence.</p>
 </DocsLayout>

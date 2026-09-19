@@ -10,10 +10,10 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h2>启动</h2>
 
   <pre><code>relay-core-cli run --ui
-# 可选：与 REST/SSE API 搭配使用，便于外部工具（如 flows）共享同一代理实例
-relay-core-cli run --ui --api-port 8082</code></pre>
+# 指定端口或配色
+relay-core-cli run --ui --listen 127.0.0.1:9090 --theme slate</code></pre>
 
-  <p>启用 <code>--ui</code> 后 TUI 会接管终端，代理进程本身仍在同一进程中运行，无需启动额外服务。终端最小尺寸 <code>60 × 12</code>，低于此值会拒绝启动并提示调整窗口。</p>
+  <p><code>--ui</code> 让 TUI 接管终端，它读的是守护进程的事件流——与另一个终端窗口、或通过 MCP 连上的 Agent 看到的是同一份流量。它是<strong>客户端</strong>而不是第二份引擎：退出 TUI 即结束它启动的前台会话，而用 <code>relay-core-cli start</code> 起的守护进程会继续运行。终端最小尺寸 <code>60 × 12</code>，低于此值会拒绝启动并提示调整窗口。</p>
 
   <h2>布局</h2>
 
