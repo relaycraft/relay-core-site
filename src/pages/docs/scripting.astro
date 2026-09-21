@@ -7,6 +7,8 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <p>RelayCore 内嵌 Deno/V8 运行时，通过 <code>globalThis</code> 全局钩子函数拦截和修改流量。脚本引擎支持 JavaScript 和 TypeScript。</p>
 
+  <p><strong>线路语义（0.13.1+）</strong>：在 <code>onResponseHeaders</code> / <code>onRequestHeaders</code> 里 <code>return flow</code> 只表示改头并<strong>继续</strong>流式传输上游 body，不会把响应裁成空体。异步钩子会泵事件循环；读 body 有约 1 MiB 预算与超时，超时后放行原 body，避免卡死整引擎。改头优先用同步钩子；需要改 body 时再在 body 钩子里写回 <code>flow.layer.data.*.body</code>。</p>
+
   <h2>生命周期钩子</h2>
   <p>脚本通过定义 <code>globalThis</code> 上的命名函数注册钩子。RelayCore 1.0 提供 11 个钩子，覆盖 HTTP、WebSocket 和连接生命周期：</p>
 

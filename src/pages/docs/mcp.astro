@@ -52,37 +52,41 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   <div class="endpoint">
     <span class="method method-post">search_flows</span>
   </div>
-  <p>搜索和过滤捕获的流量。</p>
+  <p>按 host / path / method / 状态码等过滤已捕获流量（最近优先）。</p>
   <pre><code>&#123;
-  "filter": "method:GET host:*.example.com",
+  "host": "api.example.com",
+  "path_contains": "/v1/",
+  "method": "GET",
   "limit": 10
 &#125;</code></pre>
 
   <div class="endpoint">
     <span class="method method-post">get_flow</span>
   </div>
-  <p>获取详细的流量信息。</p>
+  <p>按 UUID 取完整流量（头、体、时序、标签）。</p>
   <pre><code>&#123;
-  "flow_id": "fld_01HX5K9P3Q8Y2Z7"
+  "id": "b9c84d96-2e49-43fe-9064-58d953e15279"
 &#125;</code></pre>
 
   <div class="endpoint">
     <span class="method method-post">get_metrics</span>
   </div>
-  <p>获取当前代理指标。</p>
+  <p>运行时指标：流量总数、内存中条数、待处理断点、规则错误等。</p>
+
+  <div class="endpoint">
+    <span class="method method-post">clear_flows</span>
+  </div>
+  <p>清空已捕获流量与摘要（内存 + 数据库），规则、策略与审计保留。历史为空时再调是幂等空操作。长期运行时，默认 retention（最多 5000 条或 7 天）会在两次 clear 之间自动裁剪。</p>
 
   <h3>控制</h3>
 
   <div class="endpoint">
     <span class="method method-post">set_intercept</span>
   </div>
-  <p>创建拦截断点。</p>
+  <p>设置一次性断点；下一条匹配 URL 模式的请求会暂停。</p>
   <pre><code>&#123;
-  "filter": &#123;
-    "method": "POST",
-    "host": "api.example.com"
-  &#125;,
-  "pause_at": "request"
+  "url_pattern": "api.example.com/login",
+  "phase": "request"
 &#125;</code></pre>
 
   <div class="endpoint">
@@ -93,14 +97,11 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   <div class="endpoint">
     <span class="method method-post">resume_flow</span>
   </div>
-  <p>恢复暂停的流量。</p>
+  <p>恢复暂停的流量。用 <code>request_header_upserts</code> 按名增改头（保留其余）；<code>request_headers</code> 会整表替换。</p>
   <pre><code>&#123;
-  "flow_id": "fld_01HX5K9P3Q8Y2Z7",
-  "action": "resume",  // 或 "drop"
-  "modifications": &#123;
-    "status_code": 418,
-    "response_body": "I'm a teapot"
-  &#125;
+  "key": "&lt;flow_id&gt;:request_headers",
+  "action": "continue",
+  "request_header_upserts": &#123; "X-Debug": "1" &#125;
 &#125;</code></pre>
 
   <h3>规则</h3>
@@ -108,25 +109,25 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   <div class="endpoint">
     <span class="method method-post">set_rule</span>
   </div>
-  <p>创建或更新规则。</p>
-  <pre><code>&#123;
-  "name": "Log API requests",
-  "filter": &#123; "path": "/api/*" &#125;,
-  "action": &#123; "type": "log" &#125;
-&#125;</code></pre>
+  <p>创建或替换完整 Rule JSON（含 id）。</p>
+
+  <div class="endpoint">
+    <span class="method method-post">list_rules</span>
+  </div>
+  <p>列出当前已加载的规则。</p>
 
   <div class="endpoint">
     <span class="method method-post">delete_rule</span>
   </div>
-  <p>删除规则。</p>
+  <p>按 id 删除规则。</p>
   <pre><code>&#123;
-  "rule_id": "rul_01HX5K9P3Q8Y2Z7"
+  "id": "probe-mock-…"
 &#125;</code></pre>
 
   <div class="endpoint">
     <span class="method method-post">mock_url</span>
   </div>
-  <p>创建一次性 <code>MockResponse</code> 规则。</p>
+  <p>快速创建 <code>MockResponse</code> 规则。</p>
   <pre><code>&#123;
   "url_pattern": "api.example.com/v1/health",
   "status": 200,
@@ -137,11 +138,16 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   <h3>脚本</h3>
 
   <div class="endpoint">
+    <span class="method method-post">get_script</span>
+  </div>
+  <p>读取当前已加载的 Deno 脚本源码（若有）。</p>
+
+  <div class="endpoint">
     <span class="method method-post">set_script</span>
   </div>
-  <p>热加载 Deno 脚本到运行中的引擎。</p>
+  <p>热加载 Deno 脚本。钩子里 <code>return flow</code> 只改头时会继续流式传上游 body；读 body 有预算与超时，避免卡死引擎。详见 <a href="/docs/scripting">脚本 API</a>。</p>
   <pre><code>&#123;
-  "script": "// deno-fmt-ignore\nexport default &#123; onRequest(ctx) &#123; /* ... */ &#125; &#125;"
+  "script": "globalThis.onResponseHeaders = (ctx, flow) => &#123;\n  flow.layer.data.response.headers.push([\"X-Relay\", \"1\"]);\n  return flow;\n&#125;;"
 &#125;</code></pre>
 
   <h3>分析</h3>
@@ -149,21 +155,18 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   <div class="endpoint">
     <span class="method method-post">export_har</span>
   </div>
-  <p>以 HAR 格式导出流量。</p>
+  <p>以 HAR 1.2 导出一条或多条流量。</p>
   <pre><code>&#123;
-  "filter": "host:example.com",
-  "format": "har"
+  "host": "example.com",
+  "limit": 50
 &#125;</code></pre>
 
   <div class="endpoint">
     <span class="method method-post">replay_flow</span>
   </div>
-  <p>重放捕获的流量。</p>
+  <p>重放已捕获的 HTTP 请求。</p>
   <pre><code>&#123;
-  "flow_id": "fld_01HX5K9P3Q8Y2Z7",
-  "modifications": &#123;
-    "headers": &#123; "x-test": "value" &#125;
-  &#125;
+  "id": "b9c84d96-2e49-43fe-9064-58d953e15279"
 &#125;</code></pre>
 
   <h3>策略</h3>
@@ -171,7 +174,7 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   <div class="endpoint">
     <span class="method method-post">get_policy</span>
   </div>
-  <p>获取当前拦截策略，包含 redaction 块。</p>
+  <p>获取当前策略，含 redaction 与 retention。</p>
 
   <div class="endpoint">
     <span class="method method-post">update_policy</span>
@@ -181,11 +184,11 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   <div class="endpoint">
     <span class="method method-post">patch_policy</span>
   </div>
-  <p>局部更新策略——只修改提供的字段。Body 形态与 REST API 一致：<code>&#123; redaction?, upstream? &#125;</code>。</p>
+  <p>局部更新。可写 <code>redaction</code> / <code>upstream</code> / <code>retention</code>；未知字段会拒绝，而不是静默忽略。</p>
   <pre><code>&#123;
-  "redaction": &#123;
-    "enabled": true,
-    "redact_bodies": true
+  "patch": &#123;
+    "retention": &#123; "max_flows": 2000, "max_age_secs": 86400 &#125;,
+    "redaction": &#123; "enabled": true &#125;
   &#125;
 &#125;</code></pre>
 

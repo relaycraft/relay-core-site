@@ -48,7 +48,7 @@ integrations/
 
 ### Hardcoded version in the hero
 
-`src/pages/index.astro` and `src/pages/en/index.astro` both define a top-level `const CLI_VERSION = '0.7.4'` for the terminal mock. **Bump it on every release in lockstep with `relay-core`'s `Cargo.toml`.** The next maintainer needs to know this — do not let the constant drift.
+`src/pages/index.astro` and `src/pages/en/index.astro` both define a top-level `const CLI_VERSION` for the terminal mock (currently `0.13.1`). **Bump it on every release in lockstep with `relay-core`'s `Cargo.toml`.** The next maintainer needs to know this — do not let the constant drift.
 
 ## 3. The Shiki integration (read this before touching `integrations/highlight-code.mjs`)
 

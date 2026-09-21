@@ -7,8 +7,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <p>RelayCore 的配置来源有四层，优先级为 <strong>命令行参数 &gt; 环境变量 &gt; 配置文件 &gt; 内置默认</strong>。因此一次性的覆盖不需要改文件，而需要跨命令存活的设置写进 <code>$RELAY_DATA_DIR/config.toml</code>。</p>
 
-  <p><code>relay-core-cli config init</code> 会生成一份带注释的配置文件，<code>relay-core-cli config show</code> 打印<strong>生效中</strong>的配置（文件值覆盖默认值），<code>relay-core-cli config path</code> 打印文件位置。<strong>配置文件写坏了会直接报错</strong>，而不是静默回落到默认值——静默忽略一个拼写错误，等于让守护进程用你没有要求的设置运行。
-
+  <p><code>relay-core-cli config init</code> 会生成一份带注释的配置文件，<code>relay-core-cli config show</code> 打印<strong>生效中</strong>的配置（文件值覆盖默认值），<code>relay-core-cli config path</code> 打印文件位置。<strong>配置文件写坏了会直接报错</strong>，而不是静默回落到默认值——静默忽略一个拼写错误，等于让守护进程用你没有要求的设置运行。</p>
   <h2>默认数据目录</h2>
 
   <p>默认目录为 <code>~/.relay-core</code>（可通过 <code>RELAY_DATA_DIR</code> 覆盖）。HTTPS 拦截相关文件：</p>
@@ -19,7 +18,13 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li><code>ca_cert.json</code> — CA 元数据（持久化加载所需）</li>
   </ul>
 
-  <p>使用 <code>relay-core-cli ca generate</code> 生成证书后，守护进程会从上述路径读取；证书不存在时会在首次启动时自动创建（HTTPS 拦截仍需 <code>ca install</code> 把该 CA 装入系统信任库，纯 HTTP 则不需要）。
+  <p>使用 <code>relay-core-cli ca generate</code> 生成证书后，守护进程会从上述路径读取；证书不存在时会在首次启动时自动创建（HTTPS 拦截仍需 <code>ca install</code> 把该 CA 装入系统信任库，纯 HTTP 则不需要）。</p>
+
+  <p>同一目录下还有 <code>daemon.db</code>（流量与审计的 SQLite）、<code>daemon.json</code>（发现清单）与日志。CLI 与 MCP 默认共用这份目录；要隔离实验时设置不同的 <code>RELAY_DATA_DIR</code>，或使用 <code>relay-core-cli start --in-memory</code>。</p>
+
+  <h2>流量保留（retention）</h2>
+
+  <p>自 0.13.1 起，产品默认<strong>最多保留 5000 条流量，且超过 7 天删除</strong>（审计事件默认仍不设界）。热数据内存 LRU 约 200 条；落盘仍走 SQLite。可用 MCP <code>clear_flows</code> 或策略里的 <code>retention</code> 立刻清空 / 调整边界；显式把 retention 设成全空表示永不裁剪。</p>
 
   <h2>配置文件</h2>
 

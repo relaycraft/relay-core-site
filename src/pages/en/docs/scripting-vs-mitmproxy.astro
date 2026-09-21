@@ -47,7 +47,7 @@ globalThis.onRequestHeaders = (_ctx, flow) => &#123;
 &#125;;</code></pre>
 
   <h3>Mock responses</h3>
-  <p>mitmproxy can synthesize responses in the <code>response</code> hook. In RelayCore 0.5.x, prefer rule <code>MockResponse</code> for static mocks; use scripts for dynamic logic. See the <a href="/en/docs/rule-guide">Rule Guide</a>.</p>
+  <p>mitmproxy can synthesize responses in the <code>response</code> hook. In RelayCore, prefer rule <code>MockResponse</code> or MCP <code>mock_url</code> for static mocks; use scripts for dynamic logic. See the <a href="/en/docs/rule-guide">Rule Guide</a>.</p>
   <pre><code># mitmproxy
 def response(flow):
     if flow.response.status_code == 404:

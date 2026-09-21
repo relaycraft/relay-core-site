@@ -17,13 +17,15 @@ globalThis.onRequest = (ctx, flow) => &#123;
   -H "Content-Type: application/json" \
   -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'</code></pre>
 
-  <h2>0.5.x API Notes</h2>
+  <h2>0.13.x notes</h2>
   <ul>
     <li><strong>Flow shape</strong>: HTTP request/response live at <code>flow.layer.data.request</code> / <code>flow.layer.data.response</code> (not <code>flow.request</code>)</li>
+    <li><strong>Header hooks keep the body</strong>: returning a flow from headers hooks continues the upstream body stream (0.13.1+)</li>
+    <li><strong>Reading bodies</strong>: budgeted and timed out; prefer sync hooks so the script queue cannot stall</li>
     <li><strong>sharedState</strong>: use <code>get(key)</code> / <code>set(key, value)</code> / <code>delete(key)</code>, not plain object properties</li>
     <li><strong>Rule variables</strong>: scripts run before rules in <code>onRequestHeaders</code>; read <code>flow.rule_variables</code> in <code>onRequest</code> or later hooks</li>
-    <li><strong>Mock / direct responses</strong>: <code>&#123; action: "respond" &#125;</code> is not supported in 0.5.1 — use rule <code>MockResponse</code> (see <a href="/en/docs/rule-guide">Rule Guide</a>)</li>
-    <li><strong>Sandbox</strong>: no global <code>URL</code> — parse paths with a string helper (see §2)</li>
+    <li><strong>Mock / direct responses</strong>: use rule <code>MockResponse</code> (see <a href="/en/docs/rule-guide">Rule Guide</a>) or MCP <code>mock_url</code></li>
+    <li><strong>Sandbox</strong>: no global <code>URL</code> — parse paths with a string helper</li>
   </ul>
 
   <h2>Common Patterns</h2>

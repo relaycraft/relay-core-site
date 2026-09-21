@@ -21,6 +21,12 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <p>After <code>relay-core-cli ca generate</code>, the daemon reads from these paths. When the files are missing it creates them on first start; HTTPS interception still needs <code>ca install</code> to trust that CA, plain HTTP does not.</p>
 
+  <p>The same directory also holds <code>daemon.db</code> (SQLite for flows and audit), <code>daemon.json</code> (discovery manifest), and logs. The CLI and MCP share this directory by default; set a different <code>RELAY_DATA_DIR</code> to isolate an experiment, or use <code>relay-core-cli start --in-memory</code>.</p>
+
+  <h2>Flow retention</h2>
+
+  <p>Since 0.13.1 the product default is <strong>at most 5000 flows, and drop anything older than 7 days</strong> (audit events stay unbounded by default). Hot data is an in-memory LRU of about 200 flows; persistence remains SQLite. Use MCP <code>clear_flows</code> or policy <code>retention</code> to purge / retune; an explicitly empty retention means unbounded.</p>
+
   <h2>Config file</h2>
 
   <pre><code># ~/.relay-core/config.toml — set only what you change; the rest uses built-in defaults

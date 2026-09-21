@@ -7,6 +7,8 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <p>RelayCore embeds a Deno/V8 runtime for intercepting and modifying traffic via <code>globalThis</code> hook functions. The scripting engine supports both JavaScript and TypeScript.</p>
 
+  <p><strong>Wire semantics (0.13.1+)</strong>: returning a flow from <code>onResponseHeaders</code> / <code>onRequestHeaders</code> means “mutate headers and <strong>continue</strong> streaming the upstream body”, not “replace the whole response with an empty body”. Async hooks pump the event loop; body reads are budgeted (~1 MiB) and timed out so a hung hook cannot stall the engine. Prefer sync header hooks; rewrite bodies from the body hooks by writing <code>flow.layer.data.*.body</code>.</p>
+
   <h2>Lifecycle Hooks</h2>
   <p>Scripts register hooks by defining named functions on <code>globalThis</code>. RelayCore 1.0 provides 11 hooks covering HTTP, WebSocket, and connection lifecycles:</p>
 

@@ -41,17 +41,20 @@ sudo update-ca-certificates
 
   <h2>Start the Proxy</h2>
 
-  <pre><code># Start the daemon and the proxy (idempotent)
+  <pre><code># Background: daemon + proxy (idempotent)
 relay-core-cli start
 
-# The same daemon in the foreground, with the TUI attached
+# Foreground: same daemon, with the TUI attached
 relay-core-cli run --ui
 
-# A different port, or the whole status at a glance
+# Foreground: same daemon, with the Web UI (open the URL from status)
+relay-core-cli run --web
+
+# A different proxy port, or the whole status at a glance
 relay-core-cli start --listen 127.0.0.1:9090
 relay-core-cli status</code></pre>
 
-  <p>One background daemon owns the engine: it holds the state, serves the control API, the Web UI and the MCP endpoint, and survives the terminal that started it. The proxy listens on <code>127.0.0.1:8080</code> by default; <code>relay-core-cli status</code> prints the ports actually in use, and <code>relay-core-cli stop</code> stops the proxy while keeping the daemon and its history.</p>
+  <p>One background daemon owns the engine: it holds the state, serves the control API, the Web UI and the MCP endpoint, and survives the terminal that started it. The proxy listens on <code>127.0.0.1:8080</code> by default; <code>relay-core-cli status</code> prints the ports actually in use, and <code>relay-core-cli stop</code> stops the proxy while keeping the daemon and its history. Captured history defaults to at most <strong>5000</strong> flows or <strong>7</strong> days (tune with policy <code>retention</code>). An MCP client (<code>@relay-core/mcp</code>) attaches to that same daemon — it may autostart the daemon, then use <code>proxy_start</code> for the proxy.</p>
 
   <h2>Configure Your Client</h2>
 

@@ -41,22 +41,23 @@ sudo update-ca-certificates
 
   <h2>启动代理</h2>
 
-  <p>一个后台守护进程独占引擎：它持有状态、服务控制 API / Web UI / MCP 端点，并且不随启动它的终端一起退出。代理默认监听 <code>127.0.0.1:8080</code>；<code>relay-core-cli status</code> 会打印实际使用的端口，<code>relay-core-cli stop</code> 只停代理、保留守护进程与历史。</p>
-
-  <p>一个后台守护进程独占引擎：它持有状态、服务控制 API / Web UI / MCP 端点，并且不随启动它的终端一起退出。代理默认监听 <code>127.0.0.1:8080</code>；<code>relay-core-cli status</code> 会打印实际使用的端口，<code>relay-core-cli stop</code> 只停代理、保留守护进程与历史。</p>
+  <p>一个后台守护进程独占引擎：它持有状态、服务控制 API / Web UI / MCP 端点，并且不随启动它的终端一起退出。代理默认监听 <code>127.0.0.1:8080</code>；<code>relay-core-cli status</code> 会打印实际使用的端口，<code>relay-core-cli stop</code> 只停代理、保留守护进程与历史。捕获历史默认最多保留 <strong>5000</strong> 条或 <strong>7</strong> 天（可用策略里的 <code>retention</code> 调整）。</p>
 
   <p>CA 文件必须已存在；否则 <code>run</code> 会提示先执行 <code>ca generate</code>。</p>
 
-  <pre><code># 基本用法
+  <pre><code># 后台：守护进程 + 代理（幂等）
 relay-core-cli start
 
-# 带 TUI 界面
+# 前台：同一守护进程，附带 TUI
 relay-core-cli run --ui
 
-# 指定监听地址
-relay-core-cli run --listen 127.0.0.1:9090</code></pre>
+# 前台：同一守护进程，附带 Web UI（浏览器打开 status 打印的地址）
+relay-core-cli run --web
 
-  <p>代理默认监听 <code>127.0.0.1:8080</code>。使用 <code>--ui</code> 启用 TUI 交互界面，使用 <code>--api-port 8082</code> 启用 REST API 和 SSE 事件流。</p>
+# 指定代理端口
+relay-core-cli start --listen 127.0.0.1:9090</code></pre>
+
+  <p>代理默认监听 <code>127.0.0.1:8080</code>。控制 API 默认在 <code>8082</code>（被占则回落临时端口）。MCP 客户端（<code>@relay-core/mcp</code>）会附着到同一守护进程；未运行时也可自行拉起，再用 <code>proxy_start</code> 开代理。</p>
 
   <h2>配置客户端</h2>
 
