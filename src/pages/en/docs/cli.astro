@@ -36,9 +36,13 @@ Rules &amp; scripts:
       --script &lt;PATH&gt;            Load Deno script file
       --script-watch              Watch script file for hot reload
       --script-env-allow &lt;LIST&gt;  Comma-separated env var names scripts may read
+      --script-fetch-allow &lt;LIST&gt; Hosts relay.fetch may call (comma-separated; * is any host).
+                                  Setting this is what enables relay.fetch, and it must be set
+                                  before the script is loaded
 
 TUI:
       --ui                        Enable interactive TUI mode
+      --web                       Also serve the Web UI (uses port 8082 when --api-port is omitted)
       --theme &lt;NAME&gt;             TUI color preset: relay, slate, high-contrast
                                   (overrides RELAY_CORE_TUI_THEME and config)
 
@@ -163,7 +167,7 @@ Subcommands:
   status                        Show current rules</code></pre>
 
   <h2 id="env">Environment variables</h2>
-  <pre><code>RELAY_LOG                       Log filter (e.g. info, debug, trace)
+  <pre><code>RUST_LOG                        Log filter (e.g. info, debug, trace). RELAY_LOG in the CLI help is not read
 RELAY_DATA_DIR                  Data directory (default ~/.relay-core)
 RELAY_CA_CERT                   CA cert path (pair with RELAY_CA_KEY)
 RELAY_CA_KEY                    CA key path (pair with RELAY_CA_CERT)

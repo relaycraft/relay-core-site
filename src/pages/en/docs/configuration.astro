@@ -54,7 +54,7 @@ autostart_daemon = true   # may the MCP bridge start a daemon on its own?
     <tr><td><code>RELAY_DATA_DIR</code></td><td>Data directory (default <code>~/.relay-core</code>)</td></tr>
     <tr><td><code>RELAY_CA_CERT</code></td><td>CA cert path (must be paired with <code>RELAY_CA_KEY</code>); applies to <code>relay-core-cli</code> and <code>relay-core-probe</code></td></tr>
     <tr><td><code>RELAY_CA_KEY</code></td><td>CA key path (must be paired with <code>RELAY_CA_CERT</code>)</td></tr>
-    <tr><td><code>RELAY_LOG</code></td><td>Log filter level (e.g. <code>info</code>, <code>debug</code>, <code>trace</code>)</td></tr>
+    <tr><td><code>RUST_LOG</code></td><td>Log filter (e.g. <code>info</code>, <code>debug</code>, <code>trace</code>). <code>RELAY_LOG</code> appears in the CLI help but is not read</td></tr>
     <tr><td><code>RELAY_CORE_TUI_THEME</code></td><td>TUI color preset when <code>--theme</code> is omitted (<code>relay</code>, <code>slate</code>, <code>high-contrast</code>). See <a href="/en/docs/tui#themes">TUI themes</a>.</td></tr>
     <tr><td><code>RELAYCORE_UPSTREAM_PASSWORD</code></td><td>Upstream proxy HTTP Basic auth password. Paired with <code>--upstream-auth-user</code>. Never pass the password via CLI — it would land in shell history. See <a href="/en/docs/proxy-modes#upstream-proxy">Proxy Modes § upstream</a>.</td></tr>
     <tr><td><code>RELAY_API_PORT</code> / <code>RELAY_MCP_PORT</code> / <code>RELAY_PROXY_PORT</code></td><td>Port overrides for the daemon and the proxy (<code>--api-port</code> / <code>--mcp-port</code> / <code>--listen</code>)</td></tr>

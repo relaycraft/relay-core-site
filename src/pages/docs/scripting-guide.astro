@@ -9,13 +9,13 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>快速开始</h2>
   <pre><code>// script.js — 最简脚本
-globalThis.onRequest = (ctx, flow) => &#123;
+globalThis.onRequest = (body, flow) => &#123;
   console.log(`$&#123;flow.layer.data.request.method&#125; $&#123;flow.layer.data.request.url&#125;`);
 &#125;;</code></pre>
   <p>通过 HTTP API 加载：</p>
   <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/script \
   -H "Content-Type: application/json" \
-  -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'</code></pre>
+  -d '&#123;"script": "globalThis.onRequest = (body, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'</code></pre>
 
   <h2>0.13.x 备忘</h2>
   <ul>
@@ -83,7 +83,7 @@ globalThis.onRequestHeaders = (ctx, flow) => &#123;
 
   <h3>4. 响应脱敏</h3>
   <p>自动移除敏感字段如手机号、证件号：</p>
-  <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
+  <pre><code>globalThis.onResponse = (body, flow) => &#123;
   if (flow.layer.type !== "Http" || !flow.layer.data.response?.body) return;
   const raw = atob(flow.layer.data.response.body.content);
   if (!isJson(raw)) return;
@@ -121,7 +121,7 @@ function isJson(s) &#123;
   <pre><code>const RATE_LIMIT = 100;
 const WINDOW_MS = 60_000;
 
-globalThis.onRequest = (ctx, flow) => &#123;
+globalThis.onRequest = (body, flow) => &#123;
   const ip = flow.network.client_ip;
   const now = Date.now();
   const bucket = sharedState.get("_rateLimit") || &#123;&#125;;
@@ -146,7 +146,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
 
   <h3>6. 跨钩子上下文传递</h3>
   <p>使用 sharedState 在请求和响应之间传递数据：</p>
-  <pre><code>globalThis.onRequest = (ctx, flow) => &#123;
+  <pre><code>globalThis.onRequest = (body, flow) => &#123;
   sharedState.set(flow.id, &#123;
     startTime: Date.now(),
     authType: flow.layer.data.request.headers.find(h => h[0].toLowerCase() === "authorization")
@@ -155,7 +155,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
   return flow;
 &#125;;
 
-globalThis.onResponse = (ctx, flow) => &#123;
+globalThis.onResponse = (body, flow) => &#123;
   const meta = sharedState.get(flow.id);
   if (!meta) return;
 
@@ -173,8 +173,8 @@ globalThis.onResponse = (ctx, flow) => &#123;
 
 globalThis.onConnect = (ctx, conn) => &#123;
   for (const net of BLOCKED_NETS) &#123;
-    if (conn.client_ip.startsWith(net)) &#123;
-      console.warn(`Blocked connection from $&#123;conn.client_ip&#125;`);
+    if (String(conn.client_addr).startsWith(net)) &#123;
+      console.warn(`Blocked connection from $&#123;conn.client_addr&#125;`);
       return &#123; drop: true &#125;;
     &#125;
   &#125;
@@ -182,26 +182,13 @@ globalThis.onConnect = (ctx, conn) => &#123;
 
   <h3>8. 外部鉴权（relay.fetch）</h3>
   <p>调用外部服务验证每个请求：</p>
-  <pre><code>globalThis.onRequest = async (ctx, flow) => &#123;
-  const auth = flow.layer.data.request.headers.find(h => h[0] === "authorization");
-  if (!auth) return;
-
-  try &#123;
-    const resp = await relay.fetch("http://auth.internal/verify", &#123;
-      method: "POST",
-      headers: &#123; "Content-Type": "application/json" &#125;,
-      body: JSON.stringify(&#123; token: auth[1] &#125;),
-      timeout_ms: 3000,
-    &#125;);
-
-    if (resp.status !== 200) &#123;
-      flow.tags.push("auth-failed");
-      // 0.5.1：返回 401 / 阻断请配合 MockResponse 或 Drop 规则
-    &#125;
-  &#125; catch (e) &#123;
-    console.error("Auth service unreachable:", e);
-    // fail-open: 允许通过
+  <pre><code>globalThis.onRequestHeaders = (ctx, flow) => &#123;
+  // relay.fetch 只有 GET，且要先 --script-fetch-allow=auth.internal
+  const resp = relay.fetch("http://auth.internal/verify?token=present");
+  if (!resp.ok) &#123;
+    flow.tags.push("auth-failed");
   &#125;
+  return flow;
 &#125;;</code></pre>
 
   <h2>调试技巧</h2>
@@ -230,8 +217,8 @@ console.error("This should not happen!");    // 永远可见</code></pre>
   <h3>Prometheus 指标</h3>
   <pre><code># 查看脚本执行指标
 curl http://127.0.0.1:8082/api/v1/metrics/prometheus | grep script_
-# 输出：script_hook_duration_us&#123;hook="onRequest"&#125;
-#       script_hook_invocations_total&#123;hook="onRequest"&#125; 12345</code></pre>
+# 输出：relay_core_script_hook_duration_us&#123;hook="onRequest"&#125;
+#       relay_core_script_hook_invocations_total&#123;hook="onRequest"&#125; 12345</code></pre>
 
   <h2>性能注意事项</h2>
   <ul>

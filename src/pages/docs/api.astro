@@ -33,7 +33,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h3>GET /api/v1/version</h3>
   <p>引擎版本、API 版本与已注册的能力名称列表。</p>
   <pre><code>&#123;
-  "engine_version": "0.6.0",
+  "engine_version": "0.13.1",
   "api_version": "1",
   "capabilities": ["flows", "rules", "intercepts", "mock", "metrics", "status", "events", "scripts"]
 &#125;</code></pre>
@@ -74,7 +74,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>返回完整 Flow JSON（含 header 与 body）。同样应用 redaction。</p>
 
   <h3>POST /api/v1/flows/:id/replay</h3>
-  <p>重放已捕获流量。请求体可携带修改参数。<code>?accept_invalid_certs=true</code> 在重放时跳过 TLS 校验（仅限调试）。</p>
+  <p>按已捕获的 HTTP 请求原样再发一次。请求体被忽略，不能在这次调用里改头或改体，重放也不经过代理。<code>?accept_invalid_certs=true</code> 在重放时跳过 TLS 校验（仅限调试）。WebSocket 流量会返回 400。</p>
 
   <h3>GET /api/v1/flows/:id/har</h3>
   <p>将单条流量导出为 HAR 1.2 entry。</p>
@@ -85,7 +85,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h2 id="rules">规则</h2>
 
   <h3>GET /api/v1/rules</h3>
-  <p>列出所有拦截规则。每条返回完整 <code>Rule</code> 对象（id、name、priority、stage、filter、actions、enabled）。</p>
+  <p>列出所有拦截规则。每条返回完整 <code>Rule</code> 对象（id、name、active、stage、priority、termination、filter、actions）。启用字段是 <code>active</code>，不是 <code>enabled</code>。</p>
 
   <div class="endpoint">
     <span class="method method-get">GET</span>
@@ -102,17 +102,20 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <pre><code>&#123;
   "id": "rul_01HX5K9P3Q8Y2Z7",
-  "name": "Log API requests",
+  "name": "Tag API requests",
+  "active": true,
+  "stage": "RequestHeaders",
   "priority": 100,
+  "termination": "Continue",
   "filter": &#123;
-    "method": "GET",
-    "host": "*.example.com",
-    "path": "/api/*"
+    "type": "And",
+    "config": [
+      &#123; "type": "Method", "config": &#123; "mode": "Exact", "value": "GET" &#125; &#125;,
+      &#123; "type": "Host", "config": &#123; "mode": "Glob", "value": "*.example.com" &#125; &#125;,
+      &#123; "type": "Path", "config": &#123; "mode": "Glob", "value": "/api/*" &#125; &#125;
+    ]
   &#125;,
-  "action": &#123;
-    "type": "log"
-  &#125;,
-  "enabled": true
+  "actions": [&#123; "type": "Tag", "config": &#123; "key": "kind", "value": "api" &#125; &#125;]
 &#125;</code></pre>
 
   <h3>DELETE /api/v1/rules/:id</h3>
@@ -140,7 +143,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>列出待处理拦截（HTTP 与 WebSocket 一起）。</p>
 
   <h3>POST /api/v1/intercepts/:key/resume</h3>
-  <p>继续被拦截的流量。Body 支持 <code>action</code>（<code>continue</code> 或 <code>drop</code>）以及任何 <code>FlowModification</code> 字段：<code>method</code>、<code>url</code>、<code>request_headers</code>、<code>request_body</code>、<code>status_code</code>、<code>response_headers</code>、<code>response_body</code>、<code>message_content</code>。</p>
+  <p>继续被拦截的流量。Body 支持 <code>action</code>（<code>continue</code> 或 <code>drop</code>）以及 <code>FlowModification</code> 字段：<code>method</code>、<code>url</code>、<code>request_headers</code>、<code>request_header_upserts</code>、<code>request_body</code>、<code>status_code</code>、<code>response_headers</code>、<code>response_header_upserts</code>、<code>response_body</code>、<code>message_content</code>。<code>*_header_upserts</code> 按名增改并保留其余头；<code>request_headers</code> / <code>response_headers</code> 会整表替换。</p>
 
   <h2 id="policy">策略与脱敏</h2>
 
@@ -148,7 +151,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>返回当前 <code>ProxyPolicy</code>，包含 <code>redaction</code> 块以及（若已配置）<code>upstream</code> 块。Upstream <code>auth.password</code> 会被掩码为 <code>***</code>。</p>
 
   <h3>PATCH /api/v1/policy</h3>
-  <p>应用部分更新。两个顶层 key 均可省略：</p>
+  <p>应用部分更新。顶层只接受 <code>redaction</code>、<code>upstream</code>、<code>retention</code>，未知字段会 400。三者都可省略：</p>
   <pre><code>&#123;
   "redaction": &#123;
     "enabled": true,
@@ -176,7 +179,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h3>POST /api/v1/script</h3>
   <p>热加载脚本到运行中的引擎。</p>
-  <pre><code>&#123; "script": "// deno-fmt-ignore\nexport default &#123; onRequest(ctx) &#123; /* ... */ &#125; &#125;" &#125;</code></pre>
+  <pre><code>&#123; "script": "globalThis.onRequestHeaders = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); return flow; &#125;" &#125;</code></pre>
 
   <h2 id="events">事件</h2>
 
@@ -192,8 +195,10 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <ul>
     <li><code>flow</code> — 新流量或流量更新（data 字段为完整 Flow JSON）</li>
     <li><code>ws-message</code> — 新 WebSocket 消息</li>
-    <li><code>http-body</code> — body 片段可用，data 字段为 <code>&#123; "flow_id": "..." &#125;</code>，需通过 <code>GET /api/v1/flows/:id</code> 获取完整 body</li>
-    <li><code>body-budget-exceeded</code> — body 预算耗尽，后续 body 不再发送</li>
+    <li><code>http-body</code> — 预算内的 body，data 为 <code>&#123; flow_id, direction, body &#125;</code></li>
+    <li><code>body-budget-exceeded</code> — 某方向 body 超出预算，data 为 <code>&#123; flow_id, direction &#125;</code></li>
+    <li><code>response-trailers</code> — HTTP/2 trailers，data 为 <code>&#123; flow_id, trailers &#125;</code></li>
+    <li><code>flow-event</code> — 类型化事件（拦截暂停/恢复、规则改写、终局），与 <code>flow</code> 快照并存</li>
     <li><code>audit</code> — 控制平面变更（规则变更、拦截解决、脚本重载、策略更新）</li>
     <li><code>audit-lagged</code> — 审计通道丢事件，服务器重新同步</li>
     <li><code>lagged</code> — 流量/事件通道丢事件，TUI 重新同步</li>

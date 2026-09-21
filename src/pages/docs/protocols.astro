@@ -13,7 +13,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>HTTP/2</h2>
 
-  <p>完整支持。客户端 ↔ RelayCore 走 HTTP/1.1 或 HTTP/2 都行（取决于客户端能力与 ALPN 协商结果）；RelayCore ↔ 上游使用相同的协议版本。Header compression (HPACK) 在 RelayCore 内部完全展开，规则处理的是已解码的伪头（<code>:method</code>、<code>:path</code>、<code>:scheme</code>、<code>:authority</code>）。</p>
+  <p>客户端一侧可以是 HTTP/1.1 或 HTTP/2（取决于客户端与 ALPN）。出站只把 HTTP/1.x 的版本原样带给上游；HTTP/2 入站的上游协议由目标 URL 和 ALPN 决定，不会把客户端的 HTTP/2 版本硬套到一条 HTTP/1 连接上。HPACK 在内部完全展开，规则看到的是已解码的伪头（<code>:method</code>、<code>:path</code>、<code>:scheme</code>、<code>:authority</code>）。</p>
 
   <p><strong>同样支持 h2c（明文 HTTP/2）。</strong>不发 TLS 的 gRPC 客户端可以通过连接前导被识别，直连与走
     <code>CONNECT</code> 隧道都行（后者正是 <code>HTTP_PROXY</code> 客户端的行为）。只支持 h2c 的上游也能到达：
@@ -26,14 +26,14 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>WebSocket</h2>
 
-  <p>完整支持。基于 RFC 6455。RelayCore 解析握手、注册 <code>Layer::WebSocket</code> 流量、对每条消息提供消息级检查与改写：</p>
+  <p>握手和明文帧可以检查、改写。基于 RFC 6455。RelayCore 解析握手、注册 <code>Layer::WebSocket</code> 流量，并对每条消息提供消息级检查与改写。<code>permessage-deflate</code> 既不协商剥离，也不解压，压缩帧会按原样穿过，内容不可读。</p>
 
   <ul>
     <li>每条消息记录 <code>direction</code>（incoming / outgoing）、<code>opcode</code>（text / binary / ping / pong / close / continuation）、<code>content</code>（含 encoding、size、base64 body）。</li>
     <li>规则可以 <code>MockWebSocketMessage</code>、<code>DropWebSocketMessage</code>。</li>
     <li>脚本 hook <code>onWebSocketMessage</code> 可读改每条消息。</li>
     <li>TUI 的 <strong>Messages</strong> 详情页实时显示消息日志。</li>
-    <li>大消息可能触发 <code>ws-message-budget-exceeded</code>，避免无界内存占用。</li>
+    <li>超预算的 body 走 SSE 事件 <code>body-budget-exceeded</code>（带 <code>direction</code>），没有单独的 WebSocket 预算事件名。</li>
   </ul>
 
   <h2>QUIC / HTTP/3</h2>
@@ -42,12 +42,12 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <table>
     <tr><th>模式</th><th>说明</th></tr>
-    <tr><td><code>Downgrade</code>（默认）</td><td>下发 <code>Alt-Svc</code> 清除响应 + <code>Clear-Site-Data</code>，强制客户端回退到 HTTP/2 或 HTTP/1.1。可设置 <code>quic_downgrade_clear_cache=true</code> 强制清缓存。</td></tr>
-    <tr><td><code>Passthrough</code></td><td>不做任何处理，QUIC 流量原样转发（不可见、不可改）。</td></tr>
+    <tr><td><code>Downgrade</code>（默认）</td><td>从 HTTP 响应里去掉 <code>Alt-Svc</code>。只有 <code>quic_downgrade_clear_cache=true</code>（默认 false）时才额外写 <code>Clear-Site-Data: "cache"</code>。</td></tr>
+    <tr><td><code>Passthrough</code></td><td>保留 <code>Alt-Svc</code>。客户端随后可能直连源站的 QUIC，这段流量不进代理，也没有 Flow。</td></tr>
     <tr><td><code>ExperimentalMitm</code></td><td>实验性 HTTP/3 MITM。需要 <code>quic_mitm_experimental</code> feature flag，且尚未生产可用。</td></tr>
   </table>
 
-  <p>QUIC 模式下没有可观察的 Flow 记录（<code>Downgrade</code> 除外，下发 <code>Alt-Svc</code> 的请求会被记为 <code>has_error=false</code> 的正常流）。</p>
+  <p>QUIC 本身没有 Flow。Downgrade 只是改写已经捕获的 HTTP 响应：去掉 <code>Alt-Svc</code> 时会给这条流打上 <code>quic-downgraded</code> 标签。</p>
 
   <h2>TCP / UDP（透明代理场景）</h2>
 

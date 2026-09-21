@@ -5,49 +5,58 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="Interception &amp; Rewriting" description="Minimal examples for every rewriting capability">
   <h1>Interception &amp; Rewriting Capabilities</h1>
 
-  <p>This page lists every built-in traffic-rewriting capability in RelayCore, with a minimal JSON example for each (ready to feed to <code>PUT /api/v1/rules</code> or <code>relay-core-cli rules validate</code>). For the full filter schema see <a href="/en/docs/rule-engine">Rule API</a>.</p>
+  <p>Each example below is a Rule JSON that <code>relay-core-cli rules validate</code> accepts (and that <code>PUT /api/v1/rules</code> stores). The shape matches the <a href="/en/docs/rule-engine">Rule API</a>: <code>active</code>, <code>stage</code>, <code>termination</code>, a tagged <code>filter</code>, and an <code>actions</code> array. Action fields live under <code>config</code>.</p>
 
   <h2 id="mock-response">Mock Response</h2>
-  <p>Replace the upstream response with a local fake. Use for frontend development, contract testing, error simulation.</p>
+  <p>Replace the upstream response with a local one. Useful for frontend work, contract tests, and error simulation. Stopping at the request-header stage means the upstream is never contacted.</p>
   <pre><code>&#123;
   "id": "mock-health",
   "name": "Mock /v1/health",
-  "filter": &#123; "path": "/v1/health" &#125;,
-  "action": &#123;
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 100,
+  "termination": "Stop",
+  "filter": &#123; "type": "Path", "config": &#123; "mode": "Exact", "value": "/v1/health" &#125; &#125;,
+  "actions": [&#123;
     "type": "MockResponse",
-    "status": 200,
-    "headers": &#123; "content-type": "application/json" &#125;,
-    "body": &#123; "type": "Text", "value": "&#123;\"ok\":true&#125;" &#125;
-  &#125;,
-  "enabled": true
+    "config": &#123;
+      "status": 200,
+      "headers": &#123; "content-type": "application/json" &#125;,
+      "body": &#123; "type": "Text", "value": "&#123;\\"ok\\":true&#125;" &#125;
+    &#125;
+  &#125;]
 &#125;</code></pre>
 
   <h2 id="map-local">Map Local</h2>
-  <p>Serve a local file in place of an HTTP request. Use for frontend offline dev.</p>
+  <p>Serve the request from a local file. The path must stay inside the policy sandbox root.</p>
   <pre><code>&#123;
   "id": "map-local-static",
   "name": "Serve /static from disk",
-  "filter": &#123; "path_starts_with": "/static/" &#125;,
-  "action": &#123;
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 100,
+  "termination": "Stop",
+  "filter": &#123; "type": "Path", "config": &#123; "mode": "Prefix", "value": "/static/" &#125; &#125;,
+  "actions": [&#123;
     "type": "MapLocal",
-    "path": "/Users/me/projects/app/static",
-    "content_type": null
-  &#125;,
-  "enabled": true
+    "config": &#123; "path": "/Users/me/projects/app/static", "content_type": null &#125;
+  &#125;]
 &#125;</code></pre>
 
   <h2 id="map-remote">Map Remote</h2>
-  <p>Rewrite the URL to point at another address. Use to swap prod traffic to a staging environment.</p>
+  <p>Rewrite the request URL to another origin.</p>
   <pre><code>&#123;
   "id": "map-remote-prod-to-staging",
   "name": "api.example.com -&gt; staging",
-  "filter": &#123; "host": "api.example.com" &#125;,
-  "action": &#123;
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 100,
+  "termination": "Stop",
+  "filter": &#123; "type": "Host", "config": &#123; "mode": "Exact", "value": "api.example.com" &#125; &#125;,
+  "actions": [&#123;
     "type": "MapRemote",
-    "url": "https://api-staging.example.com",
-    "preserve_host": false
-  &#125;,
-  "enabled": true
+    "config": &#123; "url": "https://api-staging.example.com", "preserve_host": false &#125;
+  &#125;]
 &#125;</code></pre>
 
   <h2 id="redirect">Redirect</h2>
@@ -55,133 +64,148 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <pre><code>&#123;
   "id": "redirect-legacy",
   "name": "/old -&gt; /new",
-  "filter": &#123; "path": "/old" &#125;,
-  "action": &#123;
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 100,
+  "termination": "Stop",
+  "filter": &#123; "type": "Path", "config": &#123; "mode": "Exact", "value": "/old" &#125; &#125;,
+  "actions": [&#123;
     "type": "Redirect",
-    "location": "https://example.com/new",
-    "status": 301
-  &#125;,
-  "enabled": true
+    "config": &#123; "location": "https://example.com/new", "status": 301 &#125;
+  &#125;]
 &#125;</code></pre>
 
   <h2 id="header-modification">Header modification</h2>
-  <p>Add, update, or delete request/response headers. All header actions support the <code>&#123;&#123;previous&#125;&#125;</code> variable to refer to the prior value.</p>
+  <p>Add, update, or delete request and response headers. <code>UpdateRequestHeader</code> / <code>UpdateResponseHeader</code> accept <code>&#123;&#123;previous&#125;&#125;</code> in <code>value</code>.</p>
   <pre><code>&#123;
   "id": "strip-cookie",
   "name": "Strip Set-Cookie on /api/*",
-  "filter": &#123; "path_starts_with": "/api/" &#125;,
-  "action": &#123; "type": "DeleteResponseHeader", "name": "set-cookie" &#125;,
-  "enabled": true
+  "active": true,
+  "stage": "ResponseHeaders",
+  "priority": 100,
+  "termination": "Continue",
+  "filter": &#123; "type": "Path", "config": &#123; "mode": "Prefix", "value": "/api/" &#125; &#125;,
+  "actions": [&#123; "type": "DeleteResponseHeader", "config": &#123; "name": "set-cookie" &#125; &#125;]
 &#125;</code></pre>
 
   <pre><code>&#123;
   "id": "add-debug",
   "name": "Add X-Debug header",
-  "filter": &#123; "method": "POST" &#125;,
-  "action": &#123;
+  "active": true,
+  "stage": "RequestHeaders",
+  "priority": 100,
+  "termination": "Continue",
+  "filter": &#123; "type": "Method", "config": &#123; "mode": "Exact", "value": "POST" &#125; &#125;,
+  "actions": [&#123;
     "type": "AddRequestHeader",
-    "name": "x-debug",
-    "value": "relay-core"
-  &#125;,
-  "enabled": true
+    "config": &#123; "name": "x-debug", "value": "relay-core" &#125;
+  &#125;]
 &#125;</code></pre>
 
   <h2 id="body-modification">Body modification</h2>
-  <p>Full replace, regex replace, and JSONPath set/delete.</p>
+  <p>Replace a body, run a regex, or set a JSONPath. Body-dependent rules belong on <code>RequestBody</code> / <code>ResponseBody</code>. A body over the inspect budget is skipped with a recorded reason; it is not matched against the truncated prefix.</p>
   <pre><code>&#123;
   "id": "jsonpath-set",
   "name": "Force user.role = admin",
-  "filter": &#123; "host": "api.example.com" &#125;,
-  "action": &#123;
+  "active": true,
+  "stage": "RequestBody",
+  "priority": 100,
+  "termination": "Continue",
+  "filter": &#123; "type": "Host", "config": &#123; "mode": "Exact", "value": "api.example.com" &#125; &#125;,
+  "actions": [&#123;
     "type": "TransformRequestBody",
-    "transform": &#123;
-      "type": "JsonPathSet",
-      "path": "$.user.role",
-      "value": "\"admin\""
+    "config": &#123;
+      "transform": &#123;
+        "type": "JsonPathSet",
+        "config": &#123; "path": "$.user.role", "value": "\\"admin\\"" &#125;
+      &#125;
     &#125;
-  &#125;,
-  "enabled": true
+  &#125;]
 &#125;</code></pre>
 
   <pre><code>&#123;
   "id": "regex-replace",
   "name": "Replace token in body",
-  "filter": &#123; "path": "/login" &#125;,
-  "action": &#123;
+  "active": true,
+  "stage": "ResponseBody",
+  "priority": 100,
+  "termination": "Continue",
+  "filter": &#123; "type": "Path", "config": &#123; "mode": "Exact", "value": "/login" &#125; &#125;,
+  "actions": [&#123;
     "type": "TransformResponseBody",
-    "transform": &#123;
-      "type": "RegexReplace",
-      "pattern": "secret=([^&amp;]+)",
-      "replacement": "secret=REDACTED"
+    "config": &#123;
+      "transform": &#123;
+        "type": "RegexReplace",
+        "config": &#123; "pattern": "secret=([^&amp;]+)", "replacement": "secret=REDACTED" &#125;
+      &#125;
     &#125;
-  &#125;,
-  "enabled": true
+  &#125;]
 &#125;</code></pre>
 
   <h2 id="intercept-breakpoints">Intercept breakpoints</h2>
-  <p>Pause live traffic for human decision. Rules create the breakpoint; <code>resume_flow</code> releases or drops it.</p>
+  <p>Pause live traffic for a human decision. Create a breakpoint with <code>POST /api/v1/intercepts</code> or MCP <code>set_intercept</code>; release or drop it with <code>resume</code> / <code>resume_flow</code>. There is no <code>relay-core-cli intercept</code> subcommand.</p>
 
-  <pre><code># Create a request-phase breakpoint
-curl -X POST http://127.0.0.1:8082/api/v1/intercepts \
+  <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/intercepts \
   -H 'Content-Type: application/json' \
   -d '&#123;
     "url_pattern": "api.example.com",
     "phase": "request"
   &#125;'</code></pre>
 
-  <p>Hit breakpoints show up in the TUI's <strong>Intercepts</strong> panel, and can be listed via <code>GET /api/v1/intercepts</code>. When resuming, you can attach modifications:</p>
+  <p>Hits show up in the TUI <strong>Intercepts</strong> panel and via <code>GET /api/v1/intercepts</code>. <code>request_header_upserts</code> / <code>response_header_upserts</code> add or overwrite by name and keep the rest. <code>request_headers</code> / <code>response_headers</code> replace the whole header map.</p>
 
   <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/intercepts/&lt;key&gt;/resume \
   -H 'Content-Type: application/json' \
   -d '&#123;
     "action": "continue",
-    "request_headers": &#123; "x-test": "value" &#125;
+    "request_header_upserts": &#123; "x-test": "value" &#125;
   &#125;'</code></pre>
 
-  <p>Modifiable fields: <code>method</code>, <code>url</code>, <code>request_headers</code>, <code>request_body</code>, <code>status_code</code>, <code>response_headers</code>, <code>response_body</code>, <code>message_content</code> (WebSocket).</p>
+  <p>Modifiable fields: <code>method</code>, <code>url</code>, <code>request_headers</code>, <code>request_header_upserts</code>, <code>request_body</code>, <code>status_code</code>, <code>response_headers</code>, <code>response_header_upserts</code>, <code>response_body</code>, <code>message_content</code> (WebSocket).</p>
 
   <h2 id="flow-replay">Flow replay</h2>
-  <p>Resend a captured request/response, with optional modifications.</p>
-  <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/flows/fld_01HX.../replay \
-  -H 'Content-Type: application/json' \
-  -d '&#123;
-    "modifications": &#123;
-      "headers": &#123; "x-test": "value" &#125;,
-      "body": "raw body content"
-    &#125;
-  &#125;'
+  <p>Re-send a captured HTTP request as it was stored. The request body is ignored, so this call cannot edit headers or body, and the replay does not pass back through the proxy (it is not captured again and rules do not run). HTTP only; WebSocket flows are rejected.</p>
+  <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/flows/&lt;id&gt;/replay
 
-# Skip TLS verification (debug only!)
-curl -X POST 'http://127.0.0.1:8082/api/v1/flows/fld_01HX.../replay?accept_invalid_certs=true'</code></pre>
+# Skip TLS verification (debug only)
+curl -X POST 'http://127.0.0.1:8082/api/v1/flows/&lt;id&gt;/replay?accept_invalid_certs=true'</code></pre>
 
   <h2>WebSocket message rewriting</h2>
-  <p>WebSocket traffic has two dedicated actions:</p>
+  <p>Two actions apply only at stage <code>WebSocketMessage</code>:</p>
   <pre><code>&#123;
   "id": "ws-mock",
   "name": "Mock chat messages",
-  "filter": &#123; "host": "chat.example.com" &#125;,
-  "action": &#123;
+  "active": true,
+  "stage": "WebSocketMessage",
+  "priority": 100,
+  "termination": "Stop",
+  "filter": &#123; "type": "Host", "config": &#123; "mode": "Exact", "value": "chat.example.com" &#125; &#125;,
+  "actions": [&#123;
     "type": "MockWebSocketMessage",
-    "direction": "Incoming",
-    "message": "&#123;\"type\":\"welcome\",\"user\":\"bot\"&#125;"
-  &#125;,
-  "enabled": true
+    "config": &#123;
+      "direction": "Incoming",
+      "message": "&#123;\\"type\\":\\"welcome\\",\\"user\\":\\"bot\\"&#125;"
+    &#125;
+  &#125;]
 &#125;</code></pre>
 
-  <p>Or unconditionally drop matching messages:</p>
+  <p>Or drop matching messages:</p>
   <pre><code>&#123;
   "id": "ws-drop-pings",
   "name": "Drop ping frames",
-  "action": &#123; "type": "DropWebSocketMessage" &#125;,
-  "enabled": true
+  "active": true,
+  "stage": "WebSocketMessage",
+  "priority": 100,
+  "termination": "Stop",
+  "filter": &#123; "type": "All" &#125;,
+  "actions": [&#123; "type": "DropWebSocketMessage" &#125;]
 &#125;</code></pre>
 
-  <h2>L3/L4 actions (forward-looking)</h2>
-  <p>The following action types are declared in the rule schema but not all are enabled in every build. See <a href="/en/docs/rule-engine">Rule API</a> for current status:</p>
-
+  <h2>L3/L4 actions</h2>
+  <p>These three actions only apply at the <code>Connect</code> stage:</p>
   <ul>
-    <li><code>RedirectIp</code> — redirect to a different IP</li>
-    <li><code>SetTtl</code> — set the IP TTL</li>
-    <li><code>ForwardPort</code> — forward to a different port</li>
+    <li><code>RedirectIp</code> — dial a different IP</li>
+    <li><code>ForwardPort</code> — forward to another host:port (hostnames are resolved)</li>
+    <li><code>SetTtl</code> — accepted, then logged; the TTL on the wire does not change</li>
   </ul>
 </DocsLayout>

@@ -46,12 +46,12 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
     <li>确认代理地址和端口正确</li>
     <li>检查系统代理设置（macOS: 系统偏好设置 → 网络 → 高级 → 代理）</li>
     <li>检查是否有安全软件阻止连接</li>
-    <li>查看代理日志：<code>RELAY_LOG=info relay-core-cli run</code></li>
+    <li>查看代理日志：<code>RUST_LOG=info relay-core-cli run</code></li>
   </ul>
 
   <h3>上游请求超时</h3>
   <ul>
-    <li>增大超时：<code>--request-timeout-ms 30000</code></li>
+    <li>默认请求超时是 30s（<code>ProxyPolicy.request_timeout_ms</code>）。没有 <code>--request-timeout-ms</code>；改它要提交完整策略（MCP <code>update_policy</code>），<code>patch_policy</code> 不接受这个字段</li>
     <li>检查上游可达性：<code>curl -v http://upstream-host/path</code></li>
     <li>查看 Flow 详情中的错误字段</li>
   </ul>

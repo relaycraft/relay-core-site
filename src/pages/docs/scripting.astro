@@ -15,9 +15,9 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <table>
     <tr><th>钩子</th><th>触发时机</th><th>签名</th></tr>
     <tr><td><code>onRequestHeaders</code></td><td>请求头接收后</td><td><code>(ctx, flow) => flow | undefined</code></td></tr>
-    <tr><td><code>onRequest</code></td><td>请求体就绪后，转发前</td><td><code>(ctx, flow, body) => action</code></td></tr>
+    <tr><td><code>onRequest</code></td><td>请求体就绪后，转发前</td><td><code>(body, flow) => flow | undefined</code></td></tr>
     <tr><td><code>onResponseHeaders</code></td><td>响应头接收后</td><td><code>(ctx, flow) => flow | undefined</code></td></tr>
-    <tr><td><code>onResponse</code></td><td>响应体就绪后</td><td><code>(ctx, flow, body) => action</code></td></tr>
+    <tr><td><code>onResponse</code></td><td>响应体就绪后</td><td><code>(body, flow) => flow | undefined</code></td></tr>
     <tr><td><code>onWebSocketMessage</code></td><td>WebSocket 帧到达</td><td><code>(ctx, flow, message) => message | undefined</code></td></tr>
     <tr><td><code>onWebSocketStart</code></td><td>WebSocket 握手完成</td><td><code>(ctx, flow) => void</code></td></tr>
     <tr><td><code>onWebSocketEnd</code></td><td>WebSocket 正常关闭</td><td><code>(ctx, flow, code, reason) => void</code></td></tr>
@@ -61,7 +61,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
         body: &#123;
           encoding: string,
           size: number,
-          content: string,  // base64 编码
+          content: string,  // encoding 为 utf-8 或 base64
         &#125; | null,
         cookies: [string, string][],
       &#125;,
@@ -101,42 +101,39 @@ const txt = relay.json.stringifyPretty(obj);          // 2 空格缩进</code></
 const host = relay.env("BACKEND_HOST");  // "api.example.com"
 const miss = relay.env("SECRET");        // undefined（未在白名单）</code></pre>
 
-  <h3>relay.fetch(url, options?)</h3>
-  <p>发起受控 HTTP 子请求。默认关闭，需 <code>--enable-script-fetch</code> 显式开启。</p>
-  <pre><code>const resp = await relay.fetch("http://auth.internal/verify", &#123;
-  method: "POST",
-  headers: &#123; "Authorization": flow.layer.data.request.headers.find(h => h[0]==="authorization")?.[1] &#125;,
-  body: JSON.stringify(&#123; flow_id: flow.id &#125;),
-  timeout_ms: 2000,
-&#125;);
-// resp: &#123; status, headers, body &#125;
-if (resp.status !== 200) &#123;
-  throw new Error("Auth failed");
+  <h3>relay.fetch(url)</h3>
+  <p>发起一次 HTTP GET。默认关闭；传 <code>--script-fetch-allow</code> 才会启用。没有 method / headers / body 参数，返回 <code>&#123; ok, status, body &#125;</code> 或 <code>&#123; ok: false, error &#125;</code>。</p>
+  <pre><code>// CLI: relay-core-cli run --script-fetch-allow=auth.internal
+const resp = relay.fetch("http://auth.internal/verify");
+if (!resp.ok) &#123;
+  throw new Error(resp.error || ("HTTP " + resp.status));
 &#125;</code></pre>
   <table>
     <tr><th>安全控制</th><th>说明</th></tr>
-    <tr><td>默认关闭</td><td>必须传 <code>--enable-script-fetch</code></td></tr>
-    <tr><td>白名单</td><td><code>--script-fetch-allow=host1,host2</code></td></tr>
-    <tr><td>防递归</td><td>fetch 自身代理端口会被拒绝</td></tr>
-    <tr><td>并发上限</td><td><code>--script-fetch-max-concurrency=8</code></td></tr>
-    <tr><td>超时上限</td><td>硬上限 30s</td></tr>
-    <tr><td>审计</td><td>每次 fetch 进入 Audit Trail</td></tr>
+    <tr><td>默认关闭</td><td>不传 <code>--script-fetch-allow</code> 时 <code>relay.fetch</code> 返回 <code>script fetch disabled</code></td></tr>
+    <tr><td>白名单</td><td>逗号分隔主机名；<code>*</code> 表示任意主机。须在加载脚本之前设置</td></tr>
+    <tr><td>防递归</td><td>打到本代理监听端口的 localhost / 127.0.0.1 / ::1 会被拒绝</td></tr>
+    <tr><td>并发与超时</td><td>引擎内并发上限 8、单次超时 5s，没有对应的 CLI 参数</td></tr>
   </table>
 
-  <h3>relay.readBody(flow)</h3>
-  <pre><code>const body = await relay.readBody(flow);
-// 对于流式 body，返回累积内容</code></pre>
+  <h3>RelayBody</h3>
+  <p>body 钩子的第一个参数是 <code>RelayBody</code>，不是 <code>relay.readBody</code>。超预算时 <code>truncated</code> 为 true，<code>text()</code> / <code>json()</code> 会抛错。</p>
+  <pre><code>globalThis.onResponse = async (body, flow) => &#123;
+  const text = await body.text();
+  flow.layer.data.response.body = &#123; encoding: "utf-8", size: text.length, content: text &#125;;
+  return flow;
+&#125;;</code></pre>
 
   <h2>全局状态 <code>sharedState</code></h2>
   <p><code>globalThis.sharedState</code> 是同一引擎实例内所有钩子共享的键值存储：</p>
-  <pre><code>// 在 onRequest 中存储
-globalThis.onRequest = (ctx, flow) => &#123;
+  <pre><code>// 在请求头阶段记下开始时间
+globalThis.onRequestHeaders = (ctx, flow) => &#123;
   sharedState.set(flow.id, &#123; start: Date.now() &#125;);
   return flow;
 &#125;;
 
 // 在 onResponse 中读取
-globalThis.onResponse = (ctx, flow) => &#123;
+globalThis.onResponse = (body, flow) => &#123;
   const meta = sharedState.get(flow.id);
   if (meta) &#123;
     console.log(`Flow $&#123;flow.id&#125; took $&#123;Date.now() - meta.start&#125;ms`);
@@ -155,15 +152,15 @@ console.debug("变量值: " + x); // tracing::debug!  — RUST_LOG=debug 才可�
   <h2>连接级钩子</h2>
   <pre><code>// 连接过滤 — onConnect 返回 &#123;drop:true&#125; 直接拒绝连接
 globalThis.onConnect = (ctx, conn) => &#123;
-  // conn: &#123; id, client_ip, client_port &#125;
-  if (conn.client_ip.startsWith("192.168.1.")) &#123;
+  // conn: &#123; id, client_addr, server_addr, tls_sni &#125;
+  if (String(conn.client_addr).startsWith("192.168.1.")) &#123;
     return &#123; drop: true &#125;;
   &#125;
 &#125;;
 
 // 连接统计
 globalThis.onDisconnect = (ctx, conn, stats) => &#123;
-  // stats: &#123; duration_ms, flows_count &#125;
+  // stats: &#123; duration_ms, bytes_sent, bytes_received, flows_count &#125;
   console.log(`Connection $&#123;conn.id&#125;: $&#123;stats.flows_count&#125; flows`);
 &#125;;</code></pre>
 
@@ -182,7 +179,7 @@ globalThis.onWebSocketError = (ctx, flow, error) => &#123;
 
   <h2>规则桥接</h2>
   <p>RelayCore 独家能力——脚本可以感知规则引擎的执行结果：</p>
-  <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
+  <pre><code>globalThis.onResponse = (body, flow) => &#123;
   // 读取命中的规则
   if (flow.matched_rules.includes("rule-block-tracking")) &#123;
     flow.layer.data.response.headers.push(["X-Blocked-By", "RelayCore"]);
@@ -201,10 +198,9 @@ globalThis.onWebSocketError = (ctx, flow, error) => &#123;
   <pre><code># 通过 HTTP API 加载脚本
 curl -X POST http://127.0.0.1:8082/api/v1/script \
   -H "Content-Type: application/json" \
-  -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'
+  -d '&#123;"script": "globalThis.onRequestHeaders = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'
 
-# MCP 工具（通过 AI Agent）
-mcp: relay-core set_script --script script.js
+# MCP 工具 set_script，参数是脚本文本，不是文件路径
 
 # Bundle 模式：使用 npm 包
 relay-core scripts init my-project      # 脚手架
@@ -218,7 +214,7 @@ relay-core scripts dev                   # build + 热上传 + watch</code></pre
 import jwtDecode from "jwt-decode";
 import &#123; XMLParser &#125; from "fast-xml-parser";
 
-globalThis.onRequest = (ctx, flow) => &#123;
+globalThis.onRequestHeaders = (ctx, flow) => &#123;
   const auth = flow.layer.data.request.headers.find(h => h[0] === "authorization");
   if (auth) &#123;
     const payload = jwtDecode(auth[1]);
@@ -237,10 +233,11 @@ relay-core-cli run --script-env-allow API_TOKEN,DEBUG</code></pre>
   <p>脚本执行指标自动上报到 Prometheus：</p>
   <table>
     <tr><th>指标</th><th>说明</th></tr>
-    <tr><td><code>script_hook_duration_us&#123;hook&#125;</code></td><td>单次钩子执行耗时（直方图）</td></tr>
-    <tr><td><code>script_hook_invocations_total&#123;hook&#125;</code></td><td>钩子累计调用次数</td></tr>
-    <tr><td><code>script_hook_errors_total&#123;hook&#125;</code></td><td>钩子累计错误次数</td></tr>
-    <tr><td><code>script_fetch_total&#123;target,status&#125;</code></td><td>fetch 调用计数</td></tr>
-    <tr><td><code>script_env_access_total&#123;key&#125;</code></td><td>env 访问计数（不记录值）</td></tr>
+    <tr><td><code>relay_core_script_hook_duration_us&#123;hook&#125;</code></td><td>单次钩子执行耗时</td></tr>
+    <tr><td><code>relay_core_script_hook_invocations_total&#123;hook&#125;</code></td><td>钩子累计调用次数</td></tr>
+    <tr><td><code>relay_core_script_hook_errors_total&#123;hook&#125;</code></td><td>钩子累计错误次数</td></tr>
+    <tr><td><code>relay_core_script_fetch_total</code></td><td>fetch 调用计数（无标签）</td></tr>
+    <tr><td><code>relay_core_script_fetch_rejected_total</code></td><td>被拒绝的 fetch</td></tr>
+    <tr><td><code>relay_core_script_env_access_total</code></td><td>env 访问计数（不记录变量名或值）</td></tr>
   </table>
 </DocsLayout>

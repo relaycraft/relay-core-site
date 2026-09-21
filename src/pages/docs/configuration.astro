@@ -58,7 +58,7 @@ autostart_daemon = true   # MCP 桥是否可以在没有守护进程时自行拉
     <tr><td><code>RELAY_DATA_DIR</code></td><td>数据目录（默认 <code>~/.relay-core</code>）</td></tr>
     <tr><td><code>RELAY_CA_CERT</code></td><td>CA 证书路径（须与 <code>RELAY_CA_KEY</code> 成对）；同时作用于 <code>relay-core-cli</code> 与 <code>relay-core-probe</code></td></tr>
     <tr><td><code>RELAY_CA_KEY</code></td><td>CA 私钥路径（须与 <code>RELAY_CA_CERT</code> 成对）</td></tr>
-    <tr><td><code>RELAY_LOG</code></td><td>日志过滤级别（如 <code>info</code>、<code>debug</code>、<code>trace</code>）</td></tr>
+    <tr><td><code>RUST_LOG</code></td><td>日志过滤级别（如 <code>info</code>、<code>debug</code>、<code>trace</code>）。CLI 帮助里写的 <code>RELAY_LOG</code> 目前不会被读取</td></tr>
     <tr><td><code>RELAY_CORE_TUI_THEME</code></td><td><code>--theme</code> 缺省时的 TUI 配色（<code>relay</code>、<code>slate</code>、<code>high-contrast</code>）。见 <a href="/docs/tui#themes">TUI 主题</a>。</td></tr>
     <tr><td><code>RELAYCORE_UPSTREAM_PASSWORD</code></td><td>上游代理 HTTP Basic 认证密码，与 <code>--upstream-auth-user</code> 配合。绝不要通过命令行参数传入密码（会进入 shell 历史）。见 <a href="/docs/proxy-modes#upstream-proxy">代理模式 § 上游</a>。</td></tr>
     <tr><td><code>RELAY_API_PORT</code> / <code>RELAY_MCP_PORT</code> / <code>RELAY_PROXY_PORT</code></td><td>守护进程与代理的端口覆盖（对应 <code>--api-port</code> / <code>--mcp-port</code> / <code>--listen</code>）</td></tr>

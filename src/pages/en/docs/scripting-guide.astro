@@ -9,13 +9,13 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <h2>Quick Start</h2>
   <pre><code>// script.js — minimal script
-globalThis.onRequest = (ctx, flow) => &#123;
+globalThis.onRequest = (body, flow) => &#123;
   console.log(`$&#123;flow.layer.data.request.method&#125; $&#123;flow.layer.data.request.url&#125;`);
 &#125;;</code></pre>
   <p>Load via HTTP API:</p>
   <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/script \
   -H "Content-Type: application/json" \
-  -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'</code></pre>
+  -d '&#123;"script": "globalThis.onRequest = (body, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'</code></pre>
 
   <h2>0.13.x notes</h2>
   <ul>
@@ -77,7 +77,7 @@ globalThis.onRequestHeaders = (ctx, flow) => &#123;
 &#125;;</code></pre>
 
   <h3>4. Response Sanitization</h3>
-  <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
+  <pre><code>globalThis.onResponse = (body, flow) => &#123;
   if (flow.layer.type !== "Http" || !flow.layer.data.response?.body) return;
   const raw = atob(flow.layer.data.response.body.content);
 
@@ -109,7 +109,7 @@ function redactPersonalInfo(obj) &#123;
   <pre><code>const RATE_LIMIT = 100;
 const WINDOW_MS = 60_000;
 
-globalThis.onRequest = (ctx, flow) => &#123;
+globalThis.onRequest = (body, flow) => &#123;
   const ip = flow.network.client_ip;
   const now = Date.now();
   const bucket = sharedState.get("_rateLimit") || &#123;&#125;;
@@ -132,7 +132,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
 &#125;;</code></pre>
 
   <h3>6. Cross-Hook Context</h3>
-  <pre><code>globalThis.onRequest = (ctx, flow) => &#123;
+  <pre><code>globalThis.onRequest = (body, flow) => &#123;
   sharedState.set(flow.id, &#123;
     startTime: Date.now(),
     authType: flow.layer.data.request.headers.find(h => h[0].toLowerCase() === "authorization")
@@ -141,7 +141,7 @@ globalThis.onRequest = (ctx, flow) => &#123;
   return flow;
 &#125;;
 
-globalThis.onResponse = (ctx, flow) => &#123;
+globalThis.onResponse = (body, flow) => &#123;
   const meta = sharedState.get(flow.id);
   if (!meta) return;
 
@@ -157,33 +157,21 @@ globalThis.onResponse = (ctx, flow) => &#123;
 
 globalThis.onConnect = (ctx, conn) => &#123;
   for (const net of BLOCKED_NETS) &#123;
-    if (conn.client_ip.startsWith(net)) &#123;
-      console.warn(`Blocked connection from $&#123;conn.client_ip&#125;`);
+    if (String(conn.client_addr).startsWith(net)) &#123;
+      console.warn(`Blocked connection from $&#123;conn.client_addr&#125;`);
       return &#123; drop: true &#125;;
     &#125;
   &#125;
 &#125;;</code></pre>
 
   <h3>8. External Auth (relay.fetch)</h3>
-  <pre><code>globalThis.onRequest = async (ctx, flow) => &#123;
-  const auth = flow.layer.data.request.headers.find(h => h[0] === "authorization");
-  if (!auth) return;
-
-  try &#123;
-    const resp = await relay.fetch("http://auth.internal/verify", &#123;
-      method: "POST",
-      headers: &#123; "Content-Type": "application/json" &#125;,
-      body: JSON.stringify(&#123; token: auth[1] &#125;),
-      timeout_ms: 3000,
-    &#125;);
-
-    if (resp.status !== 200) &#123;
-      flow.tags.push("auth-failed");
-      // 0.5.1: block / 401 via MockResponse or Drop rules
-    &#125;
-  &#125; catch (e) &#123;
-    console.error("Auth service unreachable:", e);
+  <pre><code>globalThis.onRequestHeaders = (ctx, flow) => &#123;
+  // relay.fetch is GET only, and needs --script-fetch-allow=auth.internal first
+  const resp = relay.fetch("http://auth.internal/verify?token=present");
+  if (!resp.ok) &#123;
+    flow.tags.push("auth-failed");
   &#125;
+  return flow;
 &#125;;</code></pre>
 
   <h2>Debugging</h2>

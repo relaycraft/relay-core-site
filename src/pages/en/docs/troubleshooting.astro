@@ -45,7 +45,7 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 
   <h3>Upstream request timeout</h3>
   <ul>
-    <li>Increase timeout: <code>--request-timeout-ms 30000</code></li>
+    <li>The default request timeout is 30s (<code>ProxyPolicy.request_timeout_ms</code>). There is no <code>--request-timeout-ms</code> flag. Change it with a full policy via MCP <code>update_policy</code>; <code>patch_policy</code> rejects this field</li>
     <li>Check upstream: <code>curl -v http://upstream-host/path</code></li>
     <li>Check the error field in Flow details</li>
   </ul>

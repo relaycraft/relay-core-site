@@ -41,7 +41,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     </tr>
     <tr>
       <td><a href="/en/docs/flow-capabilities#flow-replay">Flow replay</a></td>
-      <td>Resend a captured request/response, with optional modifications</td>
+      <td>Re-send a captured HTTP request as stored (bypasses the proxy; no edits)</td>
     </tr>
   </table>
 
@@ -103,7 +103,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <table>
     <tr><th>Capability</th><th>Description</th><th>Link</th></tr>
     <tr><td>Header / query redaction</td><td>On by default; allowlist fields are masked everywhere</td><td rowspan="2"><a href="/en/docs/api#policy--redaction">HTTP API § policy</a></td></tr>
-    <tr><td>Body redaction</td><td>Optional, by content-type</td></tr>
+    <tr><td>Body redaction</td><td>Off by default; <code>redact_bodies: true</code> turns it on. No content-type scope</td></tr>
     <tr><td>Bearer auth</td><td><code>--api-token</code> for the HTTP API</td><td><a href="/en/docs/cli#run">CLI § run</a></td></tr>
     <tr><td>CORS allowlist</td><td><code>--api-cors</code></td><td><a href="/en/docs/cli#run">CLI § run</a></td></tr>
     <tr><td>Secret field masking</td><td>Upstream proxy passwords, etc.</td><td><a href="/en/docs/proxy-modes#upstream-proxy">Proxy Modes § upstream</a></td></tr>

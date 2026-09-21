@@ -13,7 +13,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <h2>HTTP/2</h2>
 
-  <p>Fully supported. The client ↔ RelayCore leg can be HTTP/1.1 or HTTP/2 depending on the client and ALPN negotiation. RelayCore ↔ upstream uses the same protocol version. Header compression (HPACK) is fully decompressed internally — rules operate on decoded pseudo-headers (<code>:method</code>, <code>:path</code>, <code>:scheme</code>, <code>:authority</code>).</p>
+  <p>The client leg can be HTTP/1.1 or HTTP/2, depending on the client and ALPN. Only an HTTP/1.x version is copied upstream. An HTTP/2 client does not force the upstream connection to HTTP/2; that leg follows the target URL and ALPN. HPACK is fully decompressed internally — rules operate on decoded pseudo-headers (<code>:method</code>, <code>:path</code>, <code>:scheme</code>, <code>:authority</code>).</p>
 
   <p><strong>h2c (plaintext HTTP/2) is supported too.</strong> gRPC clients that speak HTTP/2 without TLS are
     detected by their connection preface, both when they connect directly and when they tunnel through
@@ -28,14 +28,14 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <h2>WebSocket</h2>
 
-  <p>Fully supported. RFC 6455. RelayCore parses the handshake, registers a <code>Layer::WebSocket</code> flow, and provides per-message inspection and modification:</p>
+  <p>Handshakes and uncompressed frames can be inspected and rewritten (RFC 6455). RelayCore parses the handshake, registers a <code>Layer::WebSocket</code> flow, and exposes each message. <code>permessage-deflate</code> is neither stripped nor inflated, so compressed frames pass through opaque.</p>
 
   <ul>
     <li>Each message records <code>direction</code> (incoming / outgoing), <code>opcode</code> (text / binary / ping / pong / close / continuation), and <code>content</code> (encoding, size, base64 body).</li>
     <li>Rules can use <code>MockWebSocketMessage</code> and <code>DropWebSocketMessage</code>.</li>
     <li>The script hook <code>onWebSocketMessage</code> can read and rewrite every message.</li>
     <li>The TUI's <strong>Messages</strong> detail tab displays the message log in real time.</li>
-    <li>Large messages may trigger a <code>ws-message-budget-exceeded</code> event to bound memory usage.</li>
+    <li>A body over budget emits SSE <code>body-budget-exceeded</code> with a <code>direction</code>. There is no separate WebSocket budget event name.</li>
   </ul>
 
   <h2>QUIC / HTTP/3</h2>
@@ -44,12 +44,12 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <table>
     <tr><th>Mode</th><th>Description</th></tr>
-    <tr><td><code>Downgrade</code> (default)</td><td>Sends <code>Alt-Svc</code> clearing responses with <code>Clear-Site-Data</code> to force the client to fall back to HTTP/2 or HTTP/1.1. Set <code>quic_downgrade_clear_cache=true</code> to also clear the cache.</td></tr>
-    <tr><td><code>Passthrough</code></td><td>No intervention; QUIC traffic is forwarded as-is (invisible and immutable).</td></tr>
+    <tr><td><code>Downgrade</code> (default)</td><td>Strips <code>Alt-Svc</code> from the HTTP response. <code>Clear-Site-Data: "cache"</code> is added only when <code>quic_downgrade_clear_cache=true</code> (default false).</td></tr>
+    <tr><td><code>Passthrough</code></td><td>Leaves <code>Alt-Svc</code> in place. The client may then speak QUIC directly to the origin; that traffic is not proxied and produces no flow.</td></tr>
     <tr><td><code>ExperimentalMitm</code></td><td>Experimental HTTP/3 MITM. Requires the <code>quic_mitm_experimental</code> feature flag; not yet production-ready.</td></tr>
   </table>
 
-  <p>QUIC modes do not produce visible flow records except <code>Downgrade</code>, where requests that triggered <code>Alt-Svc</code> clearing are recorded as normal flows with <code>has_error=false</code>.</p>
+  <p>QUIC itself produces no flow. Downgrade only rewrites an HTTP response that was already captured: stripping <code>Alt-Svc</code> tags that flow <code>quic-downgraded</code>.</p>
 
   <h2>TCP / UDP (transparent proxy)</h2>
 

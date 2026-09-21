@@ -80,7 +80,10 @@ curl http://127.0.0.1:8082/api/v1/status
     <tr><th>Event Type</th><th>Description</th></tr>
     <tr><td><code>flow</code></td><td>New or updated flow</td></tr>
     <tr><td><code>ws-message</code></td><td>WebSocket message update</td></tr>
-    <tr><td><code>http-body</code></td><td>HTTP request/response body update</td></tr>
+    <tr><td><code>http-body</code></td><td>HTTP body kept within budget (direction and body included)</td></tr>
+    <tr><td><code>body-budget-exceeded</code></td><td>One direction exceeded the body budget</td></tr>
+    <tr><td><code>response-trailers</code></td><td>HTTP/2 trailers</td></tr>
+    <tr><td><code>flow-event</code></td><td>Typed events (intercept, mutation, close) alongside flow snapshots</td></tr>
     <tr><td><code>audit</code></td><td>Audit event (rule change, intercept, etc.)</td></tr>
     <tr><td><code>lifecycle</code></td><td>Proxy lifecycle change</td></tr>
     <tr><td><code>lagged</code></td><td>Event channel lag warning</td></tr>

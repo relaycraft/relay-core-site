@@ -36,9 +36,12 @@ TLS 拦截：
       --script &lt;PATH&gt;            加载 Deno 脚本文件
       --script-watch              监听脚本变更自动重载
       --script-env-allow &lt;LIST&gt;  脚本可读取的环境变量名（逗号分隔）
+      --script-fetch-allow &lt;LIST&gt; 允许 relay.fetch 的主机（逗号分隔；* 为任意主机）。
+                                  设置此项才会启用 relay.fetch，且须在加载脚本之前
 
 TUI：
       --ui                        启用 TUI 交互界面
+      --web                       同时提供 Web UI（未指定 --api-port 时用 8082）
       --theme &lt;NAME&gt;             TUI 配色：relay、slate、high-contrast
                                   （覆盖 RELAY_CORE_TUI_THEME 与 config）
 
@@ -158,7 +161,7 @@ TUI：
   status                        显示当前规则</code></pre>
 
   <h2 id="env">环境变量</h2>
-  <pre><code>RELAY_LOG                       日志过滤（如 info、debug、trace）
+  <pre><code>RUST_LOG                        日志过滤（如 info、debug、trace）。帮助文本里的 RELAY_LOG 目前不会被读取
 RELAY_DATA_DIR                  数据目录（默认 ~/.relay-core）
 RELAY_CA_CERT                   CA 证书路径（与 RELAY_CA_KEY 成对）
 RELAY_CA_KEY                    CA 私钥路径（与 RELAY_CA_CERT 成对）

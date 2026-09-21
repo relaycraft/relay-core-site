@@ -41,7 +41,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     </tr>
     <tr>
       <td><a href="/docs/flow-capabilities#flow-replay">流量重放</a></td>
-      <td>用之前的请求/响应再发一次，可改写</td>
+      <td>按已捕获的 HTTP 请求原样再发一次（不经代理、不能改写）</td>
     </tr>
   </table>
 
@@ -103,7 +103,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <table>
     <tr><th>能力</th><th>说明</th><th>链接</th></tr>
     <tr><td>Header / query 脱敏</td><td>默认开启；白名单字段全部掩码</td><td rowspan="2"><a href="/docs/api#policy--redaction">HTTP API § policy</a></td></tr>
-    <tr><td>Body 脱敏</td><td>可按 content-type 范围触发</td></tr>
+    <tr><td>Body 脱敏</td><td>默认关闭；<code>redact_bodies: true</code> 打开，没有 content-type 范围</td></tr>
     <tr><td>Bearer 认证</td><td>HTTP API 的 <code>--api-token</code></td><td><a href="/docs/cli#run">CLI § run</a></td></tr>
     <tr><td>CORS 白名单</td><td><code>--api-cors</code></td><td><a href="/docs/cli#run">CLI § run</a></td></tr>
     <tr><td>Secret 字段掩码</td><td>上游代理密码等</td><td><a href="/docs/proxy-modes#upstream-proxy">代理模式 § 上游</a></td></tr>

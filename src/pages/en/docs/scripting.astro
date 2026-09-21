@@ -15,9 +15,9 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <table>
     <tr><th>Hook</th><th>Trigger</th><th>Signature</th></tr>
     <tr><td><code>onRequestHeaders</code></td><td>After request headers received</td><td><code>(ctx, flow) => flow | undefined</code></td></tr>
-    <tr><td><code>onRequest</code></td><td>Request body ready, before forward</td><td><code>(ctx, flow, body) => action</code></td></tr>
+    <tr><td><code>onRequest</code></td><td>Request body ready, before forward</td><td><code>(body, flow) => flow | undefined</code></td></tr>
     <tr><td><code>onResponseHeaders</code></td><td>After response headers received</td><td><code>(ctx, flow) => flow | undefined</code></td></tr>
-    <tr><td><code>onResponse</code></td><td>Response body ready</td><td><code>(ctx, flow, body) => action</code></td></tr>
+    <tr><td><code>onResponse</code></td><td>Response body ready</td><td><code>(body, flow) => flow | undefined</code></td></tr>
     <tr><td><code>onWebSocketMessage</code></td><td>WebSocket frame received</td><td><code>(ctx, flow, message) => message | undefined</code></td></tr>
     <tr><td><code>onWebSocketStart</code></td><td>WebSocket handshake complete</td><td><code>(ctx, flow) => void</code></td></tr>
     <tr><td><code>onWebSocketEnd</code></td><td>WebSocket normal close</td><td><code>(ctx, flow, code, reason) => void</code></td></tr>
@@ -61,7 +61,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
         body: &#123;
           encoding: string,
           size: number,
-          content: string,  // base64 encoded
+          content: string,  // encoding is utf-8 or base64
         &#125; | null,
         cookies: [string, string][],
       &#125;,
@@ -101,42 +101,39 @@ const txt = relay.json.stringifyPretty(obj);          // 2-space indent</code></
 const host = relay.env("BACKEND_HOST");  // "api.example.com"
 const miss = relay.env("SECRET");        // undefined (not whitelisted)</code></pre>
 
-  <h3>relay.fetch(url, options?)</h3>
-  <p>Make controlled outbound HTTP sub-requests. Disabled by default; requires <code>--enable-script-fetch</code>.</p>
-  <pre><code>const resp = await relay.fetch("http://auth.internal/verify", &#123;
-  method: "POST",
-  headers: &#123; "Authorization": flow.layer.data.request.headers.find(h => h[0]==="authorization")?.[1] &#125;,
-  body: JSON.stringify(&#123; flow_id: flow.id &#125;),
-  timeout_ms: 2000,
-&#125;);
-// resp: &#123; status, headers, body &#125;
-if (resp.status !== 200) &#123;
-  throw new Error("Auth failed");
+  <h3>relay.fetch(url)</h3>
+  <p>Issues one HTTP GET. Disabled until <code>--script-fetch-allow</code> is set. There is no method, headers, or body argument. The result is <code>&#123; ok, status, body &#125;</code> or <code>&#123; ok: false, error &#125;</code>.</p>
+  <pre><code>// CLI: relay-core-cli run --script-fetch-allow=auth.internal
+const resp = relay.fetch("http://auth.internal/verify");
+if (!resp.ok) &#123;
+  throw new Error(resp.error || ("HTTP " + resp.status));
 &#125;</code></pre>
   <table>
     <tr><th>Control</th><th>Description</th></tr>
-    <tr><td>Disabled by default</td><td>Must pass <code>--enable-script-fetch</code></td></tr>
-    <tr><td>Allowlist</td><td><code>--script-fetch-allow=host1,host2</code></td></tr>
-    <tr><td>Anti-recursion</td><td>Fetching own proxy port is rejected</td></tr>
-    <tr><td>Concurrency cap</td><td><code>--script-fetch-max-concurrency=8</code></td></tr>
-    <tr><td>Timeout cap</td><td>Hard limit 30s</td></tr>
-    <tr><td>Audit</td><td>Every fetch enters the Audit Trail</td></tr>
+    <tr><td>Disabled by default</td><td>Without <code>--script-fetch-allow</code>, <code>relay.fetch</code> returns <code>script fetch disabled</code></td></tr>
+    <tr><td>Allowlist</td><td>Comma-separated hostnames; <code>*</code> allows any host. Set it before the script is loaded</td></tr>
+    <tr><td>Anti-recursion</td><td>localhost / 127.0.0.1 / ::1 on the proxy's own listen port is rejected</td></tr>
+    <tr><td>Concurrency and timeout</td><td>Hard-coded: 8 in flight, 5s per request. No CLI flags for either</td></tr>
   </table>
 
-  <h3>relay.readBody(flow)</h3>
-  <pre><code>const body = await relay.readBody(flow);
-// For streaming bodies, returns accumulated content</code></pre>
+  <h3>RelayBody</h3>
+  <p>The first argument of a body hook is a <code>RelayBody</code>. There is no <code>relay.readBody</code>. When the body is over budget, <code>truncated</code> is true and <code>text()</code> / <code>json()</code> throw.</p>
+  <pre><code>globalThis.onResponse = async (body, flow) => &#123;
+  const text = await body.text();
+  flow.layer.data.response.body = &#123; encoding: "utf-8", size: text.length, content: text &#125;;
+  return flow;
+&#125;;</code></pre>
 
   <h2>Global State <code>sharedState</code></h2>
   <p><code>globalThis.sharedState</code> is a key-value store shared across all hooks within the same engine instance:</p>
-  <pre><code>// Store in onRequest
-globalThis.onRequest = (ctx, flow) => &#123;
+  <pre><code>// Record the start time once request headers arrive
+globalThis.onRequestHeaders = (ctx, flow) => &#123;
   sharedState.set(flow.id, &#123; start: Date.now() &#125;);
   return flow;
 &#125;;
 
 // Read in onResponse
-globalThis.onResponse = (ctx, flow) => &#123;
+globalThis.onResponse = (body, flow) => &#123;
   const meta = sharedState.get(flow.id);
   if (meta) &#123;
     console.log(`Flow $&#123;flow.id&#125; took $&#123;Date.now() - meta.start&#125;ms`);
@@ -155,15 +152,15 @@ console.debug("Var value: " + x); // tracing::debug!   — only with RUST_LOG=de
   <h2>Connection Hooks</h2>
   <pre><code>// Connection filtering — return &#123;drop:true&#125; to reject
 globalThis.onConnect = (ctx, conn) => &#123;
-  // conn: &#123; id, client_ip, client_port &#125;
-  if (conn.client_ip.startsWith("192.168.1.")) &#123;
+  // conn: &#123; id, client_addr, server_addr, tls_sni &#125;
+  if (String(conn.client_addr).startsWith("192.168.1.")) &#123;
     return &#123; drop: true &#125;;
   &#125;
 &#125;;
 
 // Connection statistics
 globalThis.onDisconnect = (ctx, conn, stats) => &#123;
-  // stats: &#123; duration_ms, flows_count &#125;
+  // stats: &#123; duration_ms, bytes_sent, bytes_received, flows_count &#125;
   console.log(`Connection $&#123;conn.id&#125;: $&#123;stats.flows_count&#125; flows`);
 &#125;;</code></pre>
 
@@ -182,7 +179,7 @@ globalThis.onWebSocketError = (ctx, flow, error) => &#123;
 
   <h2>Rule Bridge</h2>
   <p>RelayCore exclusive — scripts can observe rule engine execution results:</p>
-  <pre><code>globalThis.onResponse = (ctx, flow) => &#123;
+  <pre><code>globalThis.onResponse = (body, flow) => &#123;
   // Read matched rules
   if (flow.matched_rules.includes("rule-block-tracking")) &#123;
     flow.layer.data.response.headers.push(["X-Blocked-By", "RelayCore"]);
@@ -201,10 +198,9 @@ globalThis.onWebSocketError = (ctx, flow, error) => &#123;
   <pre><code># Load a script via HTTP API
 curl -X POST http://127.0.0.1:8082/api/v1/script \
   -H "Content-Type: application/json" \
-  -d '&#123;"script": "globalThis.onRequest = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'
+  -d '&#123;"script": "globalThis.onRequestHeaders = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); &#125;"&#125;'
 
-# MCP tool (via AI Agent)
-mcp: relay-core set_script --script script.js
+# MCP tool set_script takes the script source, not a file path
 
 # Bundle mode: use npm packages
 relay-core scripts init my-project      # Scaffold
@@ -218,7 +214,7 @@ relay-core scripts dev                   # build + hot reload + watch</code></pr
 import jwtDecode from "jwt-decode";
 import &#123; XMLParser &#125; from "fast-xml-parser";
 
-globalThis.onRequest = (ctx, flow) => &#123;
+globalThis.onRequestHeaders = (ctx, flow) => &#123;
   const auth = flow.layer.data.request.headers.find(h => h[0] === "authorization");
   if (auth) &#123;
     const payload = jwtDecode(auth[1]);
@@ -237,10 +233,11 @@ relay-core-cli run --script-env-allow API_TOKEN,DEBUG</code></pre>
   <p>Script execution metrics are automatically reported to Prometheus:</p>
   <table>
     <tr><th>Metric</th><th>Description</th></tr>
-    <tr><td><code>script_hook_duration_us&#123;hook&#125;</code></td><td>Per-hook execution duration (histogram)</td></tr>
-    <tr><td><code>script_hook_invocations_total&#123;hook&#125;</code></td><td>Cumulative hook invocations</td></tr>
-    <tr><td><code>script_hook_errors_total&#123;hook&#125;</code></td><td>Cumulative hook errors</td></tr>
-    <tr><td><code>script_fetch_total&#123;target,status&#125;</code></td><td>fetch call count</td></tr>
-    <tr><td><code>script_env_access_total&#123;key&#125;</code></td><td>env access count (values not recorded)</td></tr>
+    <tr><td><code>relay_core_script_hook_duration_us&#123;hook&#125;</code></td><td>Per-hook execution duration</td></tr>
+    <tr><td><code>relay_core_script_hook_invocations_total&#123;hook&#125;</code></td><td>Cumulative hook invocations</td></tr>
+    <tr><td><code>relay_core_script_hook_errors_total&#123;hook&#125;</code></td><td>Cumulative hook errors</td></tr>
+    <tr><td><code>relay_core_script_fetch_total</code></td><td>fetch attempts (no labels)</td></tr>
+    <tr><td><code>relay_core_script_fetch_rejected_total</code></td><td>Rejected fetches</td></tr>
+    <tr><td><code>relay_core_script_env_access_total</code></td><td>env lookups (name and value are not labels)</td></tr>
   </table>
 </DocsLayout>

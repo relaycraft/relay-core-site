@@ -85,7 +85,10 @@ curl http://127.0.0.1:8082/api/v1/status
     <tr><th>事件类型</th><th>说明</th></tr>
     <tr><td><code>flow</code></td><td>新流量产生或更新</td></tr>
     <tr><td><code>ws-message</code></td><td>WebSocket 消息更新</td></tr>
-    <tr><td><code>http-body</code></td><td>HTTP 请求/响应体更新</td></tr>
+    <tr><td><code>http-body</code></td><td>预算内的 HTTP body（含 direction 与 body）</td></tr>
+    <tr><td><code>body-budget-exceeded</code></td><td>某方向 body 超出预算</td></tr>
+    <tr><td><code>response-trailers</code></td><td>HTTP/2 trailers</td></tr>
+    <tr><td><code>flow-event</code></td><td>类型化事件（拦截、改写、终局），与 flow 快照并存</td></tr>
     <tr><td><code>audit</code></td><td>审计事件（规则变更、拦截处理等）</td></tr>
     <tr><td><code>lifecycle</code></td><td>代理生命周期变化</td></tr>
     <tr><td><code>lagged</code></td><td>事件通道滞后警告</td></tr>

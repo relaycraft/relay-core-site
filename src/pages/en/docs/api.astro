@@ -33,7 +33,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <h3>GET /api/v1/version</h3>
   <p>Engine version, API version, and a list of registered capability names.</p>
   <pre><code>&#123;
-  "engine_version": "0.6.0",
+  "engine_version": "0.13.1",
   "api_version": "1",
   "capabilities": ["flows", "rules", "intercepts", "mock", "metrics", "status", "events", "scripts"]
 &#125;</code></pre>
@@ -74,7 +74,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <p>Full Flow JSON including headers and bodies. The same redaction rules apply.</p>
 
   <h3>POST /api/v1/flows/:id/replay</h3>
-  <p>Replay a captured flow against the live network. Send a JSON body with optional modifications. <code>?accept_invalid_certs=true</code> skips TLS verification for the replay (debug only).</p>
+  <p>Re-send a captured HTTP request as stored. The body is ignored, so this call cannot edit headers or body, and the replay does not pass through the proxy. <code>?accept_invalid_certs=true</code> skips TLS verification (debug only). WebSocket flows return 400.</p>
 
   <h3>GET /api/v1/flows/:id/har</h3>
   <p>Export a single flow as a HAR 1.2 entry.</p>
@@ -85,7 +85,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <h2 id="rules">Rules</h2>
 
   <h3>GET /api/v1/rules</h3>
-  <p>List all interception rules. Each entry contains the full <code>Rule</code> object (id, name, priority, stage, filter, actions, enabled).</p>
+  <p>List all interception rules. Each entry is a full <code>Rule</code> (id, name, active, stage, priority, termination, filter, actions). The enable flag is <code>active</code>, not <code>enabled</code>.</p>
 
   <div class="endpoint">
     <span class="method method-get">GET</span>
@@ -102,17 +102,20 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <pre><code>&#123;
   "id": "rul_01HX5K9P3Q8Y2Z7",
-  "name": "Log API requests",
+  "name": "Tag API requests",
+  "active": true,
+  "stage": "RequestHeaders",
   "priority": 100,
+  "termination": "Continue",
   "filter": &#123;
-    "method": "GET",
-    "host": "*.example.com",
-    "path": "/api/*"
+    "type": "And",
+    "config": [
+      &#123; "type": "Method", "config": &#123; "mode": "Exact", "value": "GET" &#125; &#125;,
+      &#123; "type": "Host", "config": &#123; "mode": "Glob", "value": "*.example.com" &#125; &#125;,
+      &#123; "type": "Path", "config": &#123; "mode": "Glob", "value": "/api/*" &#125; &#125;
+    ]
   &#125;,
-  "action": &#123;
-    "type": "log"
-  &#125;,
-  "enabled": true
+  "actions": [&#123; "type": "Tag", "config": &#123; "key": "kind", "value": "api" &#125; &#125;]
 &#125;</code></pre>
 
   <h3>DELETE /api/v1/rules/:id</h3>
@@ -140,7 +143,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <p>List pending intercepts (both HTTP and WebSocket).</p>
 
   <h3>POST /api/v1/intercepts/:key/resume</h3>
-  <p>Resume an intercepted flow. Body accepts <code>action</code> (<code>continue</code> or <code>drop</code>) and any <code>FlowModification</code> fields to apply before forwarding: <code>method</code>, <code>url</code>, <code>request_headers</code>, <code>request_body</code>, <code>status_code</code>, <code>response_headers</code>, <code>response_body</code>, <code>message_content</code>.</p>
+  <p>Resume an intercepted flow. The body accepts <code>action</code> (<code>continue</code> or <code>drop</code>) and <code>FlowModification</code> fields: <code>method</code>, <code>url</code>, <code>request_headers</code>, <code>request_header_upserts</code>, <code>request_body</code>, <code>status_code</code>, <code>response_headers</code>, <code>response_header_upserts</code>, <code>response_body</code>, <code>message_content</code>. <code>*_header_upserts</code> add or overwrite by name and keep the rest; <code>request_headers</code> / <code>response_headers</code> replace the whole map.</p>
 
   <h2 id="policy">Policy &amp; Redaction</h2>
 
@@ -148,7 +151,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <p>Return the current <code>ProxyPolicy</code>, including the <code>redaction</code> block and (if configured) the <code>upstream</code> block. The <code>password</code> field of an upstream <code>auth</code> is masked as <code>***</code>.</p>
 
   <h3>PATCH /api/v1/policy</h3>
-  <p>Apply a partial update. Both top-level keys are optional:</p>
+  <p>Apply a partial update. The only top-level keys are <code>redaction</code>, <code>upstream</code>, and <code>retention</code>; unknown fields return 400. All three are optional:</p>
   <pre><code>&#123;
   "redaction": &#123;
     "enabled": true,
@@ -178,7 +181,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <h3>POST /api/v1/script</h3>
   <p>Hot-load a script into the running engine.</p>
-  <pre><code>&#123; "script": "// deno-fmt-ignore\nexport default &#123; onRequest(ctx) &#123; /* ... */ &#125; &#125;" &#125;</code></pre>
+  <pre><code>&#123; "script": "globalThis.onRequestHeaders = (ctx, flow) => &#123; console.log(flow.layer.data.request.url); return flow; &#125;" &#125;</code></pre>
 
   <h2 id="events">Events</h2>
 
@@ -194,8 +197,10 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <ul>
     <li><code>flow</code> — new or updated flow (full Flow JSON in the data field)</li>
     <li><code>ws-message</code> — new WebSocket message</li>
-    <li><code>http-body</code> — body chunk available; the data field is <code>&#123; "flow_id": "..." &#125;</code>, fetch the body via <code>GET /api/v1/flows/:id</code></li>
-    <li><code>body-budget-exceeded</code> — body cap reached, no further body will be sent</li>
+    <li><code>http-body</code> — a body kept within budget; data is <code>&#123; flow_id, direction, body &#125;</code></li>
+    <li><code>body-budget-exceeded</code> — one direction exceeded the body budget; data is <code>&#123; flow_id, direction &#125;</code></li>
+    <li><code>response-trailers</code> — HTTP/2 trailers; data is <code>&#123; flow_id, trailers &#125;</code></li>
+    <li><code>flow-event</code> — typed events (intercept pause/resume, rule mutations, terminal close) alongside <code>flow</code> snapshots</li>
     <li><code>audit</code> — control-plane mutation (rule change, intercept resolved, script reloaded, policy updated)</li>
     <li><code>audit-lagged</code> — audit channel dropped events, server resyncs</li>
     <li><code>lagged</code> — flow / events channel dropped events, TUI resyncs</li>
