@@ -5,22 +5,22 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="CLI 参考" description="RelayCore 命令行接口">
   <h1>CLI 参考</h1>
 
-  <p><code>relay-core-cli</code> 提供功能完整的命令行界面，用于运行代理、检查流量、管理规则、脚本与证书。完整参数请运行 <code>relay-core-cli --help</code> 或 <code>relay-core-cli &lt;command&gt; --help</code>。</p>
+  <p><code>relay-core</code> 提供功能完整的命令行界面，用于运行代理、检查流量、管理规则、脚本与证书。完整参数请运行 <code>relay-core --help</code> 或 <code>relay-core &lt;command&gt; --help</code>。</p>
 
   <h2 id="lifecycle">守护进程生命周期</h2>
   <p>一个常驻守护进程独占引擎与代理生命周期：唯一的状态在它手里，它写 <code>$RELAY_DATA_DIR/daemon.json</code> 供其他客户端发现，并同时服务控制 API 与 MCP 端点。其余界面（CLI、MCP 桥、Web UI、TUI）都是它的客户端。</p>
-  <pre><code>relay-core-cli start      启动守护进程与代理（幂等；已在运行则接入并回报端口）
-relay-core-cli stop       只停代理；守护进程、历史与规则保留
-relay-core-cli restart    重启代理
-relay-core-cli status     守护进程 / 代理相位与端口 / MCP 与 Web UI 地址 / 最近一次变更
-relay-core-cli shutdown   停代理并退出守护进程（注册表清空后才返回）
-relay-core-cli config     读取、查看与生成配置文件</code></pre>
+  <pre><code>relay-core start      启动守护进程与代理（幂等；已在运行则接入并回报端口）
+relay-core stop       只停代理；守护进程、历史与规则保留
+relay-core restart    重启代理
+relay-core status     守护进程 / 代理相位与端口 / MCP 与 Web UI 地址 / 最近一次变更
+relay-core shutdown   停代理并退出守护进程（注册表清空后才返回）
+relay-core config     读取、查看与生成配置文件</code></pre>
 
-  <p><code>start</code> 是幂等的：守护进程已在跑就接入，代理已在跑就回报它监听的端口，端口被占用则以 <code>start_failed</code> 失败，而不是报一个从未 listen 的成功。<code>status</code> 还会给出最近一次生命周期变更及其来源，例如 <code>stopped by cli:relay stop</code>。</p>
+  <p><code>start</code> 是幂等的：守护进程已在跑就接入，代理已在跑就回报它监听的端口，端口被占用则以 <code>start_failed</code> 失败，而不是报一个从未 listen 的成功。<code>status</code> 还会给出最近一次生命周期变更及其来源，例如 <code>stopped by cli:relay-core stop</code>。</p>
 
   <h2 id="run">run</h2>
   <p>在<strong>前台</strong>运行这个守护进程——与 <code>start</code> 拉起的是同一个守护进程，只是不脱离终端、退出即结束。它写同一份清单、服务同一个控制 API 与 MCP 端点；<code>--ui</code> 的 TUI 是它的客户端，读的是其他客户端读到的那条事件流。</p>
-  <pre><code>relay-core-cli run [options]
+  <pre><code>relay-core run [options]
 
 监听与生命周期：
   -l, --listen &lt;ADDR&gt;           代理监听地址（默认 127.0.0.1:8080）
@@ -66,7 +66,7 @@ TUI：
 
   <h2 id="ca">ca</h2>
   <p>管理 HTTPS 拦截所用 CA 证书。各平台安装步骤、Windows .cer 导出、CI/容器环境使用见 <a href="/docs/certificates">证书与 HTTPS 拦截</a>。</p>
-  <pre><code>relay-core-cli ca &lt;subcommand&gt;
+  <pre><code>relay-core ca &lt;subcommand&gt;
 
 子命令：
   generate [--force]            生成 CA 证书与私钥（默认 ~/.relay-core/）
@@ -78,7 +78,7 @@ TUI：
 
   <h2 id="rules">rules</h2>
   <p>管理拦截规则。</p>
-  <pre><code>relay-core-cli rules &lt;subcommand&gt;
+  <pre><code>relay-core rules &lt;subcommand&gt;
 
 子命令：
   validate &lt;file&gt;              校验规则文件（JSON / YAML）
@@ -90,7 +90,7 @@ TUI：
 
   <h2 id="scripts">scripts</h2>
   <p>管理基于 Deno 的请求/响应修改脚本。</p>
-  <pre><code>relay-core-cli scripts &lt;subcommand&gt;
+  <pre><code>relay-core scripts &lt;subcommand&gt;
 
 子命令：
   validate &lt;file&gt;              将脚本加载到 Deno 引擎以检查语法
@@ -103,7 +103,7 @@ TUI：
 
   <h2 id="flows">flows</h2>
   <p>查看已捕获流量：默认列出最近的流量，加 <code>--follow</code> 则实时跟随。两者都读运行中守护进程的控制 API，地址由清单自动发现，不需要手工配置 URL。</p>
-  <pre><code>relay-core-cli flows [options]
+  <pre><code>relay-core flows [options]
 
 连接：
       --api-url &lt;URL&gt;           控制 API 基址（省略时从守护进程清单发现）
@@ -127,7 +127,7 @@ TUI：
 
   <h2 id="metrics">metrics</h2>
   <p>查看运行时指标。代理通过 HTTP 在 <code>--proxy-url</code> 暴露指标端点（默认 <code>http://127.0.0.1:8080</code>）。</p>
-  <pre><code>relay-core-cli metrics [options]
+  <pre><code>relay-core metrics [options]
 
       --proxy-url &lt;URL&gt;         代理指标端点（默认 http://127.0.0.1:8080）
       --output &lt;FORMAT&gt;         table、json（默认 table）
@@ -140,7 +140,7 @@ TUI：
 
   <h2 id="analyze">analyze</h2>
   <p>对流量 dump（来自 <code>--save-stream</code>）或 HAR 导出进行离线分析。录制文件每行可能是一个完整 Flow，也可能是一条 FlowUpdate（新格式无损记录增量），两种都能读。</p>
-  <pre><code>relay-core-cli analyze --file &lt;PATH&gt; [options]
+  <pre><code>relay-core analyze --file &lt;PATH&gt; [options]
 
       --file &lt;PATH&gt;             JSONL 流量 dump 或 HAR 文件路径
       --format &lt;FORMAT&gt;         jsonl（默认）或 har
@@ -151,7 +151,7 @@ TUI：
 
   <h2 id="proxy">proxy</h2>
   <p>在 macOS（PF）或 Linux（TPROXY）上管理透明代理。仅在启用 <code>transparent-macos</code> / <code>transparent-linux</code> 特性时编译。</p>
-  <pre><code>relay-core-cli proxy &lt;subcommand&gt;
+  <pre><code>relay-core proxy &lt;subcommand&gt;
 
 子命令：
   generate [--port P] [--interface I] [-o OUT]

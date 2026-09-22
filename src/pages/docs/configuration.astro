@@ -7,7 +7,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <p>RelayCore 的配置来源有四层，优先级为 <strong>命令行参数 &gt; 环境变量 &gt; 配置文件 &gt; 内置默认</strong>。因此一次性的覆盖不需要改文件，而需要跨命令存活的设置写进 <code>$RELAY_DATA_DIR/config.toml</code>。</p>
 
-  <p><code>relay-core-cli config init</code> 会生成一份带注释的配置文件，<code>relay-core-cli config show</code> 打印<strong>生效中</strong>的配置（文件值覆盖默认值），<code>relay-core-cli config path</code> 打印文件位置。<strong>配置文件写坏了会直接报错</strong>，而不是静默回落到默认值——静默忽略一个拼写错误，等于让守护进程用你没有要求的设置运行。</p>
+  <p><code>relay-core config init</code> 会生成一份带注释的配置文件，<code>relay-core config show</code> 打印<strong>生效中</strong>的配置（文件值覆盖默认值），<code>relay-core config path</code> 打印文件位置。<strong>配置文件写坏了会直接报错</strong>，而不是静默回落到默认值——静默忽略一个拼写错误，等于让守护进程用你没有要求的设置运行。</p>
   <h2>默认数据目录</h2>
 
   <p>默认目录为 <code>~/.relay-core</code>（可通过 <code>RELAY_DATA_DIR</code> 覆盖）。HTTPS 拦截相关文件：</p>
@@ -18,9 +18,9 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li><code>ca_cert.json</code> — CA 元数据（持久化加载所需）</li>
   </ul>
 
-  <p>使用 <code>relay-core-cli ca generate</code> 生成证书后，守护进程会从上述路径读取；证书不存在时会在首次启动时自动创建（HTTPS 拦截仍需 <code>ca install</code> 把该 CA 装入系统信任库，纯 HTTP 则不需要）。</p>
+  <p>使用 <code>relay-core ca generate</code> 生成证书后，守护进程会从上述路径读取；证书不存在时会在首次启动时自动创建（HTTPS 拦截仍需 <code>ca install</code> 把该 CA 装入系统信任库，纯 HTTP 则不需要）。</p>
 
-  <p>同一目录下还有 <code>daemon.db</code>（流量与审计的 SQLite）、<code>daemon.json</code>（发现清单）与日志。CLI 与 MCP 默认共用这份目录；要隔离实验时设置不同的 <code>RELAY_DATA_DIR</code>，或使用 <code>relay-core-cli start --in-memory</code>。</p>
+  <p>同一目录下还有 <code>daemon.db</code>（流量与审计的 SQLite）、<code>daemon.json</code>（发现清单）与日志。CLI 与 MCP 默认共用这份目录；要隔离实验时设置不同的 <code>RELAY_DATA_DIR</code>，或使用 <code>relay-core start --in-memory</code>。</p>
 
   <h2>流量保留（retention）</h2>
 
@@ -56,7 +56,7 @@ autostart_daemon = true   # MCP 桥是否可以在没有守护进程时自行拉
   <table>
     <tr><th>变量</th><th>说明</th></tr>
     <tr><td><code>RELAY_DATA_DIR</code></td><td>数据目录（默认 <code>~/.relay-core</code>）</td></tr>
-    <tr><td><code>RELAY_CA_CERT</code></td><td>CA 证书路径（须与 <code>RELAY_CA_KEY</code> 成对）；同时作用于 <code>relay-core-cli</code> 与 <code>relay-core-probe</code></td></tr>
+    <tr><td><code>RELAY_CA_CERT</code></td><td>CA 证书路径（须与 <code>RELAY_CA_KEY</code> 成对）；同时作用于 <code>relay-core</code> 与 <code>relay-core-probe</code></td></tr>
     <tr><td><code>RELAY_CA_KEY</code></td><td>CA 私钥路径（须与 <code>RELAY_CA_CERT</code> 成对）</td></tr>
     <tr><td><code>RUST_LOG</code></td><td>日志过滤级别（如 <code>info</code>、<code>debug</code>、<code>trace</code>）。CLI 帮助里写的 <code>RELAY_LOG</code> 目前不会被读取</td></tr>
     <tr><td><code>RELAY_CORE_TUI_THEME</code></td><td><code>--theme</code> 缺省时的 TUI 配色（<code>relay</code>、<code>slate</code>、<code>high-contrast</code>）。见 <a href="/docs/tui#themes">TUI 主题</a>。</td></tr>
@@ -71,12 +71,12 @@ autostart_daemon = true   # MCP 桥是否可以在没有守护进程时自行拉
 
   <h2>TUI 主题</h2>
 
-  <p>TUI 的主题取自上面这份配置文件的 <code>[tui].theme</code>——同一个文件、同一个读取器，因此 <code>relay-core-cli config show</code> 也看得到它。解析顺序：<code>--theme</code> 参数 &gt; <code>RELAY_CORE_TUI_THEME</code> 环境变量 &gt; 文件中的 <code>[tui].theme</code> &gt; 默认（<code>relay</code>）。</p>
+  <p>TUI 的主题取自上面这份配置文件的 <code>[tui].theme</code>——同一个文件、同一个读取器，因此 <code>relay-core config show</code> 也看得到它。解析顺序：<code>--theme</code> 参数 &gt; <code>RELAY_CORE_TUI_THEME</code> 环境变量 &gt; 文件中的 <code>[tui].theme</code> &gt; 默认（<code>relay</code>）。</p>
 
   <h2>CLI 常用参数</h2>
 
-  <pre><code>relay-core-cli start [options]      # 守护进程 + 代理（幂等）
-relay-core-cli run [options]        # 同一个守护进程，前台运行
+  <pre><code>relay-core start [options]      # 守护进程 + 代理（幂等）
+relay-core run [options]        # 同一个守护进程，前台运行
 
   -l/--listen &lt;ADDR&gt;     代理监听地址（默认 127.0.0.1:8080）
   --ca-cert &lt;PATH&gt;       CA 证书路径（可选，覆盖默认）

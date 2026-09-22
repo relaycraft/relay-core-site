@@ -33,10 +33,10 @@ cargo install relay-core-cli
 npm install -g @relay-core/cli
 
 # Generate and trust the CA (required for MITM)
-relay-core-cli ca generate
+relay-core ca generate
 
 # Start the proxy (default 8080; optional REST + SSE API)
-relay-core-cli run --listen 127.0.0.1:8080
+relay-core run --listen 127.0.0.1:8080
 ```
 
 👉 Full guide: [Getting started](https://relaycore.dev/en/docs/getting-started) · [Installation](https://relaycore.dev/en/docs/installation)

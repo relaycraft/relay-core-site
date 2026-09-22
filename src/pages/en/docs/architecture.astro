@@ -27,7 +27,7 @@ import ArchitectureDiagram from '../../../components/ArchitectureDiagram.astro';
   <p>MCP adapter (npm: <code>@relay-core/mcp</code>). <code>relay-core-probe</code> is a <strong>bridge</strong>: it forwards MCP messages from stdio to the daemon's <code>/mcp</code> endpoint, so it owns no engine and several clients share one set of flows and rules.</p>
 
   <h3>relay-core-cli (GA)</h3>
-  <p>Standalone CLI and TUI. <code>relay-core-cli start</code> brings up a long-lived daemon (proxy + control API / Web UI + MCP endpoint) with <code>stop</code> / <code>status</code> / <code>shutdown</code> to manage it; <code>run</code> is the same daemon in the foreground, with <code>--ui</code> attaching the TUI as a client.</p>
+  <p>Standalone CLI and TUI. <code>relay-core start</code> brings up a long-lived daemon (proxy + control API / Web UI + MCP endpoint) with <code>stop</code> / <code>status</code> / <code>shutdown</code> to manage it; <code>run</code> is the same daemon in the foreground, with <code>--ui</code> attaching the TUI as a client.</p>
 
   <h3>relay-core-lib (Internal)</h3>
   <p>Traffic engine: HTTP/HTTPS proxy, WebSocket, MITM/TLS, rule execution. Runtime wires Script / Rule interceptors into lib's chain.</p>

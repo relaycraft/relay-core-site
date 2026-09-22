@@ -5,22 +5,22 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="CLI Reference" description="RelayCore command line interface">
   <h1>CLI Reference</h1>
 
-  <p>The <code>relay-core-cli</code> binary provides a full-featured command-line interface for running the proxy, inspecting traffic, and managing rules, scripts, and certificates. For the full schema run <code>relay-core-cli --help</code> or <code>relay-core-cli &lt;command&gt; --help</code>.</p>
+  <p>The <code>relay-core</code> binary provides a full-featured command-line interface for running the proxy, inspecting traffic, and managing rules, scripts, and certificates. For the full schema run <code>relay-core --help</code> or <code>relay-core &lt;command&gt; --help</code>.</p>
 
   <h2 id="lifecycle">Daemon lifecycle</h2>
   <p>One long-lived daemon owns the engine and the proxy lifecycle: the single state lives in it, it publishes <code>$RELAY_DATA_DIR/daemon.json</code> for clients to discover, and it serves both the control API and the MCP endpoint. Every other surface — CLI, MCP bridge, Web UI, TUI — is a client of it.</p>
-  <pre><code>relay-core-cli start      Start the daemon and the proxy (idempotent; attaches if already up)
-relay-core-cli stop       Stop the proxy only; the daemon, history and rules stay
-relay-core-cli restart    Restart the proxy
-relay-core-cli status     Daemon / proxy phase and port / MCP and Web UI URLs / last change
-relay-core-cli shutdown   Stop the proxy and the daemon (returns once the registry is clean)
-relay-core-cli config     Read, show and seed the configuration file</code></pre>
+  <pre><code>relay-core start      Start the daemon and the proxy (idempotent; attaches if already up)
+relay-core stop       Stop the proxy only; the daemon, history and rules stay
+relay-core restart    Restart the proxy
+relay-core status     Daemon / proxy phase and port / MCP and Web UI URLs / last change
+relay-core shutdown   Stop the proxy and the daemon (returns once the registry is clean)
+relay-core config     Read, show and seed the configuration file</code></pre>
 
-  <p><code>start</code> is idempotent: an already-running daemon is attached to, an already-running proxy reports the port it listens on, and a taken port fails with <code>start_failed</code> rather than reporting success for a proxy that never bound. <code>status</code> also reports the last lifecycle change and who asked for it, e.g. <code>stopped by cli:relay stop</code>.</p>
+  <p><code>start</code> is idempotent: an already-running daemon is attached to, an already-running proxy reports the port it listens on, and a taken port fails with <code>start_failed</code> rather than reporting success for a proxy that never bound. <code>status</code> also reports the last lifecycle change and who asked for it, e.g. <code>stopped by cli:relay-core stop</code>.</p>
 
   <h2 id="run">run</h2>
   <p>Run that same daemon in the <strong>foreground</strong> — not a second engine, just one that does not detach and ends when you quit. It publishes the same manifest and serves the same control API and MCP endpoint; with <code>--ui</code> the TUI is its client, reading the same event stream every other client reads.</p>
-  <pre><code>relay-core-cli run [options]
+  <pre><code>relay-core run [options]
 
 Listen &amp; lifecycle:
   -l, --listen &lt;ADDR&gt;           Proxy listen address (default 127.0.0.1:8080)
@@ -70,7 +70,7 @@ Upstream proxy:
 
   <h2 id="ca">ca</h2>
   <p>Manage the CA certificate for HTTPS interception. See <a href="/en/docs/certificates">Certificates</a> for platform-specific install instructions, Windows .cer export, and CI/container setup.</p>
-  <pre><code>relay-core-cli ca &lt;subcommand&gt;
+  <pre><code>relay-core ca &lt;subcommand&gt;
 
 Subcommands:
   generate [--force]            Generate CA cert and key (default ~/.relay-core/)
@@ -82,7 +82,7 @@ Subcommands:
 
   <h2 id="rules">rules</h2>
   <p>Manage interception rules.</p>
-  <pre><code>relay-core-cli rules &lt;subcommand&gt;
+  <pre><code>relay-core rules &lt;subcommand&gt;
 
 Subcommands:
   validate &lt;file&gt;              Validate a rules file (JSON / YAML)
@@ -94,7 +94,7 @@ Subcommands:
 
   <h2 id="scripts">scripts</h2>
   <p>Manage Deno-based request/response modification scripts.</p>
-  <pre><code>relay-core-cli scripts &lt;subcommand&gt;
+  <pre><code>relay-core scripts &lt;subcommand&gt;
 
 Subcommands:
   validate &lt;file&gt;              Load a script into the Deno engine to check syntax
@@ -107,7 +107,7 @@ Subcommands:
 
   <h2 id="flows">flows</h2>
   <p>Inspect captured traffic: a listing of recent flows by default, a live stream with <code>--follow</code>. Both read the running daemon's control API, discovered from its manifest — there is no URL to configure by hand.</p>
-  <pre><code>relay-core-cli flows [options]
+  <pre><code>relay-core flows [options]
 
 Connection:
       --api-url &lt;URL&gt;           Control API base URL (discovered from the daemon manifest when
@@ -131,7 +131,7 @@ Output:
 
   <h2 id="metrics">metrics</h2>
   <p>Display runtime metrics. The proxy is queried over HTTP at <code>--proxy-url</code> (default <code>http://127.0.0.1:8080</code>).</p>
-  <pre><code>relay-core-cli metrics [options]
+  <pre><code>relay-core metrics [options]
 
       --proxy-url &lt;URL&gt;         Proxy metrics endpoint (default http://127.0.0.1:8080)
       --output &lt;FORMAT&gt;         table, json (default table)
@@ -145,7 +145,7 @@ flow and audit event channels.</code></pre>
 
   <h2 id="analyze">analyze</h2>
   <p>Analyze a traffic dump (from <code>--save-stream</code>) or a HAR export offline. A recorded file may hold a whole flow per line or a flow update per line — the new recording is lossless and includes incremental updates — and both are read.</p>
-  <pre><code>relay-core-cli analyze --file &lt;PATH&gt; [options]
+  <pre><code>relay-core analyze --file &lt;PATH&gt; [options]
 
       --file &lt;PATH&gt;             Path to JSONL flow dump or HAR file
       --format &lt;FORMAT&gt;         jsonl (default) or har
@@ -157,7 +157,7 @@ requests, and clustered error groups.</code></pre>
 
   <h2 id="proxy">proxy</h2>
   <p>Manage transparent proxy on macOS (PF) or Linux (TPROXY). Compiled only with the <code>transparent-macos</code> or <code>transparent-linux</code> features.</p>
-  <pre><code>relay-core-cli proxy &lt;subcommand&gt;
+  <pre><code>relay-core proxy &lt;subcommand&gt;
 
 Subcommands:
   generate [--port P] [--interface I] [-o OUT]

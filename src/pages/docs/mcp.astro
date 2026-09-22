@@ -27,7 +27,7 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   &#125;
 &#125;</code></pre>
 
-  <p>守护进程未运行时，桥会自己拉起一个（脱离终端，因此关掉编辑器也不受影响）；它<strong>不会</strong>自动启动代理——代理的启停是显式命令：<code>relay-core-cli start</code> / <code>stop</code>，或 MCP 工具 <code>proxy_start</code> / <code>proxy_stop</code>。设 <code>RELAY_MCP_NO_AUTOSTART=1</code>，或在配置文件里写 <code>[client] autostart_daemon = false</code>，可要求必须手动先起守护进程。</p>
+  <p>守护进程未运行时，桥会自己拉起一个（脱离终端，因此关掉编辑器也不受影响）；它<strong>不会</strong>自动启动代理——代理的启停是显式命令：<code>relay-core start</code> / <code>stop</code>，或 MCP 工具 <code>proxy_start</code> / <code>proxy_stop</code>。设 <code>RELAY_MCP_NO_AUTOSTART=1</code>，或在配置文件里写 <code>[client] autostart_daemon = false</code>，可要求必须手动先起守护进程。</p>
 
   <h2>桥的参数</h2>
 

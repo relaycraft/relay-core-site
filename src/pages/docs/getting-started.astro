@@ -20,17 +20,19 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h3>预构建二进制</h3>
   <p>从 <a href="https://github.com/relaycraft/relay-core/releases">GitHub Releases</a> 下载最新版本。</p>
 
+  <p>下文命令是 <code>relay-core</code>。<code>npm install -g @relay-core/cli</code> 会安装这个命令；Cargo 装入的文件名是 <code>relay-core-cli</code>。</p>
+
   <h2>生成 CA 证书</h2>
 
   <p>要拦截 HTTPS 流量，需先生成 CA（默认写入 <code>~/.relay-core/</code>）：</p>
-  <pre><code>relay-core-cli ca generate</code></pre>
+  <pre><code>relay-core ca generate</code></pre>
 
   <p>查看状态：</p>
-  <pre><code>relay-core-cli ca status</code></pre>
+  <pre><code>relay-core ca status</code></pre>
 
   <p>安装到系统信任存储：</p>
   <pre><code># macOS（推荐）
-relay-core-cli ca install
+relay-core ca install
 
 # Linux（Debian/Ubuntu 示例）
 sudo cp ~/.relay-core/ca_cert.pem /usr/local/share/ca-certificates/relay-core.crt
@@ -41,21 +43,21 @@ sudo update-ca-certificates
 
   <h2>启动代理</h2>
 
-  <p>一个后台守护进程独占引擎：它持有状态、服务控制 API / Web UI / MCP 端点，并且不随启动它的终端一起退出。代理默认监听 <code>127.0.0.1:8080</code>；<code>relay-core-cli status</code> 会打印实际使用的端口，<code>relay-core-cli stop</code> 只停代理、保留守护进程与历史。捕获历史默认最多保留 <strong>5000</strong> 条或 <strong>7</strong> 天（可用策略里的 <code>retention</code> 调整）。</p>
+  <p>一个后台守护进程独占引擎：它持有状态、服务控制 API / Web UI / MCP 端点，并且不随启动它的终端一起退出。代理默认监听 <code>127.0.0.1:8080</code>；<code>relay-core status</code> 会打印实际使用的端口，<code>relay-core stop</code> 只停代理、保留守护进程与历史。捕获历史默认最多保留 <strong>5000</strong> 条或 <strong>7</strong> 天（可用策略里的 <code>retention</code> 调整）。</p>
 
   <p>CA 文件必须已存在；否则 <code>run</code> 会提示先执行 <code>ca generate</code>。</p>
 
   <pre><code># 后台：守护进程 + 代理（幂等）
-relay-core-cli start
+relay-core start
 
 # 前台：同一守护进程，附带 TUI
-relay-core-cli run --ui
+relay-core run --ui
 
 # 前台：同一守护进程，附带 Web UI（浏览器打开 status 打印的地址）
-relay-core-cli run --web
+relay-core run --web
 
 # 指定代理端口
-relay-core-cli start --listen 127.0.0.1:9090</code></pre>
+relay-core start --listen 127.0.0.1:9090</code></pre>
 
   <p>代理默认监听 <code>127.0.0.1:8080</code>。控制 API 默认在 <code>8082</code>（被占则回落临时端口）。MCP 客户端（<code>@relay-core/mcp</code>）会附着到同一守护进程；未运行时也可自行拉起，再用 <code>proxy_start</code> 开代理。</p>
 

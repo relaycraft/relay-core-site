@@ -20,17 +20,19 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <h3>Pre-built Binaries</h3>
   <p>Download the latest release from <a href="https://github.com/relaycraft/relay-core/releases">GitHub Releases</a>.</p>
 
+  <p>Examples below use <code>relay-core</code>. <code>npm install -g @relay-core/cli</code> installs that command; Cargo installs a file named <code>relay-core-cli</code>.</p>
+
   <h2>Generate CA Certificate</h2>
 
   <p>For HTTPS interception, generate a CA first (default: <code>~/.relay-core/</code>):</p>
-  <pre><code>relay-core-cli ca generate</code></pre>
+  <pre><code>relay-core ca generate</code></pre>
 
   <p>Check status:</p>
-  <pre><code>relay-core-cli ca status</code></pre>
+  <pre><code>relay-core ca status</code></pre>
 
   <p>Install to the system trust store:</p>
   <pre><code># macOS (recommended)
-relay-core-cli ca install
+relay-core ca install
 
 # Linux (Debian/Ubuntu example)
 sudo cp ~/.relay-core/ca_cert.pem /usr/local/share/ca-certificates/relay-core.crt
@@ -42,19 +44,19 @@ sudo update-ca-certificates
   <h2>Start the Proxy</h2>
 
   <pre><code># Background: daemon + proxy (idempotent)
-relay-core-cli start
+relay-core start
 
 # Foreground: same daemon, with the TUI attached
-relay-core-cli run --ui
+relay-core run --ui
 
 # Foreground: same daemon, with the Web UI (open the URL from status)
-relay-core-cli run --web
+relay-core run --web
 
 # A different proxy port, or the whole status at a glance
-relay-core-cli start --listen 127.0.0.1:9090
-relay-core-cli status</code></pre>
+relay-core start --listen 127.0.0.1:9090
+relay-core status</code></pre>
 
-  <p>One background daemon owns the engine: it holds the state, serves the control API, the Web UI and the MCP endpoint, and survives the terminal that started it. The proxy listens on <code>127.0.0.1:8080</code> by default; <code>relay-core-cli status</code> prints the ports actually in use, and <code>relay-core-cli stop</code> stops the proxy while keeping the daemon and its history. Captured history defaults to at most <strong>5000</strong> flows or <strong>7</strong> days (tune with policy <code>retention</code>). An MCP client (<code>@relay-core/mcp</code>) attaches to that same daemon — it may autostart the daemon, then use <code>proxy_start</code> for the proxy.</p>
+  <p>One background daemon owns the engine: it holds the state, serves the control API, the Web UI and the MCP endpoint, and survives the terminal that started it. The proxy listens on <code>127.0.0.1:8080</code> by default; <code>relay-core status</code> prints the ports actually in use, and <code>relay-core stop</code> stops the proxy while keeping the daemon and its history. Captured history defaults to at most <strong>5000</strong> flows or <strong>7</strong> days (tune with policy <code>retention</code>). An MCP client (<code>@relay-core/mcp</code>) attaches to that same daemon — it may autostart the daemon, then use <code>proxy_start</code> for the proxy.</p>
 
   <h2>Configure Your Client</h2>
 

@@ -12,7 +12,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>客户端显式地把 RelayCore 设为 HTTP/HTTPS 代理。这是开发与调试最常用的模式，对操作系统与客户端配置零侵入。</p>
 
   <pre><code># 启动
-relay-core-cli run
+relay-core run
 
 # 在浏览器或系统设置中将 HTTP/HTTPS 代理指向
 # 127.0.0.1:8080（默认监听地址）</code></pre>
@@ -23,23 +23,23 @@ relay-core-cli run
 
   <p>客户端不感知代理存在，操作系统或网络设备把流量强制重定向到 RelayCore。适合设备调试、移动设备、嵌入式设备和不需要修改客户端配置的场景。</p>
 
-  <pre><code>relay-core-cli run --transparent</code></pre>
+  <pre><code>relay-core run --transparent</code></pre>
 
   <h3>macOS（PF）</h3>
 
-  <p>使用 <code>relay-core-cli proxy</code> 子命令管理 PF 规则：</p>
+  <p>使用 <code>relay-core proxy</code> 子命令管理 PF 规则：</p>
 
   <pre><code># 生成 PF 配置（默认 en0，可通过 --interface 改）
-relay-core-cli proxy generate --port 8080
+relay-core proxy generate --port 8080
 
 # 加载并启用规则（需要 sudo）
-sudo relay-core-cli proxy load --port 8080 --interface en0
+sudo relay-core proxy load --port 8080 --interface en0
 
 # 查看当前状态
-relay-core-cli proxy status
+relay-core proxy status
 
 # 关闭
-sudo relay-core-cli proxy unload</code></pre>
+sudo relay-core proxy unload</code></pre>
 
   <p>生成的 PF 规则会重定向 80/443 端口的 TCP 流量到本地代理端口。仅在 macOS 上受支持。</p>
 
@@ -49,7 +49,7 @@ sudo relay-core-cli proxy unload</code></pre>
 
   <h3>UDP TPROXY</h3>
 
-  <pre><code>relay-core-cli run --transparent --udp-tproxy-port 8080</code></pre>
+  <pre><code>relay-core run --transparent --udp-tproxy-port 8080</code></pre>
 
   <p>启用 UDP 透明代理。仅 Linux，需要内核支持 <code>IP_TRANSPARENT</code>。</p>
 
@@ -58,17 +58,17 @@ sudo relay-core-cli proxy unload</code></pre>
   <p>把 RelayCore 放在另一个代理之后。所有出站请求先到 RelayCore，再由 RelayCore 通过父级代理转发。常用于企业代理环境、VPN 集中器、TLS 检查中间盒后面。</p>
 
   <pre><code># 纯 HTTP 上级代理
-relay-core-cli run --upstream http://corp-proxy.internal:8080
+relay-core run --upstream http://corp-proxy.internal:8080
 
 # HTTPS 上级代理（先与代理建立 TLS）
-relay-core-cli run --upstream https://secure-proxy.internal:8443
+relay-core run --upstream https://secure-proxy.internal:8443
 
 # 带 Basic 认证
 export RELAYCORE_UPSTREAM_PASSWORD='s3cret'
-relay-core-cli run --upstream http://corp-proxy.internal:8080 --upstream-auth-user alice
+relay-core run --upstream http://corp-proxy.internal:8080 --upstream-auth-user alice
 
 # 上级不可达时回落到直连（默认 fail-closed）
-relay-core-cli run --upstream http://corp-proxy.internal:8080 --upstream-fail-open</code></pre>
+relay-core run --upstream http://corp-proxy.internal:8080 --upstream-fail-open</code></pre>
 
   <h3>绕过列表</h3>
 

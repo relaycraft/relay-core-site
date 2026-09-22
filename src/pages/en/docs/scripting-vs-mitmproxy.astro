@@ -66,7 +66,7 @@ def response(flow):
     <li><strong>Body</strong>: RelayCore <code>body.content</code> is base64 — decode with <code>atob()</code>, encode with <code>btoa()</code></li>
     <li><strong>Flow shape</strong>: HTTP data lives under <code>flow.layer.data.request</code> / <code>response</code> (see <a href="/en/docs/scripting">Scripting API</a>)</li>
     <li><strong>Global state</strong>: RelayCore <code>sharedState.get/set</code> vs mitmproxy module-level Python variables</li>
-    <li><strong>Loading</strong>: <code>relay-core-cli run --script</code>, HTTP <code>POST /api/v1/script</code>, Tauri <code>load_script</code></li>
+    <li><strong>Loading</strong>: <code>relay-core run --script</code>, HTTP <code>POST /api/v1/script</code>, Tauri <code>load_script</code></li>
   </ul>
 
   <h2>When to use which</h2>

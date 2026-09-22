@@ -5,7 +5,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="HTTP API" description="RelayCore REST API reference">
   <h1>HTTP API</h1>
 
-  <p>The daemon serves this API, so both <code>relay-core-cli start</code> and a foreground <code>relay-core-cli run</code> expose it. Default base URL: <code>http://127.0.0.1:8082/api/v1/</code>; when that port is taken the daemon binds an ephemeral one and publishes the real port in <code>$RELAY_DATA_DIR/daemon.json</code> (<code>relay-core-cli status</code> prints it).</p>
+  <p>The daemon serves this API, so both <code>relay-core start</code> and a foreground <code>relay-core run</code> expose it. Default base URL: <code>http://127.0.0.1:8082/api/v1/</code>; when that port is taken the daemon binds an ephemeral one and publishes the real port in <code>$RELAY_DATA_DIR/daemon.json</code> (<code>relay-core status</code> prints it).</p>
 
   <p>The daemon generates a bearer token and requires <code>Authorization: Bearer &lt;T&gt;</code>; the token lives in the same 0600 manifest. The Web UI is the exception: a browser cannot attach headers to the <code>EventSource</code> that carries the flow stream, so the URL the daemon prints has the token in the fragment — which a browser never sends to a server — and the page trades it for a <code>SameSite=Strict</code> same-origin cookie, clearing the address bar. The middleware accepts the bearer header <strong>or</strong> that cookie. CORS is emitted only when <code>--api-cors</code> is set; otherwise the server is strict.</p>
 
@@ -26,7 +26,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <h3>POST /api/v1/daemon/shutdown</h3>
   <p>Stop the proxy and exit the daemon. Once accepted, the daemon clears its registry, stops the proxy and releases the data-directory lock.</p>
 
-  <p>An <code>X-Relay-Client</code> header may carry a client's own label (for example <code>cli:relay start</code>) which is recorded in the audit trail. It is <strong>never</strong> used for authorization; it exists so "who made this change" is answerable after the caller exits. Read those records with <code>GET /api/v1/audit?kind=proxy_lifecycle_changed</code>.</p>
+  <p>An <code>X-Relay-Client</code> header may carry a client's own label (for example <code>cli:relay-core start</code>) which is recorded in the audit trail. It is <strong>never</strong> used for authorization; it exists so "who made this change" is answerable after the caller exits. Read those records with <code>GET /api/v1/audit?kind=proxy_lifecycle_changed</code>.</p>
 
   <h2 id="version-status">Version &amp; Status</h2>
 
@@ -210,7 +210,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <h2 id="metrics">Metrics</h2>
 
   <h3>GET /api/v1/metrics</h3>
-  <p>JSON metrics snapshot. Same fields as <code>relay-core-cli metrics</code> (see <a href="/en/docs/cli#metrics">CLI reference</a>).</p>
+  <p>JSON metrics snapshot. Same fields as <code>relay-core metrics</code> (see <a href="/en/docs/cli#metrics">CLI reference</a>).</p>
 
   <h3>GET /api/v1/metrics/prometheus</h3>
   <p>Prometheus text format metrics.</p>

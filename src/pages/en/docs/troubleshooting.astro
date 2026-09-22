@@ -13,8 +13,8 @@ import DocsLayout from "../../../layouts/DocsLayout.astro";
   <ul>
     <li><b>Cause</b>: RelayCore generates a self-signed CA, not trusted by the system</li>
     <li><b>Fix</b>: Generate and install the CA
-      <pre><code>relay-core-cli ca generate
-relay-core-cli ca install   # macOS
+      <pre><code>relay-core ca generate
+relay-core ca install   # macOS
 
 # Or manually (example)
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.relay-core/ca_cert.pem</code></pre>
@@ -32,7 +32,7 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
   <h3>Proxy fails to start (port in use)</h3>
   <ul>
     <li>Check port: <code>lsof -i :8080</code> or <code>netstat -an | grep 8080</code></li>
-    <li>Change port: <code>relay-core-cli run --listen 127.0.0.1:9090</code></li>
+    <li>Change port: <code>relay-core run --listen 127.0.0.1:9090</code></li>
   </ul>
 
   <h3>Client connects but gets no response</h3>
@@ -40,7 +40,7 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
     <li>Verify proxy address and port are correct</li>
     <li>Check system proxy settings</li>
     <li>Check for security software blocking the connection</li>
-    <li>Enable verbose logging: <code>RUST_LOG=info relay-core-cli run</code></li>
+    <li>Enable verbose logging: <code>RUST_LOG=info relay-core run</code></li>
   </ul>
 
   <h3>Upstream request timeout</h3>
@@ -105,7 +105,7 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
     <li>Audit rule count — every rule evaluates on every matching flow</li>
     <li>Check ResponseBody filters — they cache the full body</li>
     <li>Check script execution time via <code>script_hook_duration_us</code> metric</li>
-    <li>Reduce log level: <code>RUST_LOG=warn relay-core-cli run</code></li>
+    <li>Reduce log level: <code>RUST_LOG=warn relay-core run</code></li>
   </ul>
 
   <h3>Memory grows continuously</h3>
@@ -117,10 +117,10 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 
   <h2>Logging & Debugging</h2>
   <pre><code># Full debug logging
-RUST_LOG=debug relay-core-cli run
+RUST_LOG=debug relay-core run
 
 # Script-only logging
-RUST_LOG=relay_core_script=debug relay-core-cli run
+RUST_LOG=relay_core_script=debug relay-core run
 
 # View live flow events
 curl -N http://127.0.0.1:8082/api/v1/events
@@ -131,9 +131,9 @@ curl http://127.0.0.1:8082/api/v1/metrics/prometheus</code></pre>
 
   <h2>Getting Help</h2>
   <ul>
-    <li>Run <code>relay-core-cli --help</code> for all commands</li>
-    <li>Run <code>relay-core-cli run --help</code> for startup options</li>
-    <li>Check version: <code>relay-core-cli --version</code></li>
+    <li>Run <code>relay-core --help</code> for all commands</li>
+    <li>Run <code>relay-core run --help</code> for startup options</li>
+    <li>Check version: <code>relay-core --version</code></li>
     <li>GitHub Issues: <a href="https://github.com/relaycraft/relay-core/issues">github.com/relaycraft/relay-core/issues</a></li>
   </ul>
 </DocsLayout>

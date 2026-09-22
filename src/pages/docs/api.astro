@@ -5,7 +5,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="HTTP API" description="RelayCore REST API 参考">
   <h1>HTTP API</h1>
 
-  <p>这套 API 由守护进程提供，因此 <code>relay-core-cli start</code> 与前台运行的 <code>relay-core-cli run</code> 都会服务它；默认基址 <code>http://127.0.0.1:8082/api/v1/</code>，端口被占时守护进程会回落到临时端口，实际端口写在 <code>$RELAY_DATA_DIR/daemon.json</code> 里（<code>relay-core-cli status</code> 会直接告诉你）。</p>
+  <p>这套 API 由守护进程提供，因此 <code>relay-core start</code> 与前台运行的 <code>relay-core run</code> 都会服务它；默认基址 <code>http://127.0.0.1:8082/api/v1/</code>，端口被占时守护进程会回落到临时端口，实际端口写在 <code>$RELAY_DATA_DIR/daemon.json</code> 里（<code>relay-core status</code> 会直接告诉你）。</p>
 
   <p>守护进程默认生成 Bearer 令牌并要求 <code>Authorization: Bearer &lt;T&gt;</code>（令牌同样在清单里，清单权限为 0600）。Web UI 例外：浏览器无法给 <code>EventSource</code> 加请求头，所以守护进程打印的 Web UI 地址把令牌放在 URL fragment 中，页面把它换成 <code>SameSite=Strict</code> 的同源 cookie 并立即从地址栏抹掉——fragment 不会被浏览器发给服务器，令牌因此不进请求日志。鉴权中间件接受 Bearer 头<strong>或</strong>该 cookie。使用 <code>--api-cors &lt;origins&gt;</code> 才下发 CORS 头，否则严格同源。</p>
 
@@ -26,7 +26,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h3>POST /api/v1/daemon/shutdown</h3>
   <p>停代理并退出守护进程。请求被接受后守护进程会先写清单清理、再停代理、最后释放数据目录锁。</p>
 
-  <p>另外，<code>X-Relay-Client</code> 头可以带一个客户端自述标签（例如 <code>cli:relay start</code>），会记入审计事件；它<strong>不用于鉴权</strong>，只为回答"这次变更是谁做的"。<code>GET /api/v1/audit?kind=proxy_lifecycle_changed</code> 可读出这些记录。</p>
+  <p>另外，<code>X-Relay-Client</code> 头可以带一个客户端自述标签（例如 <code>cli:relay-core start</code>），会记入审计事件；它<strong>不用于鉴权</strong>，只为回答"这次变更是谁做的"。<code>GET /api/v1/audit?kind=proxy_lifecycle_changed</code> 可读出这些记录。</p>
 
   <h2 id="version-status">版本与状态</h2>
 
@@ -208,7 +208,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h2 id="metrics">指标</h2>
 
   <h3>GET /api/v1/metrics</h3>
-  <p>JSON 指标快照。字段同 <code>relay-core-cli metrics</code>（见 <a href="/docs/cli#metrics">CLI 参考</a>）。</p>
+  <p>JSON 指标快照。字段同 <code>relay-core metrics</code>（见 <a href="/docs/cli#metrics">CLI 参考</a>）。</p>
 
   <h3>GET /api/v1/metrics/prometheus</h3>
   <p>Prometheus 文本格式指标。</p>

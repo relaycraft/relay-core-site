@@ -5,7 +5,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="Interception &amp; Rewriting" description="Minimal examples for every rewriting capability">
   <h1>Interception &amp; Rewriting Capabilities</h1>
 
-  <p>Each example below is a Rule JSON that <code>relay-core-cli rules validate</code> accepts (and that <code>PUT /api/v1/rules</code> stores). The shape matches the <a href="/en/docs/rule-engine">Rule API</a>: <code>active</code>, <code>stage</code>, <code>termination</code>, a tagged <code>filter</code>, and an <code>actions</code> array. Action fields live under <code>config</code>.</p>
+  <p>Each example below is a Rule JSON that <code>relay-core rules validate</code> accepts (and that <code>PUT /api/v1/rules</code> stores). The shape matches the <a href="/en/docs/rule-engine">Rule API</a>: <code>active</code>, <code>stage</code>, <code>termination</code>, a tagged <code>filter</code>, and an <code>actions</code> array. Action fields live under <code>config</code>.</p>
 
   <h2 id="mock-response">Mock Response</h2>
   <p>Replace the upstream response with a local one. Useful for frontend work, contract tests, and error simulation. Stopping at the request-header stage means the upstream is never contacted.</p>
@@ -143,7 +143,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 &#125;</code></pre>
 
   <h2 id="intercept-breakpoints">Intercept breakpoints</h2>
-  <p>Pause live traffic for a human decision. Create a breakpoint with <code>POST /api/v1/intercepts</code> or MCP <code>set_intercept</code>; release or drop it with <code>resume</code> / <code>resume_flow</code>. There is no <code>relay-core-cli intercept</code> subcommand.</p>
+  <p>Pause live traffic for a human decision. Create a breakpoint with <code>POST /api/v1/intercepts</code> or MCP <code>set_intercept</code>; release or drop it with <code>resume</code> / <code>resume_flow</code>. There is no <code>relay-core intercept</code> subcommand.</p>
 
   <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/intercepts \
   -H 'Content-Type: application/json' \

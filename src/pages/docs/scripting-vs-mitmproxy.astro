@@ -66,7 +66,7 @@ def response(flow):
     <li><strong>Body</strong>：RelayCore 的 <code>body.content</code> 为 base64，需 <code>atob()</code> / <code>btoa()</code></li>
     <li><strong>Flow 结构</strong>：HTTP 数据在 <code>flow.layer.data.request</code> / <code>response</code>（见<a href="/docs/scripting">脚本 API</a>）</li>
     <li><strong>全局状态</strong>：RelayCore 用 <code>sharedState.get/set</code>；mitmproxy 用 Python 模块级变量</li>
-    <li><strong>加载方式</strong>：<code>relay-core-cli run --script</code>、HTTP <code>POST /api/v1/script</code>、Tauri <code>load_script</code></li>
+    <li><strong>加载方式</strong>：<code>relay-core run --script</code>、HTTP <code>POST /api/v1/script</code>、Tauri <code>load_script</code></li>
   </ul>
 
   <h2>选型参考</h2>

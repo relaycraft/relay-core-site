@@ -9,11 +9,11 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <h2>Launching</h2>
 
-  <pre><code>relay-core-cli run --ui
+  <pre><code>relay-core run --ui
 # a different port or colour preset
-relay-core-cli run --ui --listen 127.0.0.1:9090 --theme slate</code></pre>
+relay-core run --ui --listen 127.0.0.1:9090 --theme slate</code></pre>
 
-  <p>With <code>--ui</code> the TUI takes over the terminal and reads the daemon's event stream — the same traffic every other client sees, including another window or an agent connected over MCP. It is a client, not a second engine: quitting it ends the foreground session it started, while a daemon started with <code>relay-core-cli start</code> keeps running. Minimum terminal size is <code>60 × 12</code>; below that the TUI refuses to start and asks you to resize.</p>
+  <p>With <code>--ui</code> the TUI takes over the terminal and reads the daemon's event stream — the same traffic every other client sees, including another window or an agent connected over MCP. It is a client, not a second engine: quitting it ends the foreground session it started, while a daemon started with <code>relay-core start</code> keeps running. Minimum terminal size is <code>60 × 12</code>; below that the TUI refuses to start and asks you to resize.</p>
 
   <h2>Layouts</h2>
 
@@ -158,7 +158,7 @@ relay-core-cli run --ui --listen 127.0.0.1:9090 --theme slate</code></pre>
 
   <h2 id="filter-expression-syntax">Filter expression syntax</h2>
 
-  <p>The TUI filter bar, the command palette's <code>:filter</code>, <code>relay-core-cli flows --filter</code>, and the HTTP API's <code>search_flows</code> tool all share the same parser. Press <code>/</code> to open the bar, then enter a filter expression. See <a href="/en/docs/filter-expressions">Filter Expressions</a> for the full syntax.</p>
+  <p>The TUI filter bar, the command palette's <code>:filter</code>, <code>relay-core flows --filter</code>, and the HTTP API's <code>search_flows</code> tool all share the same parser. Press <code>/</code> to open the bar, then enter a filter expression. See <a href="/en/docs/filter-expressions">Filter Expressions</a> for the full syntax.</p>
 
   <p>Quick examples:</p>
   <pre><code>host:api method:POST status:&gt;=400   # failing POSTs to api
@@ -201,7 +201,7 @@ health                               # any flow whose URL contains "health"</cod
   </ol>
 
   <pre><code># One-off override
-relay-core-cli run --ui --theme slate
+relay-core run --ui --theme slate
 
 # Persistent per-host preference
 cat &gt;&gt; ~/.relay-core/config.toml &lt;&lt;'EOF'
@@ -210,7 +210,7 @@ theme = "high-contrast"
 EOF
 
 # Environment override (e.g. in CI)
-RELAY_CORE_TUI_THEME=slate relay-core-cli run --ui</code></pre>
+RELAY_CORE_TUI_THEME=slate relay-core run --ui</code></pre>
 
   <h3>Color semantics</h3>
 
@@ -234,6 +234,6 @@ RELAY_CORE_TUI_THEME=slate relay-core-cli run --ui</code></pre>
     <li>Press <code>m</code> to mark interesting flows (e.g. <code>m</code> then <code>A</code>), then jump between them with <code>'</code> — replaces the older "remember position" pattern.</li>
     <li>Forgot a binding? Hit <code>:</code> for the command palette — every action has a stable text alias.</li>
     <li>The TUI only holds the last 1,000 flows in memory. Use <code>--save-stream &lt;PATH&gt;</code> to capture every flow as JSONL to disk for offline <a href="/en/docs/cli#analyze">analysis</a>.</li>
-    <li>Combine with <code>--api-port</code> to feed downstream tools (e.g. <code>relay-core-cli flows</code>) over the same proxy instance.</li>
+    <li>Combine with <code>--api-port</code> to feed downstream tools (e.g. <code>relay-core flows</code>) over the same proxy instance.</li>
   </ul>
 </DocsLayout>

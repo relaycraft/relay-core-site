@@ -14,6 +14,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <h2>Cargo (Recommended)</h2>
   <pre><code>cargo install relay-core-cli</code></pre>
+  <p>The file this puts on PATH is <code>relay-core-cli</code>. Command examples in these docs use <code>relay-core</code>, the command installed by <code>npm install -g @relay-core/cli</code>.</p>
 
   <h2>npm</h2>
   <pre><code>npm install -g @relay-core/cli</code></pre>
@@ -30,18 +31,18 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <h3>Linux Installation</h3>
   <pre><code>tar -xzf relay-core-cli-x86_64-unknown-linux-gnu.tar.gz
-sudo mv relay-core-cli /usr/local/bin/
-relay-core-cli --version</code></pre>
+sudo mv relay-core-cli /usr/local/bin/relay-core
+relay-core --version</code></pre>
 
   <p>Linux binaries are built as <strong>glibc-linked (gnu)</strong> and ship the Deno / V8 script engine. The <code>musl</code>-static variant is no longer published — <code>rusty_v8</code> has no musl prebuilds, and shipping musl binaries without V8 would break JS scripts on Linux. If you need a musl build, compile from source with <code>cargo build --release --target x86_64-unknown-linux-musl</code>.</p>
 
   <h3>macOS Installation</h3>
   <pre><code>tar -xzf relay-core-cli-x86_64-apple-darwin.tar.gz
-sudo mv relay-core-cli /usr/local/bin/
-relay-core-cli --version</code></pre>
+sudo mv relay-core-cli /usr/local/bin/relay-core
+relay-core --version</code></pre>
 
   <h3>Windows Installation</h3>
-  <p>Extract the ZIP and add the directory to your PATH.</p>
+  <p>Extract the ZIP and add <code>relay-core-cli.exe</code> to PATH as <code>relay-core.exe</code>.</p>
 
   <h2>Build from Source</h2>
   <pre><code>git clone https://github.com/relaycraft/relay-core
@@ -50,6 +51,6 @@ cargo build --release
 ./target/release/relay-core-cli --version</code></pre>
 
   <h2>Verify Installation</h2>
-  <pre><code>relay-core-cli --version
-# relay-core-cli 0.13.1</code></pre>
+  <pre><code>relay-core --version
+# relay-core 0.13.1</code></pre>
 </DocsLayout>

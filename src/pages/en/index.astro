@@ -42,13 +42,13 @@ const CLI_VERSION = '0.13.1';
           <span class="chrome-dot green"></span>
           <span class="chrome-title">relay-core — zsh</span>
         </div>
-        <pre class="terminal-body"><span class="prompt">$</span> <span class="cmd">relay-core-cli --version</span>
-<span class="output">relay-core-cli {CLI_VERSION}</span>
+        <pre class="terminal-body"><span class="prompt">$</span> <span class="cmd">relay-core --version</span>
+<span class="output">relay-core {CLI_VERSION}</span>
 
-<span class="prompt">$</span> <span class="cmd">relay-core-cli ca generate</span>
+<span class="prompt">$</span> <span class="cmd">relay-core ca generate</span>
 <span class="output">CA certificate generated at ~/.relay-core/ca_cert.pem</span>
 
-<span class="prompt">$</span> <span class="cmd">relay-core-cli start</span>
+<span class="prompt">$</span> <span class="cmd">relay-core start</span>
 <span class="output">RelayCore daemon started</span>
 <span class="output">  Proxy   127.0.0.1:8080</span>
 <span class="output">  Control http://127.0.0.1:8082/</span>
@@ -310,7 +310,7 @@ const CLI_VERSION = '0.13.1';
 
     <div class="cli-examples">
       <div class="cli-block">
-        <div class="cli-prompt"><TerminalDots /> $ relay-core-cli run --listen 127.0.0.1:8080</div>
+        <div class="cli-prompt"><TerminalDots /> $ relay-core run --listen 127.0.0.1:8080</div>
         <pre class="cli-output">RelayCore proxy started
   Proxy   127.0.0.1:8080
   Control http://127.0.0.1:8082/
@@ -319,17 +319,17 @@ const CLI_VERSION = '0.13.1';
       </div>
 
       <div class="cli-block">
-        <div class="cli-prompt"><TerminalDots /> $ relay-core-cli ca generate</div>
+        <div class="cli-prompt"><TerminalDots /> $ relay-core ca generate</div>
         <pre class="cli-output">CA certificate generated at ~/.relay-core/ca_cert.pem</pre>
       </div>
 
       <div class="cli-block">
-        <div class="cli-prompt"><TerminalDots /> $ relay-core-cli rules list</div>
+        <div class="cli-prompt"><TerminalDots /> $ relay-core rules list</div>
         <pre class="cli-output">No rules loaded.</pre>
       </div>
 
       <div class="cli-block">
-        <div class="cli-prompt"><TerminalDots /> $ relay-core-cli metrics</div>
+        <div class="cli-prompt"><TerminalDots /> $ relay-core metrics</div>
         <pre class="cli-output">Metric                    | Value
 --------------------------|-----------
 Flows Total               | 128
@@ -341,35 +341,35 @@ Rule Exec Errors          | 0</pre>
 
     <div class="cli-commands">
       <div class="cmd-item">
-        <code>relay-core-cli run</code>
+        <code>relay-core run</code>
         <span>Start proxy server</span>
       </div>
       <div class="cmd-item">
-        <code>relay-core-cli run --ui</code>
+        <code>relay-core run --ui</code>
         <span>Start with TUI interface</span>
       </div>
       <div class="cmd-item">
-        <code>relay-core-cli ca generate</code>
+        <code>relay-core ca generate</code>
         <span>CA certificate management</span>
       </div>
       <div class="cmd-item">
-        <code>relay-core-cli rules list</code>
+        <code>relay-core rules list</code>
         <span>Rule management</span>
       </div>
       <div class="cmd-item">
-        <code>relay-core-cli run --api-port 8082</code>
+        <code>relay-core run --api-port 8082</code>
         <span>Enable REST API</span>
       </div>
       <div class="cmd-item">
-        <code>relay-core-cli run --upstream http://corp-proxy:8080</code>
+        <code>relay-core run --upstream http://corp-proxy:8080</code>
         <span>Chain through a parent proxy (see <a href="/en/docs/proxy-modes">Proxy Modes</a>)</span>
       </div>
       <div class="cmd-item">
-        <code>relay-core-cli analyze --file flows.jsonl</code>
+        <code>relay-core analyze --file flows.jsonl</code>
         <span>Offline analysis of flow dumps</span>
       </div>
       <div class="cmd-item">
-        <code>relay-core-cli flows --host example.com</code>
+        <code>relay-core flows --host example.com</code>
         <span>Search flows (requires --api-port)</span>
       </div>
     </div>

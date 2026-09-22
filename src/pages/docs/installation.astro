@@ -14,6 +14,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>Cargo（推荐）</h2>
   <pre><code>cargo install relay-core-cli</code></pre>
+  <p>装进 PATH 的文件名是 <code>relay-core-cli</code>。文档里的命令写成 <code>relay-core</code>，这是 <code>npm install -g @relay-core/cli</code> 提供的命令。</p>
 
   <h2>npm</h2>
   <pre><code>npm install -g @relay-core/cli</code></pre>
@@ -30,18 +31,18 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h3>Linux 安装</h3>
   <pre><code>tar -xzf relay-core-cli-x86_64-unknown-linux-gnu.tar.gz
-sudo mv relay-core-cli /usr/local/bin/
-relay-core-cli --version</code></pre>
+sudo mv relay-core-cli /usr/local/bin/relay-core
+relay-core --version</code></pre>
 
   <p>Linux 预编译二进制为 <strong>glibc-linked (gnu)</strong> 构建，包含 Deno / V8 脚本引擎。<code>musl</code> 静态链接变体不再发布——因为 <code>rusty_v8</code> 没有 musl 预编译产物，发布不带 V8 的 musl 包会在 Linux 上破坏 JS 脚本功能。如需 musl，请从源码用 <code>cargo build --release --target x86_64-unknown-linux-musl</code> 自编译。</p>
 
   <h3>macOS 安装</h3>
   <pre><code>tar -xzf relay-core-cli-x86_64-apple-darwin.tar.gz
-sudo mv relay-core-cli /usr/local/bin/
-relay-core-cli --version</code></pre>
+sudo mv relay-core-cli /usr/local/bin/relay-core
+relay-core --version</code></pre>
 
   <h3>Windows 安装</h3>
-  <p>解压 ZIP 文件并将目录添加到 PATH。</p>
+  <p>解压 ZIP，把其中的 <code>relay-core-cli.exe</code> 以 <code>relay-core.exe</code> 加入 PATH。</p>
 
   <h2>从源码构建</h2>
   <pre><code>git clone https://github.com/relaycraft/relay-core
@@ -50,6 +51,6 @@ cargo build --release
 ./target/release/relay-core-cli --version</code></pre>
 
   <h2>验证安装</h2>
-  <pre><code>relay-core-cli --version
-# relay-core-cli 0.13.1</code></pre>
+  <pre><code>relay-core --version
+# relay-core 0.13.1</code></pre>
 </DocsLayout>

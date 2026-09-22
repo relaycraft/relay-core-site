@@ -24,17 +24,17 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h2>快速流程</h2>
 
   <pre><code># 1. 生成 CA（一次性）
-relay-core-cli ca generate
+relay-core ca generate
 
 # 2. 安装到系统信任库
-relay-core-cli ca install   # macOS 自动；其他平台见下文
+relay-core ca install   # macOS 自动；其他平台见下文
 
 # 3. 启动代理
-relay-core-cli run</code></pre>
+relay-core run</code></pre>
 
   <h2><code>ca</code> 子命令</h2>
 
-  <pre><code>relay-core-cli ca &lt;subcommand&gt;
+  <pre><code>relay-core ca &lt;subcommand&gt;
 
   generate [--force]        生成 CA（--force 覆盖已有）
   install                   安装到系统信任库
@@ -50,7 +50,7 @@ relay-core-cli run</code></pre>
 
   <p><code>ca status</code> 通过 SHA-1 比对本地证书与钥匙串里的条目：</p>
 
-  <pre><code>$ relay-core-cli ca status
+  <pre><code>$ relay-core ca status
 CA cert: /Users/me/.relay-core/ca_cert.pem
 CA key:  /Users/me/.relay-core/ca_key.pem
 Trusted in keychain: yes
@@ -82,7 +82,7 @@ curl -vI https://example.com --proxy http://127.0.0.1:8080</code></pre>
 
   <p>用 <code>--der</code> 输出二进制 .cer：</p>
 
-  <pre><code>relay-core-cli ca export -o relay-core.cer --der</code></pre>
+  <pre><code>relay-core ca export -o relay-core.cer --der</code></pre>
 
   <p>双击 .cer → "安装证书" → "本地计算机" → "将所有证书放入下列存储" → "受信任的根证书颁发机构"。PowerShell 等价命令：</p>
 
@@ -104,7 +104,7 @@ curl -vI https://example.com --proxy http://127.0.0.1:8080</code></pre>
   <h2>卸载</h2>
 
   <pre><code># macOS
-relay-core-cli ca uninstall
+relay-core ca uninstall
 
 # Linux
 sudo rm /usr/local/share/ca-certificates/relay-core.crt

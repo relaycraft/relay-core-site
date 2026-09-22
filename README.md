@@ -33,10 +33,10 @@ cargo install relay-core-cli
 npm install -g @relay-core/cli
 
 # 生成并信任 CA（MITM 必需）
-relay-core-cli ca generate
+relay-core ca generate
 
 # 启动代理（默认 8080，可选 REST + SSE API）
-relay-core-cli run --listen 127.0.0.1:8080
+relay-core run --listen 127.0.0.1:8080
 ```
 
 👉 完整指南：[快速开始](https://relaycore.dev/docs/getting-started) · [安装说明](https://relaycore.dev/docs/installation)

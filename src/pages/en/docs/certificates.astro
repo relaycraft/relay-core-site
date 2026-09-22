@@ -24,17 +24,17 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <h2>Quick flow</h2>
 
   <pre><code># 1. Generate the CA (once)
-relay-core-cli ca generate
+relay-core ca generate
 
 # 2. Install into the system trust store
-relay-core-cli ca install   # macOS auto; other platforms see below
+relay-core ca install   # macOS auto; other platforms see below
 
 # 3. Start the proxy
-relay-core-cli run</code></pre>
+relay-core run</code></pre>
 
   <h2><code>ca</code> subcommands</h2>
 
-  <pre><code>relay-core-cli ca &lt;subcommand&gt;
+  <pre><code>relay-core ca &lt;subcommand&gt;
 
   generate [--force]        Generate the CA (--force to overwrite)
   install                   Install into the system trust store
@@ -50,7 +50,7 @@ relay-core-cli run</code></pre>
 
   <p><code>ca status</code> compares the local certificate against the keychain entry by SHA-1:</p>
 
-  <pre><code>$ relay-core-cli ca status
+  <pre><code>$ relay-core ca status
 CA cert: /Users/me/.relay-core/ca_cert.pem
 CA key:  /Users/me/.relay-core/ca_key.pem
 Trusted in keychain: yes
@@ -82,7 +82,7 @@ curl -vI https://example.com --proxy http://127.0.0.1:8080</code></pre>
 
   <p>Export a binary .cer with <code>--der</code>:</p>
 
-  <pre><code>relay-core-cli ca export -o relay-core.cer --der</code></pre>
+  <pre><code>relay-core ca export -o relay-core.cer --der</code></pre>
 
   <p>Double-click the .cer → "Install Certificate" → "Local Machine" → "Place all certificates in the following store" → "Trusted Root Certification Authorities". PowerShell equivalent:</p>
 
@@ -104,7 +104,7 @@ curl -vI https://example.com --proxy http://127.0.0.1:8080</code></pre>
   <h2>Uninstalling</h2>
 
   <pre><code># macOS
-relay-core-cli ca uninstall
+relay-core ca uninstall
 
 # Linux
 sudo rm /usr/local/share/ca-certificates/relay-core.crt

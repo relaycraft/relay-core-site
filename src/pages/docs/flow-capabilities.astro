@@ -5,7 +5,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 <DocsLayout title="拦截与改写能力" description="每种改写能力的最小可用示例">
   <h1>拦截与改写能力</h1>
 
-  <p>本页列出 RelayCore 内置的流量改写能力，每项配一个能通过 <code>relay-core-cli rules validate</code> 的 Rule JSON（也可直接 <code>PUT /api/v1/rules</code>）。字段形状与 <a href="/docs/rule-engine">规则 API</a> 一致：<code>active</code>、<code>stage</code>、<code>termination</code>、带 <code>type</code> 的 <code>filter</code>，以及 <code>actions</code> 数组。动作字段包在 <code>config</code> 里。</p>
+  <p>本页列出 RelayCore 内置的流量改写能力，每项配一个能通过 <code>relay-core rules validate</code> 的 Rule JSON（也可直接 <code>PUT /api/v1/rules</code>）。字段形状与 <a href="/docs/rule-engine">规则 API</a> 一致：<code>active</code>、<code>stage</code>、<code>termination</code>、带 <code>type</code> 的 <code>filter</code>，以及 <code>actions</code> 数组。动作字段包在 <code>config</code> 里。</p>
 
   <h2 id="mock-response">Mock Response</h2>
   <p>用本地假响应替换上游响应。常用于前端开发、契约测试、错误模拟。在请求头阶段终止，不再访问上游。</p>
@@ -143,7 +143,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 &#125;</code></pre>
 
   <h2 id="intercept-breakpoints">拦截断点</h2>
-  <p>暂停实时流量等待人工决定。用 HTTP <code>POST /api/v1/intercepts</code> 或 MCP <code>set_intercept</code> 创建断点；<code>resume</code> / <code>resume_flow</code> 放行或丢弃。没有 <code>relay-core-cli intercept</code> 子命令。</p>
+  <p>暂停实时流量等待人工决定。用 HTTP <code>POST /api/v1/intercepts</code> 或 MCP <code>set_intercept</code> 创建断点；<code>resume</code> / <code>resume_flow</code> 放行或丢弃。没有 <code>relay-core intercept</code> 子命令。</p>
 
   <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/intercepts \
   -H 'Content-Type: application/json' \

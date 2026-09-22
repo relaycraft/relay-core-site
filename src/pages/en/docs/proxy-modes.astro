@@ -12,7 +12,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <p>The client is explicitly configured to use RelayCore as its HTTP/HTTPS proxy. This is the most common mode for local development and debugging — no OS or client changes beyond setting the proxy URL.</p>
 
   <pre><code># Start
-relay-core-cli run
+relay-core run
 
 # Point your browser or system proxy at
 # 127.0.0.1:8080 (the default listen address)</code></pre>
@@ -23,23 +23,23 @@ relay-core-cli run
 
   <p>The client is unaware of the proxy; the OS or network device redirects traffic to RelayCore. Useful for device debugging, mobile devices, embedded devices, and scenarios where you cannot change client config.</p>
 
-  <pre><code>relay-core-cli run --transparent</code></pre>
+  <pre><code>relay-core run --transparent</code></pre>
 
   <h3>macOS (PF)</h3>
 
-  <p>Use the <code>relay-core-cli proxy</code> subcommand to manage PF rules:</p>
+  <p>Use the <code>relay-core proxy</code> subcommand to manage PF rules:</p>
 
   <pre><code># Generate PF config (defaults to en0, override with --interface)
-relay-core-cli proxy generate --port 8080
+relay-core proxy generate --port 8080
 
 # Load and enable the rules (requires sudo)
-sudo relay-core-cli proxy load --port 8080 --interface en0
+sudo relay-core proxy load --port 8080 --interface en0
 
 # Show current state
-relay-core-cli proxy status
+relay-core proxy status
 
 # Disable
-sudo relay-core-cli proxy unload</code></pre>
+sudo relay-core proxy unload</code></pre>
 
   <p>The generated rules redirect TCP traffic on ports 80/443 to the local proxy port. Supported on macOS only.</p>
 
@@ -49,7 +49,7 @@ sudo relay-core-cli proxy unload</code></pre>
 
   <h3>UDP TPROXY</h3>
 
-  <pre><code>relay-core-cli run --transparent --udp-tproxy-port 8080</code></pre>
+  <pre><code>relay-core run --transparent --udp-tproxy-port 8080</code></pre>
 
   <p>Enables UDP transparent proxy. Linux only; requires <code>IP_TRANSPARENT</code> kernel support.</p>
 
@@ -58,17 +58,17 @@ sudo relay-core-cli proxy unload</code></pre>
   <p>Place RelayCore behind another proxy. All outbound traffic goes to RelayCore first, which then forwards through a parent proxy. Typical for corporate proxies, VPN concentrators, and TLS-inspecting middleboxes.</p>
 
   <pre><code># Plain HTTP upstream
-relay-core-cli run --upstream http://corp-proxy.internal:8080
+relay-core run --upstream http://corp-proxy.internal:8080
 
 # HTTPS upstream (TLS to the proxy itself)
-relay-core-cli run --upstream https://secure-proxy.internal:8443
+relay-core run --upstream https://secure-proxy.internal:8443
 
 # With Basic auth
 export RELAYCORE_UPSTREAM_PASSWORD='s3cret'
-relay-core-cli run --upstream http://corp-proxy.internal:8080 --upstream-auth-user alice
+relay-core run --upstream http://corp-proxy.internal:8080 --upstream-auth-user alice
 
 # Fall back to direct if upstream is unreachable (default fail-closed)
-relay-core-cli run --upstream http://corp-proxy.internal:8080 --upstream-fail-open</code></pre>
+relay-core run --upstream http://corp-proxy.internal:8080 --upstream-fail-open</code></pre>
 
   <h3>Bypass list</h3>
 

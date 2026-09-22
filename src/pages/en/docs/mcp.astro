@@ -27,7 +27,7 @@ npx @relay-core/cli start        # daemon + proxy (optional on first run: the br
   &#125;
 &#125;</code></pre>
 
-  <p>When no daemon is running, the bridge starts one (detached, so closing your editor does not take it with it). It does <strong>not</strong> start a proxy: that stays an explicit command — <code>relay-core-cli start</code> / <code>stop</code>, or the <code>proxy_start</code> / <code>proxy_stop</code> tools. Set <code>RELAY_MCP_NO_AUTOSTART=1</code>, or <code>[client] autostart_daemon = false</code> in the config file, to require starting the daemon yourself.</p>
+  <p>When no daemon is running, the bridge starts one (detached, so closing your editor does not take it with it). It does <strong>not</strong> start a proxy: that stays an explicit command — <code>relay-core start</code> / <code>stop</code>, or the <code>proxy_start</code> / <code>proxy_stop</code> tools. Set <code>RELAY_MCP_NO_AUTOSTART=1</code>, or <code>[client] autostart_daemon = false</code> in the config file, to require starting the daemon yourself.</p>
 
   <h2>Bridge flags</h2>
 
