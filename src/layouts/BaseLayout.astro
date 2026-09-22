@@ -27,6 +27,7 @@ const alternateUrl = getAlternateUrl(Astro.url);
 <html lang={locale}>
   <head>
     <SeoHead title={title} description={description} ogImage={ogImage} />
+    <link rel="describedby" href="/llms.txt" type="text/plain" title="RelayCore for agents" />
   </head>
   <body>
     <a class="skip-link" href="#main-content">

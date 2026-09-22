@@ -193,6 +193,6 @@ curl -X PUT http://127.0.0.1:8082/api/v1/rules \
        "filter":&#123;"type":"Url","config":&#123;"mode":"Contains","value":"/api/"&#125;&#125;,
        "actions":[&#123;"type":"AddRequestHeader","config":&#123;"name":"X-Logged","value":"true"&#125;&#125;]&#125;'
 
-# MCP tool
-mcp: relay-core set_rule --rule rule.json</code></pre>
+# MCP tool set_rule. The argument is &#123; "rule": &lt;the object above&gt; &#125;.
+# There is no relay-core set_rule command. See /en/docs/mcp.</code></pre>
 </DocsLayout>

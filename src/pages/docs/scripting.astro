@@ -18,7 +18,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <tr><td><code>onRequest</code></td><td>请求体就绪后，转发前</td><td><code>(body, flow) => flow | undefined</code></td></tr>
     <tr><td><code>onResponseHeaders</code></td><td>响应头接收后</td><td><code>(ctx, flow) => flow | undefined</code></td></tr>
     <tr><td><code>onResponse</code></td><td>响应体就绪后</td><td><code>(body, flow) => flow | undefined</code></td></tr>
-    <tr><td><code>onWebSocketMessage</code></td><td>WebSocket 帧到达</td><td><code>(ctx, flow, message) => message | undefined</code></td></tr>
+    <tr><td><code>onWebSocketMessage</code></td><td>WebSocket 帧到达</td><td><code>(ctx, flow, message) => message | "DROP" | undefined</code></td></tr>
     <tr><td><code>onWebSocketStart</code></td><td>WebSocket 握手完成</td><td><code>(ctx, flow) => void</code></td></tr>
     <tr><td><code>onWebSocketEnd</code></td><td>WebSocket 正常关闭</td><td><code>(ctx, flow, code, reason) => void</code></td></tr>
     <tr><td><code>onWebSocketError</code></td><td>WebSocket 协议/IO 错误</td><td><code>(ctx, flow, error) => void</code></td></tr>
@@ -26,6 +26,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <tr><td><code>onDisconnect</code></td><td>连接关闭</td><td><code>(ctx, conn, stats) => void</code></td></tr>
     <tr><td><code>onError</code></td><td>任何钩子抛错时</td><td><code>(ctx, flow, error, stage) => void</code></td></tr>
   </table>
+  <p><code>onWebSocketMessage</code> 必须返回消息、字符串 <code>DROP</code> 或空。把 flow 返回去是改头钩子的写法，这一次调用会失败。WebSocket flow 的 <code>layer</code> 类型是 <code>WebSocket</code>，不是 <code>Http</code>。抛错只给这一条 flow 打上 <code>script-error</code>；下一条 flow 不受影响，再加载一份脚本就会换掉钩子。</p>
 
   <h2>Flow 对象</h2>
   <p>每个钩子收到的 <code>flow</code> 参数包含当前流的完整信息：</p>

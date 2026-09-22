@@ -9,6 +9,15 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <p><strong>连接一个 MCP 客户端不会启动引擎。</strong>代理、流量历史、规则与断点队列都归守护进程所有，所以 CLI、编辑器与 Web UI 看到的是同一份状态，而不是各自一份。守护进程自己也能直接服务 HTTP 版 MCP 端点，能配置 remote MCP 的客户端可以完全跳过桥。</p>
 
+  <h2>给 Agent</h2>
+  <p>容易写错的形状集中在 <a href="/llms.txt"><code>/llms.txt</code></a>。命令是 <code>relay-core</code>。没有 <code>relay</code> 命令，也没有 <code>relay-core set_rule</code> 子命令。</p>
+  <ul>
+    <li>连上 MCP 不会启动代理。要调用 <code>proxy_start</code>，或执行 <code>relay-core start</code>。守护进程默认提供 Web UI，<code>relay-core status</code> 会打印地址。用 <code>--no-web</code> 或 <code>[daemon] webui = false</code> 关掉页面。</li>
+    <li><code>set_rule</code> 的参数是 <code>&#123; "rule": &lt;Rule&gt; &#125;</code>。<code>actions</code> 是 <code>&#123;type, config&#125;</code> 对象组成的数组。写成单个对象会被拒绝，错误里会指出字段（<code>at actions</code>）。只要固定响应时用 <code>mock_url</code>。</li>
+    <li><code>capture_exclude</code> 匹配请求的目标 <code>host:port</code>。控制 API 和 MCP 端口一直排除。代理端口只在代理正在监听它时排除。</li>
+    <li><code>onWebSocketMessage(context, flow, message)</code> 返回消息、<code>"DROP"</code> 或空。WebSocket flow 的 layer 类型是 <code>WebSocket</code>。抛错只给这一条 flow 打标；<code>set_script</code> 会换掉钩子。</li>
+  </ul>
+
   <h2>前置条件</h2>
 
   <pre><code>npx @relay-core/cli ca generate
@@ -109,7 +118,20 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   <div class="endpoint">
     <span class="method method-post">set_rule</span>
   </div>
-  <p>创建或替换完整 Rule JSON（含 id）。</p>
+  <p>创建或替换一条规则。<code>actions</code> 必须是数组。过滤器和动作都是 <code>&#123;type, config&#125;</code>；字符串匹配是 <code>&#123;mode, value&#125;</code>；文本 body 是 <code>&#123;type: "Text", value&#125;</code>。<code>constraints</code> 可以为 null。字段说明见 <a href="/docs/rule-engine">规则引擎</a>。</p>
+  <pre><code>&#123;
+  "rule": &#123;
+    "id": "r1",
+    "name": "r1",
+    "active": true,
+    "stage": "RequestHeaders",
+    "priority": 200,
+    "termination": "Stop",
+    "filter": &#123;"type": "Url", "config": &#123;"mode": "Contains", "value": "example"&#125;&#125;,
+    "actions": [&#123;"type": "AddRequestHeader", "config": &#123;"name": "X-Test", "value": "1"&#125;&#125;],
+    "constraints": null
+  &#125;
+&#125;</code></pre>
 
   <div class="endpoint">
     <span class="method method-post">list_rules</span>

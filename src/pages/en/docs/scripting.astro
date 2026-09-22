@@ -18,7 +18,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     <tr><td><code>onRequest</code></td><td>Request body ready, before forward</td><td><code>(body, flow) => flow | undefined</code></td></tr>
     <tr><td><code>onResponseHeaders</code></td><td>After response headers received</td><td><code>(ctx, flow) => flow | undefined</code></td></tr>
     <tr><td><code>onResponse</code></td><td>Response body ready</td><td><code>(body, flow) => flow | undefined</code></td></tr>
-    <tr><td><code>onWebSocketMessage</code></td><td>WebSocket frame received</td><td><code>(ctx, flow, message) => message | undefined</code></td></tr>
+    <tr><td><code>onWebSocketMessage</code></td><td>WebSocket frame received</td><td><code>(ctx, flow, message) => message | "DROP" | undefined</code></td></tr>
     <tr><td><code>onWebSocketStart</code></td><td>WebSocket handshake complete</td><td><code>(ctx, flow) => void</code></td></tr>
     <tr><td><code>onWebSocketEnd</code></td><td>WebSocket normal close</td><td><code>(ctx, flow, code, reason) => void</code></td></tr>
     <tr><td><code>onWebSocketError</code></td><td>WebSocket protocol/IO error</td><td><code>(ctx, flow, error) => void</code></td></tr>
@@ -26,6 +26,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     <tr><td><code>onDisconnect</code></td><td>Connection closed</td><td><code>(ctx, conn, stats) => void</code></td></tr>
     <tr><td><code>onError</code></td><td>Any hook throws an error</td><td><code>(ctx, flow, error, stage) => void</code></td></tr>
   </table>
+  <p><code>onWebSocketMessage</code> must return the message, the string <code>DROP</code>, or nothing. Returning the flow is the header-hook shape and fails that call. A WebSocket flow's <code>layer</code> type is <code>WebSocket</code>, not <code>Http</code>. A throw tags only that flow with <code>script-error</code>; the next flow is unaffected, and loading another script replaces the hook.</p>
 
   <h2>Flow Object</h2>
   <p>The <code>flow</code> parameter contains the complete state of the current flow:</p>

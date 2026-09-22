@@ -8,7 +8,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <p>The <code>relay-core</code> binary provides a full-featured command-line interface for running the proxy, inspecting traffic, and managing rules, scripts, and certificates. For the full schema run <code>relay-core --help</code> or <code>relay-core &lt;command&gt; --help</code>.</p>
 
   <h2 id="lifecycle">Daemon lifecycle</h2>
-  <p>One long-lived daemon owns the engine and the proxy lifecycle: the single state lives in it, it publishes <code>$RELAY_DATA_DIR/daemon.json</code> for clients to discover, and it serves both the control API and the MCP endpoint. Every other surface — CLI, MCP bridge, Web UI, TUI — is a client of it.</p>
+  <p>One long-lived daemon owns the engine and the proxy lifecycle: the single state lives in it, it publishes <code>$RELAY_DATA_DIR/daemon.json</code> for clients to discover, and it serves the control API, the MCP endpoint, and the embedded Web UI. <code>relay-core status</code> prints the page URL. Turn the page off with <code>--no-web</code> or <code>[daemon] webui = false</code>. Every other surface — CLI, MCP bridge, Web UI, TUI — is a client of it. The proxy still starts only when a command or tool asks for it.</p>
   <pre><code>relay-core start      Start the daemon and the proxy (idempotent; attaches if already up)
 relay-core stop       Stop the proxy only; the daemon, history and rules stay
 relay-core restart    Restart the proxy
@@ -42,7 +42,8 @@ Rules &amp; scripts:
 
 TUI:
       --ui                        Enable interactive TUI mode
-      --web                       Also serve the Web UI (uses port 8082 when --api-port is omitted)
+      --web                       Serve the Web UI even when the config file turned it off
+      --no-web                    Do not serve the embedded Web UI
       --theme &lt;NAME&gt;             TUI color preset: relay, slate, high-contrast
                                   (overrides RELAY_CORE_TUI_THEME and config)
 

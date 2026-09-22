@@ -9,6 +9,15 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <p><strong>Connecting an MCP client starts no engine.</strong> The proxy, the flow history, the rules and the intercept queue all belong to the daemon, so the CLI, your editor and the Web UI see one state rather than one each. The daemon also serves the MCP endpoint over HTTP, so a client that can be configured with a remote MCP server can skip the bridge entirely.</p>
 
+  <h2>For agents</h2>
+  <p>A short index of the shapes below is at <a href="/llms.txt"><code>/llms.txt</code></a>. The command is <code>relay-core</code>. There is no <code>relay</code> command and no <code>relay-core set_rule</code> subcommand.</p>
+  <ul>
+    <li>Connecting MCP does not start the proxy. Call <code>proxy_start</code>, or run <code>relay-core start</code>. The daemon serves the Web UI by default; <code>relay-core status</code> prints the URL. Turn the page off with <code>--no-web</code> or <code>[daemon] webui = false</code>.</li>
+    <li><code>set_rule</code> takes <code>&#123; "rule": &lt;Rule&gt; &#125;</code>. <code>actions</code> is an array of <code>&#123;type, config&#125;</code> objects. One action object is rejected, and the error names the field (<code>at actions</code>). Prefer <code>mock_url</code> for a fixed response.</li>
+    <li><code>capture_exclude</code> matches destination <code>host:port</code>. The control API and MCP ports stay excluded. The proxy port is excluded only while the proxy is listening there.</li>
+    <li><code>onWebSocketMessage(context, flow, message)</code> returns the message, <code>"DROP"</code>, or nothing. A WebSocket flow's layer type is <code>WebSocket</code>. A throw tags only that flow; <code>set_script</code> replaces the hook.</li>
+  </ul>
+
   <h2>Prerequisites</h2>
 
   <pre><code>npx @relay-core/cli ca generate
@@ -111,7 +120,20 @@ npx @relay-core/cli start        # daemon + proxy (optional on first run: the br
   <div class="endpoint">
     <span class="method method-post">set_rule</span>
   </div>
-  <p>Create or replace a full Rule JSON object (including <code>id</code>).</p>
+  <p>Create or replace one rule. <code>actions</code> must be an array. Filters and actions are <code>&#123;type, config&#125;</code>; a string match is <code>&#123;mode, value&#125;</code>; a text body is <code>&#123;type: "Text", value&#125;</code>. <code>constraints</code> may be null. Field reference: <a href="/en/docs/rule-engine">Rule engine</a>.</p>
+  <pre><code>&#123;
+  "rule": &#123;
+    "id": "r1",
+    "name": "r1",
+    "active": true,
+    "stage": "RequestHeaders",
+    "priority": 200,
+    "termination": "Stop",
+    "filter": &#123;"type": "Url", "config": &#123;"mode": "Contains", "value": "example"&#125;&#125;,
+    "actions": [&#123;"type": "AddRequestHeader", "config": &#123;"name": "X-Test", "value": "1"&#125;&#125;],
+    "constraints": null
+  &#125;
+&#125;</code></pre>
 
   <div class="endpoint">
     <span class="method method-post">list_rules</span>

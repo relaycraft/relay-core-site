@@ -1,0 +1,57 @@
+# RelayCore
+
+> Local traffic interception proxy. The command is `relay-core`. One daemon per data directory (`~/.relay-core`, override with `RELAY_DATA_DIR`) owns the proxy, the control API, the Web UI, and the MCP endpoint. Docs: https://relaycore.dev/en/docs/getting-started
+
+Agents should read this file first, then the MCP page. Page HTML is for humans; the shapes below are the contract.
+
+## Facts that are easy to get wrong
+
+- The user-facing command is `relay-core`. There is no `relay` command. `cargo install relay-core-cli` installs a file named `relay-core-cli`; `npm install -g @relay-core/cli` installs `relay-core`.
+- There is no `relay-core set_rule` subcommand. Create a rule with the MCP tool `set_rule` or `PUT /api/v1/rules`.
+- `set_rule` argument is `{ "rule": <Rule> }`. `actions` is an array of `{ "type", "config" }` objects. One action object is rejected. The error names the field: `Invalid rule JSON at actions`.
+- Filters use `{ "type", "config" }`. A string match is `{ "mode", "value" }` (`Exact`, `Contains`, `Prefix`, `Suffix`, `Regex`, `Glob`). `And` / `Or` `config` is an array of filters. `All` has no config.
+- A text body is `{ "type": "Text", "value": "..." }`. `MockResponse` `headers` is an object, not an array. `constraints` may be null.
+- Prefer `mock_url` (`url_pattern`, `status`, `body`, `content_type`) when the only goal is a fixed response. It builds the rule.
+- Connecting MCP does not start the proxy. Call `proxy_start`, or run `relay-core start`. The daemon serves the Web UI by default; `relay-core status` prints the URL (token in the fragment). Turn the page off with `--no-web` or `[daemon] webui = false`.
+- `capture_exclude` matches the request destination `host:port`. `127.0.0.1` and `localhost` are different. The control API (default 8082) and MCP (default 18083) stay excluded. The proxy port is excluded only while that proxy is listening, and removed when it stops. Traffic to a service on 8080 is captured when the proxy is not listening on 8080.
+- `onWebSocketMessage(context, flow, message)` returns the message, the string `DROP`, or nothing. Returning the flow is the HTTP header-hook shape and fails that call. A WebSocket flow's layer type is `WebSocket`, not `Http`. A throw tags only that flow with `script-error`. The next flow is unaffected. `set_script` replaces the hook without restarting the daemon.
+- `replay_flow` sends the request directly to the upstream. It does not go back through the proxy or the script.
+- Redaction is on by default. Retention defaults to 5000 flows or 7 days.
+
+## Example: set_rule
+
+```json
+{
+  "rule": {
+    "id": "r1",
+    "name": "r1",
+    "active": true,
+    "stage": "RequestHeaders",
+    "priority": 200,
+    "termination": "Stop",
+    "filter": {"type": "Url", "config": {"mode": "Contains", "value": "example"}},
+    "actions": [{"type": "AddRequestHeader", "config": {"name": "X-Test", "value": "1"}}],
+    "constraints": null
+  }
+}
+```
+
+## English docs
+
+- [Getting started](https://relaycore.dev/en/docs/getting-started): install, CA, daemon, proxy
+- [MCP](https://relaycore.dev/en/docs/mcp): tools, resources, and the rule argument
+- [Rule engine](https://relaycore.dev/en/docs/rule-engine): Rule JSON fields
+- [Rule guide](https://relaycore.dev/en/docs/rule-guide): worked rule examples
+- [Flow capabilities](https://relaycore.dev/en/docs/flow-capabilities): one rule per capability
+- [Scripting](https://relaycore.dev/en/docs/scripting): hook signatures
+- [CLI](https://relaycore.dev/en/docs/cli): daemon lifecycle and flags
+- [API](https://relaycore.dev/en/docs/api): HTTP control API
+- [Configuration](https://relaycore.dev/en/docs/configuration): config file and data directory
+
+## 中文文档
+
+- [入门](https://relaycore.dev/docs/getting-started)
+- [MCP](https://relaycore.dev/docs/mcp)
+- [规则引擎](https://relaycore.dev/docs/rule-engine)
+- [脚本](https://relaycore.dev/docs/scripting)
+- [CLI](https://relaycore.dev/docs/cli)

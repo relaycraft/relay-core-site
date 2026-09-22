@@ -8,7 +8,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p><code>relay-core</code> 提供功能完整的命令行界面，用于运行代理、检查流量、管理规则、脚本与证书。完整参数请运行 <code>relay-core --help</code> 或 <code>relay-core &lt;command&gt; --help</code>。</p>
 
   <h2 id="lifecycle">守护进程生命周期</h2>
-  <p>一个常驻守护进程独占引擎与代理生命周期：唯一的状态在它手里，它写 <code>$RELAY_DATA_DIR/daemon.json</code> 供其他客户端发现，并同时服务控制 API 与 MCP 端点。其余界面（CLI、MCP 桥、Web UI、TUI）都是它的客户端。</p>
+  <p>一个常驻守护进程独占引擎与代理生命周期：唯一的状态在它手里，它写 <code>$RELAY_DATA_DIR/daemon.json</code> 供其他客户端发现，并同时服务控制 API、MCP 端点与内嵌 Web UI。<code>relay-core status</code> 会打印页面地址。用 <code>--no-web</code> 或 <code>[daemon] webui = false</code> 关掉页面。其余界面（CLI、MCP 桥、Web UI、TUI）都是它的客户端。代理仍然只在命令或工具要求时才启动。</p>
   <pre><code>relay-core start      启动守护进程与代理（幂等；已在运行则接入并回报端口）
 relay-core stop       只停代理；守护进程、历史与规则保留
 relay-core restart    重启代理
@@ -41,7 +41,8 @@ TLS 拦截：
 
 TUI：
       --ui                        启用 TUI 交互界面
-      --web                       同时提供 Web UI（未指定 --api-port 时用 8082）
+      --web                       配置文件关掉页面时仍提供 Web UI
+      --no-web                    不提供内嵌 Web UI
       --theme &lt;NAME&gt;             TUI 配色：relay、slate、high-contrast
                                   （覆盖 RELAY_CORE_TUI_THEME 与 config）
 
