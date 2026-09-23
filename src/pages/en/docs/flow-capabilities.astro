@@ -164,7 +164,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <p>Modifiable fields: <code>method</code>, <code>url</code>, <code>request_headers</code>, <code>request_header_upserts</code>, <code>request_body</code>, <code>status_code</code>, <code>response_headers</code>, <code>response_header_upserts</code>, <code>response_body</code>, <code>message_content</code> (WebSocket).</p>
 
   <h2 id="flow-replay">Flow replay</h2>
-  <p>Re-send a captured HTTP request as it was stored. The request body is ignored, so this call cannot edit headers or body, and the replay does not pass back through the proxy (it is not captured again and rules do not run). HTTP only; WebSocket flows are rejected.</p>
+  <p>Re-send a captured HTTP request as it was stored. This call cannot edit headers or body. The replay enters through the running proxy, so it is captured as a new flow and the current rules and scripts apply. The call fails when the proxy is not running. HTTP only; WebSocket flows are rejected.</p>
   <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/flows/&lt;id&gt;/replay
 
 # Skip TLS verification (debug only)

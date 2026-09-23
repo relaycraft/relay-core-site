@@ -74,7 +74,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <p>Full Flow JSON including headers and bodies. The same redaction rules apply.</p>
 
   <h3>POST /api/v1/flows/:id/replay</h3>
-  <p>Re-send a captured HTTP request as stored. The body is ignored, so this call cannot edit headers or body, and the replay does not pass through the proxy. <code>?accept_invalid_certs=true</code> skips TLS verification (debug only). WebSocket flows return 400.</p>
+  <p>Re-send a captured HTTP request as stored. This call cannot edit headers or body. The replay enters through the running proxy, so it is captured as a new flow and the current rules and scripts apply. The call returns 503 when the proxy is not running. <code>?accept_invalid_certs=true</code> skips TLS verification on the replay client (debug only); the engine CA is trusted automatically. WebSocket flows return 400.</p>
 
   <h3>GET /api/v1/flows/:id/har</h3>
   <p>Export a single flow as a HAR 1.2 entry.</p>

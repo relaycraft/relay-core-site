@@ -74,7 +74,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>返回完整 Flow JSON（含 header 与 body）。同样应用 redaction。</p>
 
   <h3>POST /api/v1/flows/:id/replay</h3>
-  <p>按已捕获的 HTTP 请求原样再发一次。请求体被忽略，不能在这次调用里改头或改体，重放也不经过代理。<code>?accept_invalid_certs=true</code> 在重放时跳过 TLS 校验（仅限调试）。WebSocket 流量会返回 400。</p>
+  <p>按已捕获的 HTTP 请求再发一次。这次调用不能改头或改体。重放从本代理的监听端口进去，会记成一条新流量，当前规则和脚本会生效；代理没在运行时返回 503。<code>?accept_invalid_certs=true</code> 让重放客户端跳过 TLS 校验（仅限调试）。引擎自己的 CA 会自动加入信任。WebSocket 流量会返回 400。</p>
 
   <h3>GET /api/v1/flows/:id/har</h3>
   <p>将单条流量导出为 HAR 1.2 entry。</p>

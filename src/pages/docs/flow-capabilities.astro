@@ -164,7 +164,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>可修改字段：<code>method</code>、<code>url</code>、<code>request_headers</code>、<code>request_header_upserts</code>、<code>request_body</code>、<code>status_code</code>、<code>response_headers</code>、<code>response_header_upserts</code>、<code>response_body</code>、<code>message_content</code>（WebSocket）。</p>
 
   <h2 id="flow-replay">流量重放</h2>
-  <p>把已捕获的 HTTP 请求再发一次。请求体被忽略，不能在这次重放里改头或改体；重放也不经过代理，因此不会再次被捕获、也不会跑规则。仅支持 HTTP，不支持 WebSocket。</p>
+  <p>把已捕获的 HTTP 请求再发一次。这次调用不能改头或改体。重放从本代理的监听端口进去，所以会记成一条新流量，当前规则和脚本会生效；代理没在运行时这次调用失败。仅支持 HTTP，不支持 WebSocket。</p>
   <pre><code>curl -X POST http://127.0.0.1:8082/api/v1/flows/&lt;id&gt;/replay
 
 # TLS 校验失败时（仅调试）

@@ -15,7 +15,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li>连上 MCP 不会启动代理。要调用 <code>proxy_start</code>，或执行 <code>relay-core start</code>。守护进程默认提供 Web UI，<code>relay-core status</code> 会打印地址。用 <code>--no-web</code> 或 <code>[daemon] webui = false</code> 关掉页面。</li>
     <li><code>set_rule</code> 的参数是 <code>&#123; "rule": &lt;Rule&gt; &#125;</code>。<code>actions</code> 是 <code>&#123;type, config&#125;</code> 对象组成的数组。写成单个对象会被拒绝，错误里会指出字段（<code>at actions</code>）。只要固定响应时用 <code>mock_url</code>。它在请求头阶段结束交换，不再连接上游，所以响应阶段的规则和 <code>onResponseHeaders</code> / <code>onResponse</code> 不会运行。要加工内容，写进 mock 自己的 body 和 headers。写规则前先读资源 <code>api://rules</code>，里面是每种 filter 和 action。</li>
     <li><code>capture_exclude</code> 匹配请求的目标 <code>host:port</code>。控制 API 和 MCP 端口一直排除。代理端口只在代理正在监听它时排除。</li>
-    <li><code>upstream</code> 含 <code>proxy_url</code>、可选 <code>auth</code>、<code>bypass_hosts</code>、<code>fail_open</code>。<code>bypass_hosts</code> 的每一项是 IP、<code>cidr:</code> 网段或主机名 glob。<code>get_policy</code> 会立刻看到新值。出站连接器在代理启动时确定，新的代理地址、认证或 <code>fail_open</code> 要先 <code>proxy_stop</code> 再 <code>proxy_start</code> 才用到。<code>bypass_hosts</code> 只被保存，转发时不读取，重启之后同样不会按它绕过上游。</li>
+    <li><code>upstream</code> 含 <code>proxy_url</code>、可选 <code>auth</code>、<code>bypass_hosts</code>、<code>fail_open</code>。<code>bypass_hosts</code> 的每一项是 IP、<code>cidr:</code> 网段或主机名 glob，匹配的主机直接拨号、不经过上游。<code>get_policy</code> 会立刻看到新值。写入后的请求使用新的代理地址、认证、<code>fail_open</code> 或 <code>bypass_hosts</code>。新地址解析失败且 <code>fail_open</code> 为 false 时，继续用上一份连接器。</li>
     <li><code>onWebSocketMessage(context, flow, message)</code> 返回消息、<code>"DROP"</code> 或空。WebSocket flow 的 layer 类型是 <code>WebSocket</code>。抛错只给这一条 flow 打标；<code>set_script</code> 会换掉钩子。写脚本前先读资源 <code>api://script</code>。它是钩子、返回值和 <code>flow</code> 的形状。<code>onRequest</code> 和 <code>onResponse</code> 的参数是 <code>(body, flow)</code>。</li>
   </ul>
 
@@ -187,7 +187,7 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   <div class="endpoint">
     <span class="method method-post">replay_flow</span>
   </div>
-  <p>重放已捕获的 HTTP 请求。</p>
+  <p>把已捕获的 HTTP 请求从本代理的监听端口再发一次，记成一条新流量。代理没在运行时失败。</p>
   <pre><code>&#123;
   "id": "b9c84d96-2e49-43fe-9064-58d953e15279"
 &#125;</code></pre>
@@ -202,12 +202,12 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   <div class="endpoint">
     <span class="method method-post">update_policy</span>
   </div>
-  <p>完整替换策略。<code>upstream</code> 的新代理地址、认证或 <code>fail_open</code> 要先 <code>proxy_stop</code> 再 <code>proxy_start</code> 才作用到出站。<code>bypass_hosts</code> 只被保存，转发不读取。</p>
+  <p>完整替换策略。写入后的请求使用新的代理地址、认证、<code>fail_open</code> 或 <code>bypass_hosts</code>。匹配 <code>bypass_hosts</code> 的主机直接拨号。新地址解析失败且 <code>fail_open</code> 为 false 时，继续用上一份连接器。</p>
 
   <div class="endpoint">
     <span class="method method-post">patch_policy</span>
   </div>
-  <p>局部更新。可写 <code>redaction</code> / <code>upstream</code> / <code>retention</code>；未知字段会拒绝，而不是静默忽略。<code>upstream.bypass_hosts</code> 的每一项是 IP、<code>cidr:</code> 网段或主机名 glob。写入后 <code>get_policy</code> 立刻可见，但新的代理地址、认证或 <code>fail_open</code> 要先 <code>proxy_stop</code> 再 <code>proxy_start</code>。<code>bypass_hosts</code> 只被保存，转发不读取。</p>
+  <p>局部更新。可写 <code>redaction</code> / <code>upstream</code> / <code>retention</code>；未知字段会拒绝，而不是静默忽略。<code>upstream.bypass_hosts</code> 的每一项是 IP、<code>cidr:</code> 网段或主机名 glob，匹配的主机直接拨号。写入后 <code>get_policy</code> 立刻可见，之后的请求使用新的代理地址、认证、<code>fail_open</code> 或 <code>bypass_hosts</code>。新地址解析失败且 <code>fail_open</code> 为 false 时，继续用上一份连接器。</p>
   <pre><code>&#123;
   "patch": &#123;
     "retention": &#123; "max_flows": 2000, "max_age_secs": 86400 &#125;,
