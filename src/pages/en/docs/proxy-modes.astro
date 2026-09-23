@@ -108,7 +108,7 @@ curl -s -X PATCH http://127.0.0.1:8082/api/v1/policy \
     &#125;
   &#125;'</code></pre>
 
-  <p>Changing <code>proxy_url</code> at runtime returns <code>409 Conflict</code> because existing connections are already pinned to the old path. Restart the proxy to apply.</p>
+  <p>A new <code>proxy_url</code>, auth, <code>fail_open</code>, or <code>bypass_hosts</code> applies to later requests. A host matching <code>bypass_hosts</code> is dialled directly. If the new proxy URL cannot be resolved and <code>fail_open</code> is false, the previous connector stays in use. A request already in flight keeps the connector it started with.</p>
 
   <h3>Security notes</h3>
 

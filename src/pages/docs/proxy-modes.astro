@@ -108,7 +108,7 @@ curl -s -X PATCH http://127.0.0.1:8082/api/v1/policy \
     &#125;
   &#125;'</code></pre>
 
-  <p>运行时切换 <code>proxy_url</code> 会返回 <code>409 Conflict</code>，因为已有连接绑定在旧路径上，需要重启代理才能生效。</p>
+  <p>运行时写入新的 <code>proxy_url</code>、认证、<code>fail_open</code> 或 <code>bypass_hosts</code> 会作用于之后的请求。匹配 <code>bypass_hosts</code> 的主机直接拨号。新地址解析失败且 <code>fail_open</code> 为 false 时，继续用上一份连接器。已经在途的请求仍使用它开始时拿到的连接器。</p>
 
   <h3>安全提示</h3>
 

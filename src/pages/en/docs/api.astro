@@ -33,7 +33,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <h3>GET /api/v1/version</h3>
   <p>Engine version, API version, and a list of registered capability names.</p>
   <pre><code>&#123;
-  "engine_version": "0.13.1",
+  "engine_version": "0.14.0",
   "api_version": "1",
   "capabilities": ["flows", "rules", "intercepts", "mock", "metrics", "status", "events", "scripts"]
 &#125;</code></pre>
@@ -175,7 +175,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <p>Default sensitive header names: <code>authorization</code>, <code>proxy-authorization</code>, <code>cookie</code>, <code>set-cookie</code>, <code>x-api-key</code>, <code>x-auth-token</code>.</p>
   <p>Default sensitive query keys: <code>token</code>, <code>access_token</code>, <code>refresh_token</code>, <code>api_key</code>, <code>apikey</code>, <code>password</code>, <code>secret</code>.</p>
 
-  <p>Redaction is applied to the HTTP request/response, the WebSocket handshake, every WebSocket message, flow summaries, search results, and the SSE event stream. Changing <code>upstream.proxy_url</code> at runtime returns <code>409 Conflict</code> — restart the proxy to apply it.</p>
+  <p>Redaction is applied to the HTTP request/response, the WebSocket handshake, every WebSocket message, flow summaries, search results, and the SSE event stream. A new <code>proxy_url</code>, auth, <code>fail_open</code>, or <code>bypass_hosts</code> applies to later requests, and a host matching <code>bypass_hosts</code> is dialled directly. If the new proxy URL cannot be resolved and <code>fail_open</code> is false, the previous connector stays in use.</p>
 
   <h2 id="script">Scripting</h2>
 

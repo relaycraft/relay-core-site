@@ -33,7 +33,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h3>GET /api/v1/version</h3>
   <p>引擎版本、API 版本与已注册的能力名称列表。</p>
   <pre><code>&#123;
-  "engine_version": "0.13.1",
+  "engine_version": "0.14.0",
   "api_version": "1",
   "capabilities": ["flows", "rules", "intercepts", "mock", "metrics", "status", "events", "scripts"]
 &#125;</code></pre>
@@ -173,7 +173,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>默认敏感 header 名：<code>authorization</code>、<code>proxy-authorization</code>、<code>cookie</code>、<code>set-cookie</code>、<code>x-api-key</code>、<code>x-auth-token</code>。</p>
   <p>默认敏感 query key：<code>token</code>、<code>access_token</code>、<code>refresh_token</code>、<code>api_key</code>、<code>apikey</code>、<code>password</code>、<code>secret</code>。</p>
 
-  <p>Redaction 作用于 HTTP 请求/响应、WebSocket 握手、每条 WebSocket 消息、流量摘要、搜索结果以及 SSE 事件流。运行时切换 <code>upstream.proxy_url</code> 会返回 <code>409 Conflict</code>，需要重启代理才能生效。</p>
+  <p>Redaction 作用于 HTTP 请求/响应、WebSocket 握手、每条 WebSocket 消息、流量摘要、搜索结果以及 SSE 事件流。运行时写入新的 <code>proxy_url</code>、认证、<code>fail_open</code> 或 <code>bypass_hosts</code> 会作用于之后的请求；匹配绕过列表的主机直接拨号。新地址解析失败且 <code>fail_open</code> 为 false 时，继续用上一份连接器。</p>
 
   <h2 id="script">脚本</h2>
 
