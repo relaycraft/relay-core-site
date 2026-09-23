@@ -13,7 +13,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>容易写错的形状集中在 <a href="/llms.txt"><code>/llms.txt</code></a>。命令是 <code>relay-core</code>。没有 <code>relay</code> 命令，也没有 <code>relay-core set_rule</code> 子命令。</p>
   <ul>
     <li>连上 MCP 不会启动代理。要调用 <code>proxy_start</code>，或执行 <code>relay-core start</code>。守护进程默认提供 Web UI，<code>relay-core status</code> 会打印地址。用 <code>--no-web</code> 或 <code>[daemon] webui = false</code> 关掉页面。</li>
-    <li><code>set_rule</code> 的参数是 <code>&#123; "rule": &lt;Rule&gt; &#125;</code>。<code>actions</code> 是 <code>&#123;type, config&#125;</code> 对象组成的数组。写成单个对象会被拒绝，错误里会指出字段（<code>at actions</code>）。只要固定响应时用 <code>mock_url</code>。</li>
+    <li><code>set_rule</code> 的参数是 <code>&#123; "rule": &lt;Rule&gt; &#125;</code>。<code>actions</code> 是 <code>&#123;type, config&#125;</code> 对象组成的数组。写成单个对象会被拒绝，错误里会指出字段（<code>at actions</code>）。只要固定响应时用 <code>mock_url</code>。它在请求头阶段结束交换，不再连接上游，所以响应阶段的规则和 <code>onResponseHeaders</code> / <code>onResponse</code> 不会运行。要加工内容，写进 mock 自己的 body 和 headers。</li>
     <li><code>capture_exclude</code> 匹配请求的目标 <code>host:port</code>。控制 API 和 MCP 端口一直排除。代理端口只在代理正在监听它时排除。</li>
     <li><code>onWebSocketMessage(context, flow, message)</code> 返回消息、<code>"DROP"</code> 或空。WebSocket flow 的 layer 类型是 <code>WebSocket</code>。抛错只给这一条 flow 打标；<code>set_script</code> 会换掉钩子。</li>
   </ul>
@@ -149,7 +149,7 @@ npx @relay-core/cli start        # 守护进程 + 代理（首次也可省略，
   <div class="endpoint">
     <span class="method method-post">mock_url</span>
   </div>
-  <p>快速创建 <code>MockResponse</code> 规则。</p>
+  <p>快速创建 <code>MockResponse</code> 规则。它在请求头阶段结束交换，不再连接上游，响应阶段的规则和脚本不会运行。要加工内容，写进这里的 body 和 headers。</p>
   <pre><code>&#123;
   "url_pattern": "api.example.com/v1/health",
   "status": 200,

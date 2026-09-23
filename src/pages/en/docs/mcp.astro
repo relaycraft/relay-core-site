@@ -13,7 +13,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <p>A short index of the shapes below is at <a href="/llms.txt"><code>/llms.txt</code></a>. The command is <code>relay-core</code>. There is no <code>relay</code> command and no <code>relay-core set_rule</code> subcommand.</p>
   <ul>
     <li>Connecting MCP does not start the proxy. Call <code>proxy_start</code>, or run <code>relay-core start</code>. The daemon serves the Web UI by default; <code>relay-core status</code> prints the URL. Turn the page off with <code>--no-web</code> or <code>[daemon] webui = false</code>.</li>
-    <li><code>set_rule</code> takes <code>&#123; "rule": &lt;Rule&gt; &#125;</code>. <code>actions</code> is an array of <code>&#123;type, config&#125;</code> objects. One action object is rejected, and the error names the field (<code>at actions</code>). Prefer <code>mock_url</code> for a fixed response.</li>
+    <li><code>set_rule</code> takes <code>&#123; "rule": &lt;Rule&gt; &#125;</code>. <code>actions</code> is an array of <code>&#123;type, config&#125;</code> objects. One action object is rejected, and the error names the field (<code>at actions</code>). Prefer <code>mock_url</code> for a fixed response. It ends the exchange at the request-header stage and does not connect upstream, so response-stage rules and <code>onResponseHeaders</code> / <code>onResponse</code> do not run. Put further changes in the mock body and headers.</li>
     <li><code>capture_exclude</code> matches destination <code>host:port</code>. The control API and MCP ports stay excluded. The proxy port is excluded only while the proxy is listening there.</li>
     <li><code>onWebSocketMessage(context, flow, message)</code> returns the message, <code>"DROP"</code>, or nothing. A WebSocket flow's layer type is <code>WebSocket</code>. A throw tags only that flow; <code>set_script</code> replaces the hook.</li>
   </ul>
@@ -151,7 +151,7 @@ npx @relay-core/cli start        # daemon + proxy (optional on first run: the br
   <div class="endpoint">
     <span class="method method-post">mock_url</span>
   </div>
-  <p>Quickly create a <code>MockResponse</code> rule.</p>
+  <p>Quickly create a <code>MockResponse</code> rule. It ends the exchange at the request-header stage and does not connect upstream, so response-stage rules and scripts do not run. Put further changes in this body and these headers.</p>
   <pre><code>&#123;
   "url_pattern": "api.example.com/v1/health",
   "status": 200,
