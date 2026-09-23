@@ -15,6 +15,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     <li>Connecting MCP does not start the proxy. Call <code>proxy_start</code>, or run <code>relay-core start</code>. The daemon serves the Web UI by default; <code>relay-core status</code> prints the URL. Turn the page off with <code>--no-web</code> or <code>[daemon] webui = false</code>.</li>
     <li><code>set_rule</code> takes <code>&#123; "rule": &lt;Rule&gt; &#125;</code>. <code>actions</code> is an array of <code>&#123;type, config&#125;</code> objects. One action object is rejected, and the error names the field (<code>at actions</code>). Prefer <code>mock_url</code> for a fixed response. It ends the exchange at the request-header stage and does not connect upstream, so response-stage rules and <code>onResponseHeaders</code> / <code>onResponse</code> do not run. Put further changes in the mock body and headers.</li>
     <li><code>capture_exclude</code> matches destination <code>host:port</code>. The control API and MCP ports stay excluded. The proxy port is excluded only while the proxy is listening there.</li>
+    <li><code>upstream</code> has <code>proxy_url</code>, optional <code>auth</code>, <code>bypass_hosts</code>, and <code>fail_open</code>. A <code>bypass_hosts</code> entry is an IP, a <code>cidr:</code> network, or a hostname glob. <code>get_policy</code> shows the write immediately. The outbound connector is fixed at proxy start, so a new proxy URL, auth, or <code>fail_open</code> is unused until <code>proxy_stop</code> and then <code>proxy_start</code>. <code>bypass_hosts</code> is stored only: forwarding does not consult it, including after that restart.</li>
     <li><code>onWebSocketMessage(context, flow, message)</code> returns the message, <code>"DROP"</code>, or nothing. A WebSocket flow's layer type is <code>WebSocket</code>. A throw tags only that flow; <code>set_script</code> replaces the hook.</li>
   </ul>
 
@@ -203,12 +204,12 @@ npx @relay-core/cli start        # daemon + proxy (optional on first run: the br
   <div class="endpoint">
     <span class="method method-post">update_policy</span>
   </div>
-  <p>Replace the full policy.</p>
+  <p>Replace the full policy. A new <code>upstream</code> proxy URL, auth, or <code>fail_open</code> is unused until <code>proxy_stop</code> and then <code>proxy_start</code>. <code>bypass_hosts</code> is stored only and is not consulted when forwarding.</p>
 
   <div class="endpoint">
     <span class="method method-post">patch_policy</span>
   </div>
-  <p>Partial update. Accepts <code>redaction</code> / <code>upstream</code> / <code>retention</code>; unknown fields are rejected rather than silently ignored.</p>
+  <p>Partial update. Accepts <code>redaction</code> / <code>upstream</code> / <code>retention</code>; unknown fields are rejected rather than silently ignored. Each <code>upstream.bypass_hosts</code> entry is an IP, a <code>cidr:</code> network, or a hostname glob. <code>get_policy</code> shows the write immediately, but a new proxy URL, auth, or <code>fail_open</code> is unused until <code>proxy_stop</code> and then <code>proxy_start</code>. <code>bypass_hosts</code> is stored only and is not consulted when forwarding.</p>
   <pre><code>&#123;
   "patch": &#123;
     "retention": &#123; "max_flows": 2000, "max_age_secs": 86400 &#125;,
